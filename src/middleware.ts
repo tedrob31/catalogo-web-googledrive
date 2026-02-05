@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-    const path = request.nextUrl.pathname;
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-pathname', request.nextUrl.pathname);
 
-    // Define sensitive paths/methods that require authentication
+    // RESTORED: Define sensitive paths/methods that require authentication
+    const path = request.nextUrl.pathname;
     const isSensitiveApi = (
         (path.startsWith('/api/config') && request.method === 'POST') ||
         (path.startsWith('/api/sync') && request.method === 'POST') ||
@@ -21,13 +23,13 @@ export function middleware(request: NextRequest) {
         }
     }
 
-    return NextResponse.next();
+    return NextResponse.next({
+        request: {
+            headers: requestHeaders,
+        },
+    });
 }
 
 export const config = {
-    matcher: [
-        '/api/config',
-        '/api/sync',
-        '/api/upload',
-    ],
+    matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };

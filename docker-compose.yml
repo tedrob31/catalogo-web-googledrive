@@ -22,20 +22,17 @@ services:
       - ADMIN_USER=admin
       - ADMIN_PASS=admin123
       # GOOGLE DRIVE CREDENTIALS
-      # We assume the file is mounted at /app/google-credentials.json via secrets or volumes
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/google-credentials.json
+      # Saved to the persistent cache volume by the Setup Wizard
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/cache/credentials.json
 
     volumes:
-      # Persistent Cache (Structure & Config)
+      # Persistent Cache (Structure, Config, & Credentials)
       - catalog_cache:/app/cache
       # Persistent Covers (Uploads)
       - catalog_covers:/app/public/portadas
-      # Google Credentials (File Injection)
-      # You must create this file on the host or use Docker Secrets
-      # Mapping from host path example:
-      # - /path/to/host/keys/google-credentials.json:/app/google-credentials.json:ro
-      # OR using a Config/Secret in Swarm:
-      - /root/google-credentials.json:/app/google-credentials.json:ro
+      
+      # REMOVED: File injection via bind mount. 
+      # The app now manages its own credentials file in /app/cache.
 
     deploy:
       mode: replicated
