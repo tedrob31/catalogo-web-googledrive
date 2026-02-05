@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         headers.set('Cache-Control', 'public, max-age=31536000, immutable'); // Cache aggressively
         headers.set('Content-Type', response.headers['content-type'] || 'image/jpeg');
 
-        return new NextResponse(stream, { headers });
+        return new NextResponse(stream as any, { headers });
 
     } catch (error: any) {
         console.error('Proxy Error:', error.message);

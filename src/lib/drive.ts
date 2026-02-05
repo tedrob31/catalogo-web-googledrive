@@ -40,7 +40,7 @@ export async function listFolderContents(folderId: string): Promise<DriveFile[]>
     let pageToken: string | undefined = undefined;
 
     do {
-        const res = await drive.files.list({
+        const res: any = await drive.files.list({
             q: `'${folderId}' in parents and trashed = false`,
             fields: 'nextPageToken, files(id, name, mimeType, webViewLink, webContentLink, thumbnailLink, parents, imageMediaMetadata)',
             pageSize: 1000,
@@ -66,7 +66,7 @@ export async function uploadFile(folderId: string, file: File) {
     const bufferStream = new stream.PassThrough();
     bufferStream.end(buffer);
 
-    const res = await drive.files.create({
+    const res: any = await drive.files.create({
         requestBody: {
             name: file.name,
             parents: [folderId],
