@@ -1,0 +1,73 @@
+version: "3.7"
+services:
+
+## --------------------------- PHOTO CATALOG --------------------------- ##
+
+  catalog_app:
+    # Use 'image' if you push to a registry, or 'build' if building locally/on manager.
+    # For Portainer Stacks from Git, it usually builds if 'build' is present, or pulls 'image'.
+    # We will assume building from the current context.
+    # image: ghcr.io/yourusername/photo-catalog:latest 
+    build: 
+      context: .
+      dockerfile: Dockerfile
+
+    networks:
+      - r4tlabsnet
+
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      # ADMIN CREDENTIALS (REPLACE WITH SECURE VALUES OR SECRETS)
+      - ADMIN_USER=admin
+      - ADMIN_PASS=admin123
+      # GOOGLE DRIVE CREDENTIALS
+      # We assume the file is mounted at /app/google-credentials.json via secrets or volumes
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/google-credentials.json
+
+    volumes:
+      # Persistent Cache (Structure & Config)
+      - catalog_cache:/app/cache
+      # Persistent Covers (Uploads)
+      - catalog_covers:/app/public/portadas
+      # Google Credentials (File Injection)
+      # You must create this file on the host or use Docker Secrets
+      # Mapping from host path example:
+      # - /path/to/host/keys/google-credentials.json:/app/google-credentials.json:ro
+      # OR using a Config/Secret in Swarm:
+      - /root/google-credentials.json:/app/google-credentials.json:ro
+
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.catalog_app.rule=Host(`catalogodemoda.r4tlabs.com`)
+        - traefik.http.routers.catalog_app.entrypoints=websecure
+        - traefik.http.routers.catalog_app.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.catalog_app.priority=1
+        - traefik.http.routers.catalog_app.service=catalog_app
+        - traefik.http.services.catalog_app.loadbalancer.server.port=3000
+        - traefik.http.services.catalog_app.loadbalancer.passHostHeader=true
+        - traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https
+        - traefik.http.routers.catalog_app.middlewares=sslheader
+
+## --------------------------- VOLUMES & NETWORKS --------------------------- ##
+
+volumes:
+  catalog_cache:
+    name: catalog_cache
+  catalog_covers:
+    name: catalog_covers
+
+networks:
+  r4tlabsnet:
+    external: true
+    name: r4tlabsnet

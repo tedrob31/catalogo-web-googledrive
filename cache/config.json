@@ -1,0 +1,25 @@
+{
+  "rootFolderId": "1aHgUj8yoJVlCWembXQka3VLqMnHfdZdG",
+  "siteTitle": "Mi Catálogo de Fotos",
+  "primaryColor": "#000000",
+  "secondaryColor": "#ffffff",
+  "gridColumns": 6,
+  "folderCovers": {
+    "15fFhiGc1OMOt2sdUAy5k0b6rgNOTBYdk": "/portadas/15fFhiGc1OMOt2sdUAy5k0b6rgNOTBYdk.webp",
+    "1bv23pwTy5jfXCtlC3a9Vsgw9wzw0Q6p3": "/portadas/1bv23pwTy5jfXCtlC3a9Vsgw9wzw0Q6p3.png",
+    "1oIq4GEG3btEkQGbK7FuPZCU4vSbuJLRf": "/portadas/15fFhiGc1OMOt2sdUAy5k0b6rgNOTBYdk.webp",
+    "1-D50zRmNF1odL4eMbv4hw31bnUDtef_z": "/portadas/1vxHX94LHo-LgPEhJhnvSO3xv4RqEwdJo.jpg",
+    "1F7oMX0mdpzqtXHG5H67cqQQxFn1NkxdT": "/api/image?id=1zYLzQ5N3ekN9g27vwpkeSrb2UXy40sSU",
+    "1OMG803KiiERjOxeXHgykAck7v6j7cU7c": "/api/image?id=10Witt8mjT-lK6h8arq1taOhlv1Eyyrrh",
+    "109rT4AEPkYkRs6JOhYbsQAPWFjSls8Am": "/api/image?id=1r2xsE7cgAGFiUrvnJ-lCtufd1DluaOMP",
+    "10JnuNS1NAdGtOs_BtBOz6rGTQRK1hV4V": "/api/image?id=1cSkKQmqY08l8irWbV45xtMsMzO2dx0Ms",
+    "1v_YeNiIHo04-NZfezUp3PfnfWUR7oygh": "/api/image?id=1hldBEilLedahdIz3uszsEfQZTB6tF-hW"
+  },
+  "coversFolderId": "1wGFTvjynLQDuUUwE22Rjt6_9jyW0HzKX",
+  "autoSyncInterval": 120,
+  "seasonalEffect": "hearts",
+  "seasonalDuration": 3,
+  "clickEffect": "none",
+  "cardBorderColor": "#f2e9f1",
+  "cardBorderWidth": 0
+}
