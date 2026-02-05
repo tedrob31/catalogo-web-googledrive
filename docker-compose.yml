@@ -7,10 +7,10 @@ services:
     # Use 'image' if you push to a registry, or 'build' if building locally/on manager.
     # For Portainer Stacks from Git, it usually builds if 'build' is present, or pulls 'image'.
     # We will assume building from the current context.
-    # image: ghcr.io/yourusername/photo-catalog:latest 
-    build: 
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/tedrob31/catalogo-web-googledrive:latest
+    # build: 
+    #   context: .
+    #   dockerfile: Dockerfile
 
     networks:
       - r4tlabsnet
