@@ -20,7 +20,7 @@ services:
       - NEXT_TELEMETRY_DISABLED=1
       # ADMIN CREDENTIALS (REPLACE WITH SECURE VALUES OR SECRETS)
       - ADMIN_USER=admin
-      - ADMIN_PASS=admin123
+      - ADMIN_PASS=R4tlabs1234_
       # GOOGLE DRIVE CREDENTIALS
       # Saved to the persistent cache volume by the Setup Wizard
       - GOOGLE_APPLICATION_CREDENTIALS=/app/cache/credentials.json
@@ -46,7 +46,7 @@ services:
           memory: 512M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.catalog_app.rule=Host(`r4tlabs.com`)
+        - traefik.http.routers.catalog_app.rule=Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)
         - traefik.http.routers.catalog_app.entrypoints=websecure
         - traefik.http.routers.catalog_app.tls.certresolver=letsencryptresolver
         - traefik.http.routers.catalog_app.priority=1
