@@ -58,10 +58,21 @@ export async function generateMetadata(
     }
   }
 
+  // Sanitize localhost from URLs if present in config
+  if (imageUrl?.startsWith('http://localhost:3000')) {
+    imageUrl = imageUrl.replace('http://localhost:3000', '');
+  }
+
   return {
     title: title,
     description: description,
     openGraph: {
+      title: title,
+      description: description,
+      images: [imageUrl],
+    },
+    twitter: {
+      card: 'summary_large_image',
       title: title,
       description: description,
       images: [imageUrl],
