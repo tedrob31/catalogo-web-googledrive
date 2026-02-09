@@ -137,6 +137,8 @@ export default function AdminDashboard() {
             newConfig.seasonalCustomIcon = coverPath;
         } else if (folderId === '__OG__') {
             newConfig.ogImage = coverPath;
+        } else if (folderId === '__FAVICON__') {
+            newConfig.favicon = coverPath;
         } else {
             // Normal album cover
             const newCovers = { ...config.folderCovers, [folderId]: coverPath };
@@ -484,6 +486,38 @@ export default function AdminDashboard() {
                                             Force this image on ALL pages (Prevents distinct album covers)
                                         </label>
                                     </div>
+                                </div>
+
+                                <div className="p-3 bg-gray-50 rounded border">
+                                    <label className="block text-sm font-medium mb-2">Favicon (Browser Tab Icon)</label>
+                                    <div className="flex items-center gap-4">
+                                        {config.favicon ? (
+                                            <div className="relative w-10 h-10 border bg-white p-1">
+                                                <Image src={config.favicon} alt="Favicon" fill className="object-contain" />
+                                            </div>
+                                        ) : (
+                                            <div className="w-10 h-10 border bg-gray-200 flex items-center justify-center text-xs text-gray-400">
+                                                Default
+                                            </div>
+                                        )}
+                                        <div className="flex flex-col gap-1">
+                                            <button
+                                                onClick={() => setShowCoverSelector('__FAVICON__')}
+                                                className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                                            >
+                                                Select Icon
+                                            </button>
+                                            {config.favicon && (
+                                                <button
+                                                    onClick={() => setConfig({ ...config, favicon: undefined })}
+                                                    className="text-xs text-red-500 hover:underline"
+                                                >
+                                                    Reset to Default
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-1">Recommended: Square image (PNG/ICO), transparent background.</p>
                                 </div>
                             </div>
                         </div>

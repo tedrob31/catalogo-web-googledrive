@@ -27,6 +27,9 @@ export async function generateMetadata() {
   return {
     title: config.siteTitle || "Photo Catalog",
     description: "A professional photo catalog",
+    icons: {
+      icon: config.favicon || '/favicon.ico',
+    },
   };
 }
 

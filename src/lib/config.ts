@@ -25,6 +25,7 @@ export interface AppConfig {
     cardBorderColor?: string;
     clickEffect?: 'none' | 'stars' | 'hearts';
     // SEO & Social
+    favicon?: string; // Path or URL to custom Favicon
     ogImage?: string; // Path or URL to global Preview Image
     forceGlobalOgImage?: boolean; // If true, always use global image instead of album cover
     siteDescription?: string; // Custom description for search engines
