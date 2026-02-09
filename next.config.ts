@@ -3,8 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig = {
   output: "standalone",
   images: {
-    // unoptimized: false, // Default is false. We want optimization!
-    // We can add domains if we ever switch to direct Drive links
+    unoptimized: true, // Reverting to unoptimized to restore service immediately
   },
   experimental: {
     serverActions: {
