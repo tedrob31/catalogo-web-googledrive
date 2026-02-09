@@ -3,7 +3,22 @@ import type { NextConfig } from "next";
 const nextConfig = {
   output: "standalone",
   images: {
-    unoptimized: true, // Reverting to unoptimized to restore service immediately
+    // unoptimized: false, // Re-enable optimization
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'r4tlabs.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.r4tlabs.com',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+    ],
+    dangerouslyAllowSVG: true,
   },
   experimental: {
     serverActions: {
