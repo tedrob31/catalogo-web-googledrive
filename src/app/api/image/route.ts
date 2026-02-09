@@ -15,21 +15,23 @@ export async function GET(request: NextRequest) {
         // Check if we can get metadata first to get MIME type (optional, but good for headers)
         // Actually, getting stream directly is faster.
 
+        // Fetch as arraybuffer for better compatibility with Next.js Response
         const response = await drive.files.get(
             { fileId: fileId, alt: 'media' },
-            { responseType: 'stream' }
+            { responseType: 'arraybuffer' }
         );
 
-        // Create a new response with the stream
-        // We need to cast the stream to ReadableStream or compatible
-        // @ts-ignore
-        const stream = response.data;
+        const buffer = response.data; // This is ArrayBuffer or Buffer
 
         const headers = new Headers();
-        headers.set('Cache-Control', 'public, max-age=31536000, immutable'); // Cache aggressively
-        headers.set('Content-Type', response.headers['content-type'] || 'image/jpeg');
+        headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+        const contentType = response.headers['content-type'] || 'image/jpeg';
+        headers.set('Content-Type', contentType);
 
-        return new NextResponse(stream as any, { headers });
+        // Debug log (can be removed later)
+        // console.log(`[API Image] Serving ${fileId} as ${contentType}, size: ${(buffer as any).length}`);
+
+        return new NextResponse(buffer as any, { headers });
 
     } catch (error: any) {
         console.error('Proxy Error:', error.message);
