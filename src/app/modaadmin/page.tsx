@@ -135,6 +135,8 @@ export default function AdminDashboard() {
             newConfig.backgroundImage = coverPath;
         } else if (folderId === '__ICON__') {
             newConfig.seasonalCustomIcon = coverPath;
+        } else if (folderId === '__OG__') {
+            newConfig.ogImage = coverPath;
         } else {
             // Normal album cover
             const newCovers = { ...config.folderCovers, [folderId]: coverPath };
@@ -423,39 +425,97 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium">Site Title</label>
-                            <input
-                                className="w-full border p-2 rounded"
-                                value={config.siteTitle}
-                                onChange={e => setConfig({ ...config, siteTitle: e.target.value })}
-                            />
+                        <div className="pt-4 border-t border-gray-200">
+                            <h3 className="font-bold mb-2">SEO & Social Sharing</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium">Site Title (Browser Tab)</label>
+                                    <input
+                                        className="w-full border p-2 rounded"
+                                        value={config.siteTitle}
+                                        onChange={e => setConfig({ ...config, siteTitle: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium">Site Description (Search Results)</label>
+                                    <textarea
+                                        className="w-full border p-2 rounded"
+                                        rows={2}
+                                        value={config.siteDescription || ''}
+                                        placeholder="View our professional photo collection..."
+                                        onChange={e => setConfig({ ...config, siteDescription: e.target.value })}
+                                    />
+                                </div>
+                                <div className="p-3 bg-gray-50 rounded border">
+                                    <label className="block text-sm font-medium mb-2">Global Preview Image (OG Image)</label>
+                                    <div className="flex items-center gap-4">
+                                        {config.ogImage ? (
+                                            <div className="relative w-24 h-16 border bg-white">
+                                                <Image src={config.ogImage} alt="OG Preview" fill className="object-cover" />
+                                            </div>
+                                        ) : (
+                                            <span className="text-sm text-gray-400">Default (Empty)</span>
+                                        )}
+                                        <div className="flex flex-col gap-1">
+                                            <button
+                                                onClick={() => setShowCoverSelector('__OG__')}
+                                                className="text-xs bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                                            >
+                                                Select Image
+                                            </button>
+                                            {config.ogImage && (
+                                                <button
+                                                    onClick={() => setConfig({ ...config, ogImage: undefined })}
+                                                    className="text-xs text-red-500 hover:underline"
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="forceGlobal"
+                                            checked={config.forceGlobalOgImage || false}
+                                            onChange={e => setConfig({ ...config, forceGlobalOgImage: e.target.checked })}
+                                        />
+                                        <label htmlFor="forceGlobal" className="text-sm text-gray-700">
+                                            Force this image on ALL pages (Prevents distinct album covers)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium">Grid Columns (Desktop)</label>
-                            <input
-                                type="number"
-                                className="w-full border p-2 rounded"
-                                value={config.gridColumns}
-                                onChange={e => setConfig({ ...config, gridColumns: parseInt(e.target.value) })}
-                            />
+
+                        <div className="pt-4 border-t border-gray-200">
+                            <h3 className="font-bold mb-2">Display Settings</h3>
+                            <div>
+                                <label className="block text-sm font-medium">Grid Columns (Desktop)</label>
+                                <input
+                                    type="number"
+                                    className="w-full border p-2 rounded"
+                                    value={config.gridColumns}
+                                    onChange={e => setConfig({ ...config, gridColumns: parseInt(e.target.value) })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium">Grid Columns (Mobile)</label>
+                                <input
+                                    type="number"
+                                    className="w-full border p-2 rounded"
+                                    value={config.mobileGridColumns || 2}
+                                    onChange={e => setConfig({ ...config, mobileGridColumns: parseInt(e.target.value) })}
+                                />
+                            </div>
+                            <button
+                                onClick={handleSaveConfig}
+                                disabled={isLoading}
+                                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
+                            >
+                                {isLoading ? 'Saving...' : 'Save Config'}
+                            </button>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium">Grid Columns (Mobile)</label>
-                            <input
-                                type="number"
-                                className="w-full border p-2 rounded"
-                                value={config.mobileGridColumns || 2}
-                                onChange={e => setConfig({ ...config, mobileGridColumns: parseInt(e.target.value) })}
-                            />
-                        </div>
-                        <button
-                            onClick={handleSaveConfig}
-                            disabled={isLoading}
-                            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50"
-                        >
-                            {isLoading ? 'Saving...' : 'Save Config'}
-                        </button>
                     </div>
                 </section>
 

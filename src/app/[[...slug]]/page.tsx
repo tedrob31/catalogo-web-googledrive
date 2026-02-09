@@ -21,27 +21,37 @@ export async function generateMetadata(
   const cache = await loadCache();
   const config = await getConfig();
 
+  // 1. Get Base Settings
   let title = config.siteTitle || 'Photo Catalog';
-  let description = 'View our photo collection.';
-  let imageUrl = '/og-default.jpg';
+  let description = config.siteDescription || ''; // Empty by default as requested, or custom
+  let imageUrl = config.ogImage || '/og-default.jpg';
 
+  // 2. Resolve Dynamic Content
   if (cache?.root) {
-    // Resolve path
     const path = findAlbumBySlugPath(cache.root, slugs);
 
     if (path) {
       const album = path[path.length - 1];
-      // Don't append site title if we are at root
+
+      // Title Logic
       if (album.id !== cache.root.id) {
         title = `${album.name} | ${config.siteTitle}`;
-        description = `View ${album.photos.length} photos in ${album.name}.`;
       }
 
-      if (config.folderCovers?.[album.id]) {
-        imageUrl = config.folderCovers[album.id];
-      }
-      else if (album.photos[0]) {
-        imageUrl = `/api/image?id=${album.photos[0].id}`;
+      // Description Logic - ONLY if siteDescription is not set globally, or if we want to mix?
+      // User asked: "remove View X photos text".
+      // So we generally stick to config.siteDescription.
+      // If it is empty, we leave it empty or very minimal.
+
+      // Image Logic
+      if (!config.forceGlobalOgImage) {
+        // Try specific album cover first
+        if (config.folderCovers?.[album.id]) {
+          imageUrl = config.folderCovers[album.id];
+        }
+        else if (album.photos[0]) {
+          imageUrl = `/api/image?id=${album.photos[0].id}`;
+        }
       }
     } else {
       title = `Not Found | ${config.siteTitle}`;
