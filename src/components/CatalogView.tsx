@@ -279,10 +279,14 @@ export default function CatalogView({ data, config, initialPath }: CatalogViewPr
                 open={lightboxPhotoIndex >= 0}
                 close={() => setLightboxPhotoIndex(-1)}
                 index={lightboxPhotoIndex}
-                slides={visiblePhotos.map(p => ({
-                    src: p.fullLink || '',
-                    alt: p.name,
-                }))}
+                slides={visiblePhotos.map(p => {
+                    const src = p.fullLink || '';
+                    const hqSrc = src ? `${src}${src.includes('?') ? '&' : '?'}w=1600` : '';
+                    return {
+                        src: hqSrc,
+                        alt: p.name,
+                    };
+                })}
                 plugins={[Zoom]}
                 zoom={{ maxZoomPixelRatio: 3 }}
                 controller={{ closeOnBackdropClick: true }}
