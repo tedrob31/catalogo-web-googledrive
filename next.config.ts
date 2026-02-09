@@ -3,22 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig = {
   output: "standalone",
   images: {
-    // unoptimized: false, // Re-enable optimization
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'r4tlabs.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'www.r4tlabs.com',
-      },
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-      },
-    ],
-    dangerouslyAllowSVG: true,
+    unoptimized: true, // We use manual server-side resizing with Sharp now
   },
   experimental: {
     serverActions: {

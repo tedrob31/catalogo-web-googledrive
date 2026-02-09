@@ -21,17 +21,37 @@ export async function GET(request: NextRequest) {
             { responseType: 'arraybuffer' }
         );
 
-        const buffer = response.data; // This is ArrayBuffer or Buffer
+        const buffer = Buffer.from(response.data as ArrayBuffer);
+
+        // Manual Image Optimization using Sharp
+        // This bypasses Next.js Image Optimization which was failing with network issues
+        const widthParam = searchParams.get('w');
+        let finalBuffer = buffer;
+        let contentType = response.headers['content-type'] || 'image/jpeg';
+
+        if (widthParam) {
+            try {
+                const width = parseInt(widthParam);
+                if (!isNaN(width) && width > 0 && width <= 2000) {
+                    // Resize logic
+                    const sharp = require('sharp');
+                    finalBuffer = await sharp(buffer)
+                        .resize({ width: width, withoutEnlargement: true })
+                        .jpeg({ quality: 80, mozjpeg: true }) // Compress efficiently
+                        .toBuffer();
+                    contentType = 'image/jpeg'; // Always JPEG after conversion
+                }
+            } catch (resizeError) {
+                console.error('Sharp Resize Error:', resizeError);
+                // Fallback to original buffer if resize fails
+            }
+        }
 
         const headers = new Headers();
         headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-        const contentType = response.headers['content-type'] || 'image/jpeg';
         headers.set('Content-Type', contentType);
 
-        // Debug log (can be removed later)
-        // console.log(`[API Image] Serving ${fileId} as ${contentType}, size: ${(buffer as any).length}`);
-
-        return new NextResponse(buffer as any, { headers });
+        return new NextResponse(finalBuffer, { headers });
 
     } catch (error: any) {
         console.error('Proxy Error:', error.message);
