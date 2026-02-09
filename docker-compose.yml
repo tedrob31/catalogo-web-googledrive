@@ -46,7 +46,7 @@ services:
           memory: 512M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.catalog_app.rule=Host(`catalogodemoda.r4tlabs.com`)
+        - traefik.http.routers.catalog_app.rule=Host(`r4tlabs.com`)
         - traefik.http.routers.catalog_app.entrypoints=websecure
         - traefik.http.routers.catalog_app.tls.certresolver=letsencryptresolver
         - traefik.http.routers.catalog_app.priority=1
