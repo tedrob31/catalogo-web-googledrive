@@ -62,7 +62,11 @@ export async function processImage(file: DriveFile): Promise<string | null> {
         // Optimize
         await sharp(buffer)
             .resize({ width: MAX_WIDTH, withoutEnlargement: true })
-            .webp({ quality: QUALITY })
+            .webp({
+                quality: QUALITY,
+                effort: 6,           // Max compression effort (slower sync, smaller file)
+                smartSubsample: true // Better clarity for text/sharp edges
+            })
             .toFile(localPath);
 
         // Set mtime to match Drive if possible? 
