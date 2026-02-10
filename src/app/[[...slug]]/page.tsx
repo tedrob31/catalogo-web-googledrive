@@ -44,13 +44,25 @@ export async function generateMetadata(
       // If it is empty, we leave it empty or very minimal.
 
       // Image Logic
+      // Image Logic
       if (!config.forceGlobalOgImage) {
-        // Try specific album cover first
-        if (config.folderCovers?.[album.id]) {
-          imageUrl = config.folderCovers[album.id];
-        }
-        else if (album.photos[0]) {
-          imageUrl = `/api/image?id=${album.photos[0].id}`;
+        const isRoot = album.id === cache.root.id;
+
+        // If we are at Root and have a Global OG Image, keep it!
+        // Only overwrite if we are in a sub-album OR if no global image exists
+        if (!isRoot || !config.ogImage) {
+          if (config.folderCovers?.[album.id]) {
+            imageUrl = config.folderCovers[album.id];
+          } else if (album.photos.length > 0) {
+            // Use first photo as fallback
+            // Check if we have a local link in the photo object (from sync)
+            const p = album.photos[0];
+            if (p.fullLink && !p.fullLink.startsWith('http')) {
+              imageUrl = p.fullLink; // Use local /images/ID.webp
+            } else {
+              imageUrl = `/api/image?id=${p.id}`; // Fallback to API
+            }
+          }
         }
       }
     } else {
