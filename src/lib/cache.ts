@@ -3,7 +3,7 @@ import path from 'path';
 import { listFolderContents, DriveFile } from './drive';
 import { CacheStructure, Album, PhotoItem } from './types';
 
-export * from './types'; // Re-export for convenience if needed, or update consumers
+export * from './types';
 
 const CACHE_DIR = path.join(process.cwd(), 'cache');
 const CACHE_FILE = path.join(CACHE_DIR, 'structure.json');
@@ -16,7 +16,7 @@ export async function ensureCacheDir() {
     }
 }
 
-import { getConfig } from './config';
+import { getConfig, AppConfig, saveConfig } from './config';
 
 // Global flag to prevent concurrent background syncs
 let isSyncing = false;
@@ -64,7 +64,6 @@ export async function loadCache(): Promise<CacheStructure | null> {
 
 export async function saveCache(data: CacheStructure) {
     await ensureCacheDir();
-    // Atomic write via temporary file often better, but direct write is OK for now if we ensure simple locking or just overwrite
     await fs.writeFile(CACHE_FILE, JSON.stringify(data, null, 2), 'utf-8');
 }
 
@@ -86,20 +85,10 @@ async function buildAlbumStructure(folderId: string, folderName: string): Promis
             subFolders.push(item);
         } else if (item.mimeType.startsWith('image/')) {
             // Construct photo object
-            // Use googleusercontent.com optimized links logic here if possible, 
-            // but API v3 usually gives 'thumbnailLink' which can be resized by changing the analytics params
-            // The user requested: =s400 for thumb, =s1600 for full
-
             let thumb = item.thumbnailLink;
             let full = item.thumbnailLink;
 
             if (thumb) {
-                // thumbnailLink typically looks like: https://lh3.googleusercontent.com/drive-viewer/...=s220
-                // We replace =s... with our desired sizes
-                // NOTE: The 'thumbnailLink' from Drive API v3 might be short-lived or specific. 
-                // However, for public/service account access, it often works. 
-                // Use proxy for both to avoid 429 errors from public Google links
-                // Next.js Image Optimization will resize the 'thumb' version for the grid
                 const proxyUrl = `/api/image?id=${item.id}`;
                 thumb = proxyUrl;
                 full = proxyUrl;
@@ -112,13 +101,12 @@ async function buildAlbumStructure(folderId: string, folderName: string): Promis
                 fullLink: full,
                 width: item.imageMediaMetadata?.width,
                 height: item.imageMediaMetadata?.height,
-                createdTime: item.imageMediaMetadata?.time // Might need different field
+                createdTime: item.imageMediaMetadata?.time
             });
         }
     }
 
     // Process subfolders recursively
-    // Warning: heavy recursion. 
     for (const folder of subFolders) {
         const subAlbum = await buildAlbumStructure(folder.id, folder.name);
         album.subAlbums.push(subAlbum);
@@ -131,12 +119,10 @@ async function buildAlbumStructure(folderId: string, folderName: string): Promis
     return album;
 }
 
-
 import { processImage, cleanOrphanedImages } from './sync-engine';
 
 async function processAllImages(album: Album, validIds: Set<string>) {
     // Process photos in this album
-    // We process sequentially or with limit to avoid flooding network/cpu
     const CONCURRENCY = 5;
     const photos = album.photos;
 
@@ -148,9 +134,9 @@ async function processAllImages(album: Album, validIds: Set<string>) {
             const driveFile: any = {
                 id: photo.id,
                 name: photo.name,
-                mimeType: 'image/jpeg', // Assumption, filtered earlier
+                mimeType: 'image/jpeg',
                 imageMediaMetadata: {
-                    time: photo.createdTime // Mapping back
+                    time: photo.createdTime
                 }
             };
 
@@ -171,17 +157,86 @@ async function processAllImages(album: Album, validIds: Set<string>) {
 export async function syncDrive(rootFolderId: string, rootFolderName: string = 'CATALOGO') {
     console.log(`Starting sync for root: ${rootFolderId}`);
 
+    // 0. Load Config to check for Covers Folder
+    let config = await getConfig();
+
     // 1. Build Structure from Drive
     const rootAlbum = await buildAlbumStructure(rootFolderId, rootFolderName);
 
     // 2. Sync Images (Download & Optimize)
     const validIds = new Set<string>();
     console.log('[Sync] Starting Image Mirror process...');
+
+    // 2a. Sync Catalog Images
     await processAllImages(rootAlbum, validIds);
+
+    // 2b. Sync Covers Folder (if configured)
+    if (config.coversFolderId) {
+        console.log(`[Sync] Syncing Covers Folder: ${config.coversFolderId}`);
+        try {
+            const coverFiles = await listFolderContents(config.coversFolderId);
+            const CONCURRENCY = 5;
+            for (let i = 0; i < coverFiles.length; i += CONCURRENCY) {
+                const chunk = coverFiles.slice(i, i + CONCURRENCY);
+                await Promise.all(chunk.map(async (file) => {
+                    if (file.mimeType.startsWith('image/')) {
+                        validIds.add(file.id);
+                        await processImage(file);
+                    }
+                }));
+            }
+        } catch (err) {
+            console.error('[Sync] Error syncing covers folder:', err);
+        }
+    }
+
     console.log(`[Sync] Image Mirror complete. Valid images: ${validIds.size}`);
 
     // 3. Clean Orphans
     await cleanOrphanedImages(validIds);
+
+    // 4. Update Config URLs to point to Local Mirror
+    // Helper to migrate URL (e.g. /api/image?id=XXX -> /images/XXX.webp)
+    const migrateUrl = (url?: string) => {
+        if (!url) return undefined;
+        const match = url.match(/[?&]id=([^&]+)/);
+        if (match) {
+            const id = match[1];
+            if (validIds.has(id)) {
+                return `/images/${id}.webp`;
+            }
+        }
+        return url;
+    };
+
+    let configChanged = false;
+
+    // Migrate folder covers
+    if (config.folderCovers) {
+        for (const [key, val] of Object.entries(config.folderCovers)) {
+            const newUrl = migrateUrl(val);
+            if (newUrl && newUrl !== val) {
+                config.folderCovers[key] = newUrl;
+                configChanged = true;
+            }
+        }
+    }
+
+    // Migrate single fields
+    const fieldsToMigrate: (keyof AppConfig)[] = ['backgroundImage', 'favicon', 'ogImage', 'seasonalCustomIcon'];
+    fieldsToMigrate.forEach(field => {
+        const val = config[field] as string | undefined;
+        const newUrl = migrateUrl(val);
+        if (newUrl && newUrl !== val) {
+            (config as any)[field] = newUrl;
+            configChanged = true;
+        }
+    });
+
+    if (configChanged) {
+        console.log('[Sync] Updating configuration with local image paths...');
+        await saveConfig(config);
+    }
 
     const cache: CacheStructure = {
         root: rootAlbum,
