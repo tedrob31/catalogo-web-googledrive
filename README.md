@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Catálogo Web Sincronizado con Google Drive 🚀
 
-## Getting Started
+Este proyecto es un catálogo web de alto rendimiento que utiliza **Google Drive** como CMS (Sistema de Gestión de Contenidos) y un sistema de **Espejo Local** para servir las imágenes instantáneamente.
 
-First, run the development server:
+## 🌟 Características Principales
+
+*   **Sincronización Inteligente**: Se conecta a una carpeta de Google Drive y replica su estructura de carpetas y fotos.
+*   **Espejo Local (Local Mirror)**: Descarga, redimensiona y optimiza todas las imágenes en el servidor VPS.
+    *   Formato: **WebP**
+    *   Resolución: **1600px** (Optimizado para <150KB)
+    *   Calidad: **75** (Compresión eficiente con `sharp`)
+    *   Carga instantánea (0ms de latencia externa) para el usuario final.
+*   **Diseño Moderno**: Interfaz oscura/clara, Grid responsivo, Lightbox profesional con Zoom.
+*   **SEO Automático**: Genera metadatos basados en la estructura de carpetas.
+
+## 🛠️ Stack Tecnológico
+
+*   **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
+*   **Lenguaje**: TypeScript
+*   **Estilos**: Tailwind CSS
+*   **Backend / API**: Google Drive API v3
+*   **Procesamiento de Imágenes**: `sharp` (Node.js)
+*   **Infraestructura**: Docker & Docker Compose
+
+## 📂 Arquitectura de Carpetas
+
+*   `src/lib/drive.ts`: Cliente de Google Drive API.
+*   `src/lib/sync-engine.ts`: Motor de descarga y optimización de imágenes (`sharp`).
+*   `src/lib/cache.ts`: Lógica de sincronización, gestión de `structure.json` y migración de URLs.
+*   `src/lib/config.ts`: Gestión de la configuración del sitio (título, colores, IDs de carpetas).
+*   `src/components`: Componentes UI (CatalogView, PhotoCard, AlbumCard, Lightbox).
+
+## 🚀 Despliegue con Docker
+
+El proyecto está contenerizado para un despliegue fácil en VPS (ej. Portainer).
+
+### Estructura de Volúmenes Requerida:
+
+1.  **`catalog_cache`**: `/app/cache`
+    *   Almacena `credentials.json` (Service Account de Google).
+    *   Almacena `config.json` y `structure.json`.
+    *   **NO BORRAR** este volumen o perderás la conexión.
+2.  **`catalog_images`**: `/app/public/images`
+    *   Almacena los archivos `.webp` optimizados.
+    *   Puede borrarse sin riesgo (se regenerará al sincronizar).
+
+### Comandos de Despliegue:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Construir e iniciar
+docker-compose up -d --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ⚙️ Configuración y Sincronización
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1.  **Credenciales**: Coloca tu `credentials.json` en la carpeta `cache` (o monta el volumen).
+2.  **Primer Inicio**: El catálogo estará vacío.
+3.  **Panel de Administración**: Acceda a `/modaadmin` (Usuario/Pass definidos en variables de entorno).
+4.  **Sincronizar**:
+    *   Haga clic en **"Sync Catalog"**.
+    *   El sistema descargará la estructura de Drive.
+    *   Descargará y optimizará TODAS las imágenes nuevas a la carpeta local.
+    *   Actualizará las rutas para servir contenido localmente.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📝 Notas para Desarrolladores / IA
 
-## Learn More
+Si estás retomando este proyecto:
+*   La "verdad" del estado actual está en `src/lib/cache.ts` y `src/lib/sync-engine.ts`.
+*   El sistema **NO** sirve imágenes directamente desde Google Drive (para evitar cuotas y latencia).
+*   Siempre que se edite la lógica de sincronización, verificar que `validIds` se rellene correctamente para evitar el borrado accidental de fotos en `cleanOrphanedImages`.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+Desarrollado con ❤️ y Agentes de IA.
