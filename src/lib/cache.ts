@@ -132,9 +132,56 @@ async function buildAlbumStructure(folderId: string, folderName: string): Promis
 }
 
 
+import { processImage, cleanOrphanedImages } from './sync-engine';
+
+async function processAllImages(album: Album, validIds: Set<string>) {
+    // Process photos in this album
+    // We process sequentially or with limit to avoid flooding network/cpu
+    const CONCURRENCY = 5;
+    const photos = album.photos;
+
+    for (let i = 0; i < photos.length; i += CONCURRENCY) {
+        const chunk = photos.slice(i, i + CONCURRENCY);
+        await Promise.all(chunk.map(async (photo) => {
+            validIds.add(photo.id);
+            // Construct pseudo DriveFile for processImage
+            const driveFile: any = {
+                id: photo.id,
+                name: photo.name,
+                mimeType: 'image/jpeg', // Assumption, filtered earlier
+                imageMediaMetadata: {
+                    time: photo.createdTime // Mapping back
+                }
+            };
+
+            const localUrl = await processImage(driveFile);
+            if (localUrl) {
+                photo.thumbnailLink = localUrl;
+                photo.fullLink = localUrl;
+            }
+        }));
+    }
+
+    // Recurse
+    for (const sub of album.subAlbums) {
+        await processAllImages(sub, validIds);
+    }
+}
+
 export async function syncDrive(rootFolderId: string, rootFolderName: string = 'CATALOGO') {
     console.log(`Starting sync for root: ${rootFolderId}`);
+
+    // 1. Build Structure from Drive
     const rootAlbum = await buildAlbumStructure(rootFolderId, rootFolderName);
+
+    // 2. Sync Images (Download & Optimize)
+    const validIds = new Set<string>();
+    console.log('[Sync] Starting Image Mirror process...');
+    await processAllImages(rootAlbum, validIds);
+    console.log(`[Sync] Image Mirror complete. Valid images: ${validIds.size}`);
+
+    // 3. Clean Orphans
+    await cleanOrphanedImages(validIds);
 
     const cache: CacheStructure = {
         root: rootAlbum,

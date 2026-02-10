@@ -27,9 +27,10 @@ services:
 
     volumes:
       # Persistent Cache (Structure, Config, & Credentials)
+      # Persistent Cache (Structure, Config, & Credentials)
       - catalog_cache:/app/cache
-      # Persistent Covers (Uploads)
-      - catalog_covers:/app/public/portadas
+      # Persistent Images (Mirror)
+      - catalog_images:/app/public/images
       
       # REMOVED: File injection via bind mount. 
       # The app now manages its own credentials file in /app/cache.
@@ -61,8 +62,8 @@ services:
 volumes:
   catalog_cache:
     name: catalog_cache
-  catalog_covers:
-    name: catalog_covers
+  catalog_images:
+    name: catalog_images
 
 networks:
   r4tlabsnet:

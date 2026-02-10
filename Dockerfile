@@ -44,8 +44,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Ensure cache directory exists and has correct permissions
 RUN mkdir -p /app/cache && chown nextjs:nodejs /app/cache
 
-# Ensure public/portadas exists and has correct permissions
-RUN mkdir -p /app/public/portadas && chown nextjs:nodejs /app/public/portadas
+# Ensure public/images exists and has correct permissions
+RUN mkdir -p /app/public/images && chown nextjs:nodejs /app/public/images
 
 USER nextjs
 
