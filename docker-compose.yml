@@ -67,6 +67,32 @@ services:
         # Combine Middlewares
         - traefik.http.routers.catalog_app.middlewares=compress,sslheader
 
+  static_server:
+    image: nginx:alpine
+    networks:
+      - r4tlabsnet
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - catalog_images:/usr/share/nginx/html/images:ro
+    deploy:
+      mode: replicated
+      replicas: 2 # Redundancy for static files
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 128M
+      labels:
+        - traefik.enable=true
+        - traefik.http.routers.static_server.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && PathPrefix(`/images/`)
+        - traefik.http.routers.static_server.entrypoints=websecure
+        - traefik.http.routers.static_server.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.static_server.priority=100 # Higher priority than app
+        - traefik.http.routers.static_server.service=static_server
+        - traefik.http.services.static_server.loadbalancer.server.port=80
+
 ## --------------------------- VOLUMES & NETWORKS --------------------------- ##
 
 volumes:
