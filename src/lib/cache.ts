@@ -18,8 +18,19 @@ export async function ensureCacheDir() {
 
 import { getConfig, AppConfig, saveConfig } from './config';
 
-// Global flag to prevent concurrent background syncs
-let isSyncing = false;
+const LOCK_FILE = path.join(CACHE_DIR, 'sync.lock');
+
+// Check if lock is stale (older than 30 mins)
+async function isLockStale(): Promise<boolean> {
+    try {
+        const stats = await fs.stat(LOCK_FILE);
+        const now = Date.now();
+        const mtime = new Date(stats.mtime).getTime();
+        return (now - mtime) > (30 * 60 * 1000);
+    } catch {
+        return false;
+    }
+}
 
 export async function loadCache(): Promise<CacheStructure | null> {
     try {
@@ -28,7 +39,7 @@ export async function loadCache(): Promise<CacheStructure | null> {
         const data: CacheStructure = JSON.parse(dataStr);
 
         // Auto-Sync Logic (Stale-While-Revalidate)
-        if (!isSyncing && data.lastSynced && data.root) {
+        if (data.lastSynced && data.root) {
             const config = await getConfig();
             if (config.autoSyncInterval && config.autoSyncInterval > 0) {
                 const lastSyncTime = new Date(data.lastSynced).getTime();
@@ -36,28 +47,55 @@ export async function loadCache(): Promise<CacheStructure | null> {
                 const diffMinutes = (now - lastSyncTime) / (1000 * 60);
 
                 if (diffMinutes > config.autoSyncInterval) {
-                    // Trigger background sync
-                    console.log(`[Cache] Data is stale (${Math.round(diffMinutes)} mins). Triggering background sync...`);
-                    isSyncing = true;
 
-                    // Run sync without awaiting
-                    syncDrive(config.rootFolderId, config.siteTitle || 'CATALOGO')
-                        .then(() => {
-                            console.log('[Cache] Background sync completed.');
-                        })
-                        .catch(err => {
-                            console.error('[Cache] Background sync failed:', err);
-                        })
-                        .finally(() => {
-                            isSyncing = false;
-                        });
+                    // Check Lock
+                    let locked = false;
+                    try {
+                        await fs.access(LOCK_FILE);
+                        locked = true;
+
+                        // Force break lock if stale
+                        if (await isLockStale()) {
+                            console.log('[Cache] Sync Lock is stale. Breaking lock.');
+                            await fs.unlink(LOCK_FILE);
+                            locked = false;
+                        }
+                    } catch {
+                        locked = false;
+                    }
+
+                    if (!locked) {
+                        console.log(`[Cache] Data is stale (${Math.round(diffMinutes)} mins). Acquiring Lock & Syncing...`);
+
+                        // Create Lock
+                        try {
+                            await fs.writeFile(LOCK_FILE, new Date().toISOString());
+
+                            // Run sync without awaiting
+                            syncDrive(config.rootFolderId, config.siteTitle || 'CATALOGO')
+                                .then(async () => {
+                                    console.log('[Cache] Background sync completed.');
+                                })
+                                .catch(err => {
+                                    console.error('[Cache] Background sync failed:', err);
+                                })
+                                .finally(async () => {
+                                    // Release Lock
+                                    try { await fs.unlink(LOCK_FILE); } catch { }
+                                });
+
+                        } catch (err) {
+                            console.log('[Cache] Failed to acquire lock (race condition). Skipping.');
+                        }
+                    } else {
+                        // console.log('[Cache] Sync already in progress (Locked). Skipping.');
+                    }
                 }
             }
         }
 
         return data;
     } catch (error) {
-        // Return null if cache doesn't exist or is invalid
         return null;
     }
 }

@@ -39,25 +39,33 @@ services:
 
     deploy:
       mode: replicated
-      replicas: 1
+      replicas: 3 # Scale to 3 instances to handle concurrency (1 per 2 vCPUs approx)
       placement:
         constraints:
           - node.role == manager
       resources:
         limits:
-          cpus: "4.0" # Use 4 cores (leaves 2 for System/DB/Traefik)
-          memory: 4096M # 4GB RAM for Node.js (plenty for buffering)
+          cpus: "4.0"
+          memory: 4096M
       labels:
         - traefik.enable=true
         - traefik.http.routers.catalog_app.rule=Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)
         - traefik.http.routers.catalog_app.entrypoints=websecure
         - traefik.http.routers.catalog_app.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.catalog_app.priority=1
-        - traefik.http.routers.catalog_app.service=catalog_app
+        
+        # Load Balancing & Stickiness
         - traefik.http.services.catalog_app.loadbalancer.server.port=3000
         - traefik.http.services.catalog_app.loadbalancer.passHostHeader=true
+        # - traefik.http.services.catalog_app.loadbalancer.sticky.cookie=true # Optional: Session stickiness
+
+        # Compression (Gzip/Brotli) - Crucial for JSON speed
+        - traefik.http.middlewares.compress.compress=true
+        
+        # Security & Proto
         - traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https
-        - traefik.http.routers.catalog_app.middlewares=sslheader
+        
+        # Combine Middlewares
+        - traefik.http.routers.catalog_app.middlewares=compress,sslheader
 
 ## --------------------------- VOLUMES & NETWORKS --------------------------- ##
 
