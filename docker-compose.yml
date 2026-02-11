@@ -24,6 +24,8 @@ services:
       # GOOGLE DRIVE CREDENTIALS
       # Saved to the persistent cache volume by the Setup Wizard
       - GOOGLE_APPLICATION_CREDENTIALS=/app/cache/credentials.json
+      # Performance Tuning for 4GB RAM Container
+      - NODE_OPTIONS='--max-old-space-size=3584'
 
     volumes:
       # Persistent Cache (Structure, Config, & Credentials)
@@ -43,8 +45,8 @@ services:
           - node.role == manager
       resources:
         limits:
-          cpus: "0.5"
-          memory: 512M
+          cpus: "4.0" # Use 4 cores (leaves 2 for System/DB/Traefik)
+          memory: 4096M # 4GB RAM for Node.js (plenty for buffering)
       labels:
         - traefik.enable=true
         - traefik.http.routers.catalog_app.rule=Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)
