@@ -33,7 +33,7 @@ export default function AlbumCard({ album, config, priority = false, onClick }: 
             >
                 {thumbSrc ? (
                     <Image
-                        src={`${thumbSrc}${thumbSrc.includes('?') ? '&' : '?'}w=640`} // Force thumbnail size
+                        src={thumbSrc}
                         alt={album.name}
                         fill
                         className="object-cover transition-transform duration-300 group-hover:scale-105"

@@ -18,7 +18,7 @@ export default function PhotoCard({ photo, priority = false, onClick }: PhotoCar
             onClick={onClick}
         >
             <Image
-                src={`${photo.thumbnailLink}${photo.thumbnailLink?.includes('?') ? '&' : '?'}w=1600`} // Unified High Res (1600px)
+                src={photo.thumbnailLink || ''}
                 alt={photo.name}
                 fill
                 className={`

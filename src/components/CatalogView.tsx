@@ -281,9 +281,8 @@ export default function CatalogView({ data, config, initialPath }: CatalogViewPr
                 index={lightboxPhotoIndex}
                 slides={visiblePhotos.map(p => {
                     const src = p.fullLink || '';
-                    const hqSrc = src ? `${src}${src.includes('?') ? '&' : '?'}w=1600` : '';
                     return {
-                        src: hqSrc,
+                        src: src,
                         alt: p.name,
                     };
                 })}
