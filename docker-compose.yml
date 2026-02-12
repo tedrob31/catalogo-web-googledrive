@@ -36,8 +36,9 @@ services:
           memory: 2048M
       labels:
         - traefik.enable=true
-        # Route /api/* AND /modaadmin/* to this container (SSR)
-        - traefik.http.routers.backend_api.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && (PathPrefix(`/api`) || PathPrefix(`/modaadmin`))
+        # Route /api/*, /modaadmin/* AND /_next/* (Assets) to this container
+        # This ensures assets load even if Static Output is empty
+        - traefik.http.routers.backend_api.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && (PathPrefix(`/api`) || PathPrefix(`/modaadmin`) || PathPrefix(`/_next`))
         - traefik.http.routers.backend_api.entrypoints=websecure
         - traefik.http.routers.backend_api.tls.certresolver=letsencryptresolver
         - traefik.http.routers.backend_api.priority=200

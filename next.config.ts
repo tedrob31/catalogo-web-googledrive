@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig = {
-  output: process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true' ? 'export' : 'standalone',
+  // Use default output (undefined) for 'next start', 'export' only when triggered
+  output: process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true' ? 'export' : undefined,
+
   images: {
     unoptimized: true,
   },
@@ -10,9 +12,7 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-  // Fix for Metadata API requiring absolute URLs
-  // This ensures og:image works correctly even behind proxies
-  metadataBase: new URL(process.env.SITE_URL || 'https://r4tlabs.com'),
+  // metadataBase removed to prevent config error
 
   typescript: {
     ignoreBuildErrors: true,
