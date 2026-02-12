@@ -25,12 +25,17 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # Manager stage (Full Source + Dev Deps for API & Rebuilds)
+# Manager stage (Full Source + Dev Deps for API & Rebuilds)
 FROM base AS manager
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+
+# Build the project (Standard Server Build) so we can run 'npm start'
+RUN npm run build
+
 # Ensure we can write to filesystem
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

@@ -14,9 +14,6 @@ const nextConfig = {
   // This ensures og:image works correctly even behind proxies
   metadataBase: new URL(process.env.SITE_URL || 'https://r4tlabs.com'),
 
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
     ignoreBuildErrors: true,
   },
