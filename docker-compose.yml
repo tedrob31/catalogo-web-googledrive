@@ -41,7 +41,6 @@ services:
           cpus: "2.0"
           memory: 2048M
       labels:
-      labels:
         - traefik.enable=true
         - traefik.docker.network=r4tlabsnet
         
