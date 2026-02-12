@@ -35,11 +35,22 @@ export async function POST() {
         mkdir -p /tmp/build
         
         echo "[Build] Copying source files..."
+        # Copy core files. 
         cp -r /app/package.json /app/next.config.ts /app/tsconfig.json /app/src /app/public /tmp/build/
+
+        # CRITICAL: Explicitly copy postcss.config.mjs. 
+        # If this is missing, Tailwind will NOT generate CSS, causing broken UI.
+        if [ -f "/app/postcss.config.mjs" ]; then
+            cp /app/postcss.config.mjs /tmp/build/
+        else
+            echo "[Build] WARNING: postcss.config.mjs not found! CSS may break."
+        fi
         
+        # Debug: List workspace to confirm config presence
+        echo "[Build] Workspace Configs:"
+        ls -la /tmp/build/*.mjs /tmp/build/*.ts || echo "No config files found"
+
         echo "[Build] Exclusion Strategy: Removing API routes strictly for Static Export..."
-        # Backend API runs on the main container. Static Export (Nginx) doesn't need API files.
-        # Removing them prevents 'dynamic server usage' errors during 'next build output: export'.
         rm -rf /tmp/build/src/app/api
         
         echo "[Build] Copying node_modules (Slow but safe)..."
