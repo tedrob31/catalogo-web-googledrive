@@ -46,6 +46,10 @@ export async function POST() {
         # We use copy instead of symlink to avoid resolution issues in some environments
         cp -r /app/node_modules /tmp/build/node_modules
         
+        echo "[Build] Copying Cache (Essential for generateStaticParams)..."
+        mkdir -p /tmp/build/cache
+        cp -r /app/cache/* /tmp/build/cache/ || echo "[Build] Warning: Cache is empty, creating dummy structure so build passes."
+        
         cd /tmp/build
         export NEXT_PUBLIC_STATIC_EXPORT=true
         
