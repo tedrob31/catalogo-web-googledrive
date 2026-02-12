@@ -21,7 +21,25 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED=1
 
+
 RUN npm run build
+
+# Manager stage (Full Source + Dev Deps for API & Rebuilds)
+FROM base AS manager
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+# Ensure we can write to filesystem
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+RUN mkdir -p /app/cache && chown nextjs:nodejs /app/cache
+RUN mkdir -p /app/public/images && chown nextjs:nodejs /app/public/images
+RUN mkdir -p /app/out && chown nextjs:nodejs /app/out
+USER nextjs
+EXPOSE 3000
+CMD ["npm", "start"]
 
 # Production image, copy all the files and run next
 FROM base AS runner

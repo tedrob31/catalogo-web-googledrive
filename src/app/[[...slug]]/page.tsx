@@ -4,7 +4,41 @@ import { findAlbumBySlugPath, findPathToAlbum } from "@/lib/types";
 import { getConfig } from "@/lib/config";
 import { Metadata, ResolvingMetadata } from "next";
 
-export const dynamic = 'force-dynamic';
+import { slugify } from "@/lib/utils";
+import { Album } from "@/lib/types";
+
+export const dynamic = 'force-static'; // Force static generation
+
+// Generate all possible paths from the cache
+export async function generateStaticParams() {
+  const cache = await loadCache();
+  if (!cache?.root) return [];
+
+  const paths: { slug: string[] }[] = [];
+
+  // 1. Root path (empty slug)
+  paths.push({ slug: [] });
+
+  // 2. Recursive function to build paths
+  const traverse = (album: Album, currentSlug: string[]) => {
+    // Add current album path
+    if (currentSlug.length > 0) {
+      paths.push({ slug: currentSlug });
+    }
+
+    // Traverse children
+    album.subAlbums.forEach(sub => {
+      traverse(sub, [...currentSlug, slugify(sub.name)]);
+    });
+  };
+
+  // Start traversal from root's children (Root itself is empty slug)
+  cache.root.subAlbums.forEach(sub => {
+    traverse(sub, [slugify(sub.name)]);
+  });
+
+  return paths;
+}
 
 type Props = {
   params: Promise<{ slug?: string[] }>;

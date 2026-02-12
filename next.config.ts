@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig = {
-  output: "standalone",
+  output: process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true' ? 'export' : 'standalone',
   images: {
-    unoptimized: true, // We use manual server-side resizing with Sharp now
+    unoptimized: true,
   },
   experimental: {
     serverActions: {

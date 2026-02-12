@@ -1,20 +1,14 @@
 version: "3.7"
 services:
 
-## --------------------------- PHOTO CATALOG --------------------------- ##
-
-  catalog_app:
-    # Use 'image' if you push to a registry, or 'build' if building locally/on manager.
-    # For Portainer Stacks from Git, it usually builds if 'build' is present, or pulls 'image'.
-    # We will assume building from the current context.
-    image: ghcr.io/tedrob31/catalogo-web-googledrive:latest
-    # build: 
-    #   context: .
-    #   dockerfile: Dockerfile
-
+## --------------------------- BACKEND API (Manager) --------------------------- ##
+  backend_api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: manager
     networks:
       - r4tlabsnet
-
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
@@ -22,51 +16,37 @@ services:
       - ADMIN_USER=admin
       - ADMIN_PASS=R4tlabs1234_
       # GOOGLE DRIVE CREDENTIALS
-      # Saved to the persistent cache volume by the Setup Wizard
       - GOOGLE_APPLICATION_CREDENTIALS=/app/cache/credentials.json
-      # Performance Tuning for 4GB RAM Container
-      - NODE_OPTIONS='--max-old-space-size=3584'
-
+      # Performance Tuning
+      - NODE_OPTIONS='--max-old-space-size=2048'
     volumes:
-      # Persistent Cache (Structure, Config, & Credentials)
-      # Persistent Cache (Structure, Config, & Credentials)
       - catalog_cache:/app/cache
-      # Persistent Images (Mirror)
       - catalog_images:/app/public/images
-      
-      # REMOVED: File injection via bind mount. 
-      # The app now manages its own credentials file in /app/cache.
-
+      - catalog_out:/app/out
     deploy:
       mode: replicated
-      replicas: 3 # Scale to 3 instances to handle concurrency (1 per 2 vCPUs approx)
+      replicas: 1
       placement:
         constraints:
           - node.role == manager
       resources:
         limits:
-          cpus: "4.0"
-          memory: 4096M
+          cpus: "2.0"
+          memory: 2048M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.catalog_app.rule=Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)
-        - traefik.http.routers.catalog_app.entrypoints=websecure
-        - traefik.http.routers.catalog_app.tls.certresolver=letsencryptresolver
-        
-        # Load Balancing & Stickiness
-        - traefik.http.services.catalog_app.loadbalancer.server.port=3000
-        - traefik.http.services.catalog_app.loadbalancer.passHostHeader=true
-        # - traefik.http.services.catalog_app.loadbalancer.sticky.cookie=true # Optional: Session stickiness
-
-        # Compression (Gzip/Brotli) - Crucial for JSON speed
-        - traefik.http.middlewares.compress.compress=true
-        
-        # Security & Proto
+        # Route /api/* AND /modaadmin/* to this container (SSR)
+        - traefik.http.routers.backend_api.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && (PathPrefix(`/api`) || PathPrefix(`/modaadmin`))
+        - traefik.http.routers.backend_api.entrypoints=websecure
+        - traefik.http.routers.backend_api.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.backend_api.priority=200
+        - traefik.http.routers.backend_api.service=backend_api
+        - traefik.http.services.backend_api.loadbalancer.server.port=3000
+        - traefik.http.services.backend_api.loadbalancer.passHostHeader=true
         - traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https
-        
-        # Combine Middlewares
-        - traefik.http.routers.catalog_app.middlewares=compress,sslheader
+        - traefik.http.routers.backend_api.middlewares=compress,sslheader
 
+## --------------------------- STATIC SERVER (Nginx) --------------------------- ##
   static_server:
     image: nginx:alpine
     networks:
@@ -74,9 +54,10 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - catalog_images:/usr/share/nginx/html/images:ro
+      - catalog_out:/usr/share/nginx/html:ro
     deploy:
       mode: replicated
-      replicas: 2 # Redundancy for static files
+      replicas: 2
       placement:
         constraints:
           - node.role == manager
@@ -86,10 +67,11 @@ services:
           memory: 128M
       labels:
         - traefik.enable=true
-        - traefik.http.routers.static_server.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && PathPrefix(`/images/`)
+        # Catch-all route for static files
+        - traefik.http.routers.static_server.rule=Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)
         - traefik.http.routers.static_server.entrypoints=websecure
         - traefik.http.routers.static_server.tls.certresolver=letsencryptresolver
-        - traefik.http.routers.static_server.priority=100 # Higher priority than app
+        - traefik.http.routers.static_server.priority=100
         - traefik.http.routers.static_server.service=static_server
         - traefik.http.services.static_server.loadbalancer.server.port=80
 
@@ -100,6 +82,8 @@ volumes:
     name: catalog_cache
   catalog_images:
     name: catalog_images
+  catalog_out:
+    name: catalog_out
 
 networks:
   r4tlabsnet:
