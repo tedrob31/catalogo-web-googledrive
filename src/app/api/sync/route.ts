@@ -37,6 +37,11 @@ export async function POST() {
         echo "[Build] Copying source files..."
         cp -r /app/package.json /app/next.config.ts /app/tsconfig.json /app/src /app/public /tmp/build/
         
+        echo "[Build] Exclusion Strategy: Removing API routes strictly for Static Export..."
+        # Backend API runs on the main container. Static Export (Nginx) doesn't need API files.
+        # Removing them prevents 'dynamic server usage' errors during 'next build output: export'.
+        rm -rf /tmp/build/src/app/api
+        
         echo "[Build] Copying node_modules (Slow but safe)..."
         # We use copy instead of symlink to avoid resolution issues in some environments
         cp -r /app/node_modules /tmp/build/node_modules
