@@ -24,6 +24,12 @@ services:
       - catalog_cache:/app/cache
       - catalog_images:/app/public/images
       - catalog_out:/app/out
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     deploy:
       mode: replicated
       replicas: 1
@@ -39,7 +45,7 @@ services:
         - traefik.docker.network=r4tlabsnet
         
         # Router 1: API
-        - traefik.http.routers.backend_api.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && PathPrefix(`/api`)
+        - "traefik.http.routers.backend_api.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && PathPrefix(`/api`)"
         - traefik.http.routers.backend_api.entrypoints=websecure
         - traefik.http.routers.backend_api.tls.certresolver=letsencryptresolver
         - traefik.http.routers.backend_api.priority=10000
@@ -47,7 +53,7 @@ services:
         - traefik.http.routers.backend_api.middlewares=compress,sslheader
 
         # Router 2: Admin
-        - traefik.http.routers.backend_admin.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && PathPrefix(`/modaadmin`)
+        - "traefik.http.routers.backend_admin.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && PathPrefix(`/modaadmin`)"
         - traefik.http.routers.backend_admin.entrypoints=websecure
         - traefik.http.routers.backend_admin.tls.certresolver=letsencryptresolver
         - traefik.http.routers.backend_admin.priority=10000
@@ -55,7 +61,7 @@ services:
         - traefik.http.routers.backend_admin.middlewares=compress,sslheader
 
         # Router 3: Assets (_next)
-        - traefik.http.routers.backend_assets.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && PathPrefix(`/_next`)
+        - "traefik.http.routers.backend_assets.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && PathPrefix(`/_next`)"
         - traefik.http.routers.backend_assets.entrypoints=websecure
         - traefik.http.routers.backend_assets.tls.certresolver=letsencryptresolver
         - traefik.http.routers.backend_assets.priority=10000
