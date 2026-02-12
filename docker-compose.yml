@@ -3,6 +3,7 @@ services:
 
 ## --------------------------- BACKEND API (Manager) --------------------------- ##
   backend_api:
+    image: ghcr.io/tedrob31/catalogo-web-googledrive:manager
     build: 
       context: .
       dockerfile: Dockerfile
