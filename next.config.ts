@@ -4,6 +4,9 @@ const nextConfig = {
   // Use default output (undefined) for 'next start', 'export' only when triggered
   output: process.env.NEXT_PUBLIC_STATIC_EXPORT === 'true' ? 'export' : (process.env.STANDALONE_BUILD === 'true' ? 'standalone' : undefined),
 
+  trailingSlash: true,
+  assetPrefix: process.env.NEXT_PUBLIC_ASSET_PREFIX,
+
   images: {
     unoptimized: true,
   },

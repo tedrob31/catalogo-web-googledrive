@@ -63,6 +63,8 @@ export async function POST() {
         
         cd /tmp/build
         export NEXT_PUBLIC_STATIC_EXPORT=true
+        # Set Asset Prefix to separate Static assets from Backend assets
+        export NEXT_PUBLIC_ASSET_PREFIX=/static-content
         
         echo "[Build] Running 'next build'..."
         # Explicitly run next build to avoid dev-mode attributes
@@ -78,6 +80,11 @@ export async function POST() {
         
         # Copy new content
         cp -r out/* /app/out/
+
+        # Rearrange assets to match Asset Prefix
+        echo "[Build] Moving _next to static-content/_next..."
+        mkdir -p /app/out/static-content
+        mv /app/out/_next /app/out/static-content/
         
         # Cleanup
         rm -rf /tmp/build
