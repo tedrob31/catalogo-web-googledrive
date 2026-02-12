@@ -36,17 +36,36 @@ services:
           memory: 2048M
       labels:
         - traefik.enable=true
-        # Route /api/*, /modaadmin/* AND /_next/* (Assets) to this container
-        # This ensures assets load even if Static Output is empty
-        - traefik.http.routers.backend_api.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && (PathPrefix(`/api`) || PathPrefix(`/modaadmin`) || PathPrefix(`/_next`))
+        - traefik.docker.network=r4tlabsnet
+        
+        # Router 1: API
+        - traefik.http.routers.backend_api.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && PathPrefix(`/api`)
         - traefik.http.routers.backend_api.entrypoints=websecure
         - traefik.http.routers.backend_api.tls.certresolver=letsencryptresolver
         - traefik.http.routers.backend_api.priority=200
         - traefik.http.routers.backend_api.service=backend_api
+        - traefik.http.routers.backend_api.middlewares=compress,sslheader
+
+        # Router 2: Admin
+        - traefik.http.routers.backend_admin.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && PathPrefix(`/modaadmin`)
+        - traefik.http.routers.backend_admin.entrypoints=websecure
+        - traefik.http.routers.backend_admin.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.backend_admin.priority=200
+        - traefik.http.routers.backend_admin.service=backend_api
+        - traefik.http.routers.backend_admin.middlewares=compress,sslheader
+
+        # Router 3: Assets (_next)
+        - traefik.http.routers.backend_assets.rule=(Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)) && PathPrefix(`/_next`)
+        - traefik.http.routers.backend_assets.entrypoints=websecure
+        - traefik.http.routers.backend_assets.tls.certresolver=letsencryptresolver
+        - traefik.http.routers.backend_assets.priority=200
+        - traefik.http.routers.backend_assets.service=backend_api
+        - traefik.http.routers.backend_assets.middlewares=compress,sslheader
+
+        # Service Definition
         - traefik.http.services.backend_api.loadbalancer.server.port=3000
         - traefik.http.services.backend_api.loadbalancer.passHostHeader=true
         - traefik.http.middlewares.sslheader.headers.customrequestheaders.X-Forwarded-Proto=https
-        - traefik.http.routers.backend_api.middlewares=compress,sslheader
 
 ## --------------------------- STATIC SERVER (Nginx) --------------------------- ##
   static_server:
@@ -71,6 +90,7 @@ services:
           memory: 128M
       labels:
         - traefik.enable=true
+        - traefik.docker.network=r4tlabsnet
         # Catch-all route for static files
         - traefik.http.routers.static_server.rule=Host(`r4tlabs.com`)||Host(`www.r4tlabs.com`)
         - traefik.http.routers.static_server.entrypoints=websecure
