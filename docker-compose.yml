@@ -55,7 +55,7 @@ services:
       - r4tlabsnet
     volumes:
       - catalog_images:/usr/share/nginx/html/images:ro
-      - catalog_out:/usr/share/nginx/html:ro
+      - catalog_out:/usr/share/nginx/html
     configs:
       - source: nginx_conf
         target: /etc/nginx/nginx.conf
