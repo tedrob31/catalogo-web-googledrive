@@ -43,7 +43,9 @@ RUN adduser --system --uid 1001 nextjs
 RUN mkdir -p /app/cache && chown nextjs:nodejs /app/cache
 RUN mkdir -p /app/public/images && chown nextjs:nodejs /app/public/images
 RUN mkdir -p /app/out && chown nextjs:nodejs /app/out
-USER nextjs
+
+# Manager needs root to cleanup shared volumes populated by other containers
+# USER nextjs 
 EXPOSE 3000
 CMD ["npm", "start"]
 

@@ -23,33 +23,45 @@ export async function POST() {
 
         // Command to:
         // 1. Create temp workspace
-        // 2. Copy source files (excluding .next and node_modules)
-        // 3. Symlink node_modules (fast)
-        // 4. Run Build with Export flag
-        // 5. Deploy 'out' folder to shared volume
+        // 2. Copy source files
+        // 3. COPY node_modules (Avoid symlink issues with Turbopack/Docker volumes)
+        // 4. Run Build with Export flag (Standard build, no turbo)
+        // 5. Deploy 'out' folder only if successful
         const buildScript = `
+        set -e # Exit immediately if a command exits with a non-zero status.
+        
+        echo "[Build] Cleaning previous temp build..."
         rm -rf /tmp/build
         mkdir -p /tmp/build
+        
+        echo "[Build] Copying source files..."
         cp -r /app/package.json /app/next.config.ts /app/tsconfig.json /app/src /app/public /tmp/build/
         
-        if [ -d "/app/node_modules" ]; then
-            ln -s /app/node_modules /tmp/build/node_modules
-        fi
+        echo "[Build] Copying node_modules (Slow but safe)..."
+        # We use copy instead of symlink to avoid resolution issues in some environments
+        cp -r /app/node_modules /tmp/build/node_modules
         
         cd /tmp/build
         export NEXT_PUBLIC_STATIC_EXPORT=true
-        # Run build (and suppress excessive noise if needed, but logging is good)
-        npm run build
+        
+        echo "[Build] Running 'next build'..."
+        # Explicitly run next build to avoid dev-mode attributes
+        npx next build
         
         # Deploy
         echo "[Build] Deploying to /app/out..."
+        # Ensure target directory exists
         mkdir -p /app/out
+        
+        # Wipe content (Root user allows this now)
         rm -rf /app/out/*
+        
+        # Copy new content
         cp -r out/* /app/out/
         
         # Cleanup
         rm -rf /tmp/build
-        echo "[Build] Cleanup complete."
+        echo "[Build] SUCCESS - Deployment complete."
         `;
 
         const { stdout, stderr } = await execAsync(buildScript, {
