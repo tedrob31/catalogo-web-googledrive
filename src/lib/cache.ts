@@ -178,7 +178,7 @@ async function processAllImages(album: Album, validIds: Set<string>) {
                 }
             };
 
-            const localUrl = await processImage(driveFile);
+            const localUrl = await processImage(driveFile, 'catalog');
             if (localUrl) {
                 photo.thumbnailLink = localUrl;
                 photo.fullLink = localUrl;
@@ -219,7 +219,7 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
                 await Promise.all(chunk.map(async (file) => {
                     if (file.mimeType.startsWith('image/')) {
                         validIds.add(file.id);
-                        await processImage(file);
+                        await processImage(file, 'cover');
                     }
                 }));
             }

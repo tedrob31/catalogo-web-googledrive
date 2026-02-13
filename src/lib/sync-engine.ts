@@ -34,23 +34,56 @@ async function needsUpdate(localPath: string, driveModifiedTime?: string): Promi
     }
 }
 
-export async function processImage(file: DriveFile): Promise<string | null> {
+// Optimization Profiles
+type OptimizationProfile = 'catalog' | 'cover';
+
+interface SharpOptions {
+    width: number;
+    height?: number;
+    quality: number;
+    fit?: 'cover' | 'contain' | 'inside';
+    position?: string; // gravity or entropy
+}
+
+const PROFILES: Record<OptimizationProfile, SharpOptions> = {
+    catalog: {
+        width: 800, // Reduced from 1920 to 800 for massive size savings
+        quality: 75,
+        fit: 'inside', // resize({ width: 800, withoutEnlargement: true }) effectively
+    },
+    cover: {
+        width: 400,
+        height: 400,
+        quality: 75,
+        fit: 'cover',
+        position: 'entropy' // Smart crop (focus on interesting area)
+    }
+};
+
+export async function processImage(file: DriveFile, type: OptimizationProfile = 'catalog'): Promise<string | null> {
     if (!file.mimeType.startsWith('image/')) return null;
 
     const drive = await getDriveService();
-    const localFilename = `${file.id}.webp`; // Always WebP
+    // Unique caching key based on Type too (so we can have cover vs catalog versions if needed)
+    // But currently file.id is the key. 
+    // If we use the SAME file for both (rare), we might overwrite.
+    // However, Covers are from a separate folder, and Catalog photos are from album folders.
+    // Overlap is technically possible if user puts same file in both, but usually they are distinct.
+    // If a fallback uses a catalog photo as cover, it uses the 'catalog' version (800px), which is fine.
+
+    // Suffix based on profile? No, keeping simple ID for now unless collision is real.
+    // ValidIds track ID.
+    const localFilename = `${file.id}.webp`;
     const localPath = path.join(IMAGES_DIR, localFilename);
 
     // incremental check
     if (!(await needsUpdate(localPath, file.imageMediaMetadata?.time || undefined))) {
-        // console.log(`[Sync] Skipping ${file.name} (Up to date)`);
         return `/images/${localFilename}`;
     }
 
-    console.log(`[Sync] Downloading & Optimizing: ${file.name}`);
+    console.log(`[Sync] Optimizing [${type.toUpperCase()}]: ${file.name}`);
 
     try {
-        // Download stream
         const response = await drive.files.get(
             { fileId: file.id, alt: 'media' },
             { responseType: 'arraybuffer' }
@@ -58,22 +91,37 @@ export async function processImage(file: DriveFile): Promise<string | null> {
 
         const buffer = Buffer.from(response.data as ArrayBuffer);
         const sharp = require('sharp');
+        const opts = PROFILES[type];
 
-        // Optimize
-        await sharp(buffer)
-            .resize({ width: MAX_WIDTH, withoutEnlargement: true })
+        let pipeline = sharp(buffer);
+
+        // Metadata removal (Strip)
+        pipeline = pipeline.rotate().withMetadata(false); // Ensure stripped
+
+        // Resize Logic
+        if (type === 'cover') {
+            pipeline = pipeline.resize({
+                width: opts.width,
+                height: opts.height,
+                fit: opts.fit,
+                position: opts.position === 'entropy' ? sharp.strategy.entropy : undefined
+            });
+        } else {
+            // Catalog: Limit width, preserve aspect ratio
+            pipeline = pipeline.resize({
+                width: opts.width,
+                withoutEnlargement: true
+            });
+        }
+
+        // Output Settings
+        await pipeline
             .webp({
-                quality: QUALITY,
-                effort: 6,           // Max compression effort (slower sync, smaller file)
-                smartSubsample: true // Better clarity for text/sharp edges
+                quality: opts.quality,
+                effort: 4, // User requested 4 (faster sync, slightly less compression than 6)
+                smartSubsample: true
             })
             .toFile(localPath);
-
-        // Set mtime to match Drive if possible? 
-        // Or just let it be now. If we sync again, localMtime will be > driveMtime usually?
-        // Wait, if we just wrote it, localMtime is NOW. DriveMtime is OLD.
-        // So driveMtime > localMtime will be FALSE. Correct.
-        // So next check will return false (no update needed). Perfect.
 
         return `/images/${localFilename}`;
     } catch (error) {
