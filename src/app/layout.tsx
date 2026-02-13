@@ -26,6 +26,7 @@ import { getSystemStatus } from '@/lib/status';
 export async function generateMetadata() {
   const config = await getConfig();
   return {
+    metadataBase: new URL('https://r4tlabs.com'),
     title: config.siteTitle || "Photo Catalog",
     description: "A professional photo catalog",
     icons: {

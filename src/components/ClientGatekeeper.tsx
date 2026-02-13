@@ -11,7 +11,8 @@ export default function ClientGatekeeper({ initialStatus }: { initialStatus: Sys
     useEffect(() => {
         // 1. SETUP MODE
         if (initialStatus === 'SETUP') {
-            if (pathname !== '/setup' && !pathname.startsWith('/api/setup')) {
+            // Allow Setup pages, API calls, and ADMIN PANEL (to fix config)
+            if (pathname !== '/setup' && !pathname.startsWith('/api') && !pathname.startsWith('/modaadmin')) {
                 router.push('/setup');
             }
         }
