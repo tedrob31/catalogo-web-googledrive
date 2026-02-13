@@ -7,15 +7,22 @@ const STATUS_FILE = path.join(CACHE_DIR, 'status.json');
 const CREDENTIALS_FILE = path.join(CACHE_DIR, 'credentials.json');
 
 export type SystemState = 'SETUP' | 'MAINTENANCE' | 'ACTIVE';
+export type SyncState = 'IDLE' | 'SYNCING' | 'BUILDING' | 'DEPLOYING' | 'SUCCESS' | 'ERROR';
 
 interface SystemStatus {
     state: SystemState;
     lastError?: string;
     lastChecked?: string;
+    // Sync Tracking
+    syncState?: SyncState;
+    syncLog?: string[];
+    lastSyncTime?: string;
 }
 
 const DEFAULT_STATUS: SystemStatus = {
     state: 'SETUP',
+    syncState: 'IDLE',
+    syncLog: []
 };
 
 // Ensure cache directory exists
@@ -34,32 +41,54 @@ export async function getSystemStatus(): Promise<SystemStatus> {
     try {
         await fs.access(CREDENTIALS_FILE);
     } catch {
-        return { state: 'SETUP', lastError: 'Missing credentials file' };
+        return { ...DEFAULT_STATUS, state: 'SETUP', lastError: 'Missing credentials file' };
     }
 
-    // 2. Read stored status override (e.g. if manually set to maintenance)
+    // 2. Read stored status override
     try {
         const data = await fs.readFile(STATUS_FILE, 'utf-8');
         const status = JSON.parse(data) as SystemStatus;
-
-        // If stored status says MAINTENANCE, respect it unless we want to auto-recover immediately
-        // For now, return stored status if it exists and is valid
         return status;
     } catch {
-        // If no status file, but credentials exist, assume ACTIVE (or verify)
-        // Ideally we verify connection, but that's expensive to do on every request.
-        // We rely on the "interceptor" to update this file to MAINTENANCE if it fails.
-        return { state: 'ACTIVE' };
+        // If file missing, return default ACTIVE (assuming setup passed previously if creds exist)
+        return { ...DEFAULT_STATUS, state: 'ACTIVE' };
     }
 }
 
 export async function setSystemStatus(state: SystemState, error?: string) {
-    await ensureDir();
+    const current = await getSystemStatus();
     const status: SystemStatus = {
+        ...current,
         state,
         lastError: error,
         lastChecked: new Date().toISOString()
     };
+    await fs.writeFile(STATUS_FILE, JSON.stringify(status, null, 2), 'utf-8');
+}
+
+export async function updateSyncStatus(syncState: SyncState, logMessage?: string) {
+    const current = await getSystemStatus();
+
+    let newLogs = current.syncLog || [];
+    if (logMessage) {
+        newLogs = [...newLogs, `[${new Date().toLocaleTimeString()}] ${logMessage}`];
+    }
+
+    // Trim logs if too long
+    if (newLogs.length > 50) newLogs.splice(0, newLogs.length - 50);
+
+    const status: SystemStatus = {
+        ...current,
+        syncState,
+        syncLog: newLogs,
+        lastSyncTime: syncState === 'SUCCESS' ? new Date().toISOString() : current.lastSyncTime
+    };
+
+    if (syncState === 'IDLE' && !logMessage) {
+        // Clear logs on reset
+        status.syncLog = [];
+    }
+
     await fs.writeFile(STATUS_FILE, JSON.stringify(status, null, 2), 'utf-8');
 }
 

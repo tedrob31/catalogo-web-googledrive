@@ -1,73 +1,120 @@
-# Catálogo Web Sincronizado con Google Drive 🚀
+# Catálogo Web Sincronizado con Google Drive (Google Drive CMS) 🚀
 
-Este proyecto es un catálogo web de alto rendimiento que utiliza **Google Drive** como CMS (Sistema de Gestión de Contenidos) y un sistema de **Espejo Local** para servir las imágenes instantáneamente.
+Este proyecto es un **Catálogo Web de Alto Rendimiento** que convierte una carpeta de **Google Drive** en un sitio web profesional. Utiliza un sistema de **Espejo Local (Local Mirror)** para descargar, optimizar y servir las imágenes instantáneamente, eliminando la latencia de Google Drive.
+
+![Estado](https://img.shields.io/badge/Estado-Estable-green) ![Docker](https://img.shields.io/badge/Docker-Ready-blue) ![Next.js](https://img.shields.io/badge/Next.js-15-black)
 
 ## 🌟 Características Principales
 
-*   **Sincronización Inteligente**: Se conecta a una carpeta de Google Drive y replica su estructura de carpetas y fotos.
-*   **Espejo Local (Local Mirror)**: Descarga, redimensiona y optimiza todas las imágenes en el servidor VPS.
-    *   Formato: **WebP**
-    *   Resolución: **1600px** (Optimizado para <150KB)
-    *   Calidad: **75** (Compresión eficiente con `sharp`)
-    *   Carga instantánea (0ms de latencia externa) para el usuario final.
-*   **Diseño Moderno**: Interfaz oscura/clara, Grid responsivo, Lightbox profesional con Zoom.
-*   **SEO Automático**: Genera metadatos basados en la estructura de carpetas.
+### 1. Sincronización Inteligente & CMS
+*   **Google Drive como Backend**: Sube tus fotos y carpetas a Drive, y el sitio web replicará la estructura automáticamente.
+*   **Espejo Local**: El sistema descarga todas las imágenes al servidor VPS.
+*   **Carga Instantánea**: El usuario final ve las imágenes desde el servidor local (Nginx/CDN), no desde Drive.
+*   **Sincronización Asíncrona**: El proceso de sincronización corre en segundo plano con logs en tiempo real en el Panel de Administración.
+
+### 2. Optimización de Imágenes (Sharp)
+*   **Perfiles Duales**:
+    *   **Catálogo**: Imágenes redimensionadas a **800px** (Alta calidad, peso <100KB) para navegación rápida.
+    *   **Portadas (Covers)**: Recorte inteligente (**Smart Crop**) cuadrado de **400x400px** centrado en la entropía de la imagen.
+*   **Formato WebP**: Conversión automática para máxima compresión.
+
+### 3. Panel de Administración (`/modaadmin`)
+*   **Configuración Visual**: Cambia títulos, colores, y efectos sin tocar código.
+*   **Gestión de Portadas**: Sube portadas personalizadas para carpetas o selecciona una imagen existente.
+*   **Efectos Estacionales**: Activa nieve, corazones o iconos personalizados flotantes.
+*   **SEO & Analytics**: Configura Google Analytics 4 y Metadatos OpenGraph (Redes Sociales).
+
+### 4. Infraestructura & Seguridad
+*   **Despliegue Seguro**: Uso de variables de entorno (`.env`) para credenciales.
+*   **Cloudflare Ready**: Purga automática de caché de Cloudflare al completar una sincronización.
+*   **Generación Estática**: El sitio se compila a HTML estático (`next build`) para máxima velocidad y seguridad.
+
+---
 
 ## 🛠️ Stack Tecnológico
 
-*   **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
-*   **Lenguaje**: TypeScript
-*   **Estilos**: Tailwind CSS
-*   **Backend / API**: Google Drive API v3
-*   **Procesamiento de Imágenes**: `sharp` (Node.js)
-*   **Infraestructura**: Docker & Docker Compose
+*   **Frontend**: [Next.js 15](https://nextjs.org/) (App Router, Static Export).
+*   **Estilos**: Tailwind CSS.
+*   **Backend Base**: Google Drive API v3 (Node.js).
+*   **Procesamiento**: `sharp` (Node.js) para optimización de imágenes.
+*   **Infraestructura**: Docker, Docker Compose, Nginx (Servidor Web).
 
-## 📂 Arquitectura de Carpetas
+---
 
-*   `src/lib/drive.ts`: Cliente de Google Drive API.
-*   `src/lib/sync-engine.ts`: Motor de descarga y optimización de imágenes (`sharp`).
-*   `src/lib/cache.ts`: Lógica de sincronización, gestión de `structure.json` y migración de URLs.
-*   `src/lib/config.ts`: Gestión de la configuración del sitio (título, colores, IDs de carpetas).
-*   `src/components`: Componentes UI (CatalogView, PhotoCard, AlbumCard, Lightbox).
+## 🚀 Guía de Despliegue (Docker)
 
-## 🚀 Despliegue con Docker
+El proyecto está diseñado para desplegarse en cualquier VPS con Docker y Docker Compose.
 
-El proyecto está contenerizado para un despliegue fácil en VPS (ej. Portainer).
+### 1. Requisitos Previos
+*   Servidor VPS (Ubuntu/Debian recomendado).
+*   Docker y Docker Compose instalados.
+*   **Credenciales de Google Service Account** (`credentials.json`) con permisos de lectura en la carpeta de Drive.
 
-### Estructura de Volúmenes Requerida:
-
-1.  **`catalog_cache`**: `/app/cache`
-    *   Almacena `credentials.json` (Service Account de Google).
-    *   Almacena `config.json` y `structure.json`.
-    *   **NO BORRAR** este volumen o perderás la conexión.
-2.  **`catalog_images`**: `/app/public/images`
-    *   Almacena los archivos `.webp` optimizados.
-    *   Puede borrarse sin riesgo (se regenerará al sincronizar).
-
-### Comandos de Despliegue:
+### 2. Configuración de Variables de Entorno
+Crea un archivo `.env` en la raíz del proyecto (basado en `.env.example`):
 
 ```bash
-# Construir e iniciar
+# Credenciales del Panel de Admin
+ADMIN_USER=admin
+ADMIN_PASS=tu_contraseña_segura
+
+# Dominio (para SEO y Sitemaps)
+DOMAIN_NAME=midominio.com
+
+# Cloudflare (Opcional - Para purga automática)
+CLOUDFLARE_ZONE_ID=tu_zone_id
+CLOUDFLARE_API_TOKEN=tu_api_token
+```
+
+### 3. Despliegue con Docker Compose
+```bash
+# Iniciar los contenedores (Backend + Servidor Estático)
 docker-compose up -d --build
 ```
 
-## ⚙️ Configuración y Sincronización
+### 4. Estructura de Volúmenes (Persistencia)
+El `docker-compose.yml` crea dos volúmenes importantes:
+*   `catalog_cache`: Guarda la configuración (`config.json`), la base de datos local (`structure.json`) y las credenciales.
+*   `catalog_images`: Guarda las imágenes optimizadas.
 
-1.  **Credenciales**: Coloca tu `credentials.json` en la carpeta `cache` (o monta el volumen).
-2.  **Primer Inicio**: El catálogo estará vacío.
-3.  **Panel de Administración**: Acceda a `/modaadmin` (Usuario/Pass definidos en variables de entorno).
-4.  **Sincronizar**:
-    *   Haga clic en **"Sync Catalog"**.
-    *   El sistema descargará la estructura de Drive.
-    *   Descargará y optimizará TODAS las imágenes nuevas a la carpeta local.
-    *   Actualizará las rutas para servir contenido localmente.
-
-## 📝 Notas para Desarrolladores / IA
-
-Si estás retomando este proyecto:
-*   La "verdad" del estado actual está en `src/lib/cache.ts` y `src/lib/sync-engine.ts`.
-*   El sistema **NO** sirve imágenes directamente desde Google Drive (para evitar cuotas y latencia).
-*   Siempre que se edite la lógica de sincronización, verificar que `validIds` se rellene correctamente para evitar el borrado accidental de fotos en `cleanOrphanedImages`.
+**Nota:** Para la primera instalación, debes colocar tu `credentials.json` dentro del volumen `catalog_cache` o subirlo vía SCP a la ruta mapeada.
 
 ---
-Desarrollado con ❤️ y Agentes de IA.
+
+## ⚙️ Configuración Inicial (Paso a Paso)
+
+1.  **Acceder al Admin**: Navega a `https://tu-dominio.com/modaadmin`.
+2.  **Login**: Usa las credenciales definidas en el `.env`.
+3.  **Configurar Drive**:
+    *   Copia el **ID de la Carpeta Raíz** de Google Drive (la parte final de la URL).
+    *   Pégalo en el campo "Root Folder ID".
+4.  **Google Analytics (Opcional)**: Pega tu ID de medición (G-XXXXXX).
+5.  **Guardar Configuración**: Haz clic en "Save Config".
+6.  **Sincronizar**:
+    *   Haz clic en el botón azul **"Sync Catalog"**.
+    *   Observa los logs en la consola negra.
+    *   Espera a que diga **"Deployment Complete"**.
+
+---
+
+## 📂 Estructura del Proyecto
+
+*   `src/app`: Rutas de Next.js (App Router).
+    *   `src/app/api`: Endpoints del Backend (Sync, Config, Auth).
+    *   `src/app/modaadmin`: Panel de Administración.
+*   `src/lib`: Lógica de negocio.
+    *   `drive.ts`: Cliente de Google Drive.
+    *   `sync-engine.ts`: Motor de descarga y optimización (`sharp`).
+    *   `cache.ts`: Gestión de caché y estructura de datos.
+*   `docker-compose.yml`:Orquestación de servicios.
+*   `nginx/nginx.conf`: Configuración del servidor web estático.
+
+---
+
+## 📝 Notas para Desarrolladores
+
+*   **Modo Estático vs Dinámico**: El frontend se compila como estático (`output: 'export'`), pero el panel de administración (`/modaadmin`) y la API (`/api/*`) corren en el contenedor de backend (`node`). Nginx o Traefik se encargan de enrutar el tráfico correctamente.
+*   **Depuración de Sync**: Los logs de sincronización se guardan en `src/lib/status.ts` y se persisten en `status.json` dentro del volumen de caché.
+
+---
+Desarrollado con ❤️ y Tecnología Agentic AI.

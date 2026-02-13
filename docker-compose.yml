@@ -13,11 +13,14 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
-      # ADMIN CREDENTIALS (REPLACE WITH SECURE VALUES OR SECRETS)
-      - ADMIN_USER=admin
-      - ADMIN_PASS=R4tlabs1234_
+      # ADMIN CREDENTIALS (Load from environment)
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASS=${ADMIN_PASS:-change_me_please}
       # GOOGLE DRIVE CREDENTIALS
       - GOOGLE_APPLICATION_CREDENTIALS=/app/cache/credentials.json
+      # Cloudflare Cache Purge (Optional)
+      - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID:-}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
       # Performance Tuning
       - NODE_OPTIONS='--max-old-space-size=2048'
     volumes:
@@ -45,7 +48,7 @@ services:
         - traefik.docker.network=r4tlabsnet
         
         # Router unificado para todo lo dinámico con prioridad máxima
-        - "traefik.http.routers.r4t-backend.rule=Host(`r4tlabs.com`) && (PathPrefix(`/modaadmin`) || PathPrefix(`/api`) || PathPrefix(`/_next`))"
+        - "traefik.http.routers.r4t-backend.rule=Host(`${DOMAIN_NAME:-r4tlabs.com}`) && (PathPrefix(`/modaadmin`) || PathPrefix(`/api`) || PathPrefix(`/_next`))"
         - "traefik.http.routers.r4t-backend.priority=50000"
         - "traefik.http.routers.r4t-backend.entrypoints=websecure"
         - "traefik.http.routers.r4t-backend.tls.certresolver=letsencryptresolver"
@@ -78,7 +81,7 @@ services:
         - traefik.docker.network=r4tlabsnet
         
         # REGLA DE EXCLUSIÓN: Nginx solo responde si NO es una ruta de backend
-        - "traefik.http.routers.r4t-static.rule=Host(`r4tlabs.com`) && !PathPrefix(`/modaadmin`) && !PathPrefix(`/api`) && !PathPrefix(`/_next`)"
+        - "traefik.http.routers.r4t-static.rule=Host(`${DOMAIN_NAME:-r4tlabs.com}`) && !PathPrefix(`/modaadmin`) && !PathPrefix(`/api`) && !PathPrefix(`/_next`)"
         - "traefik.http.routers.r4t-static.priority=1000"
         - "traefik.http.routers.r4t-static.entrypoints=websecure"
         - "traefik.http.routers.r4t-static.tls.certresolver=letsencryptresolver"
