@@ -25,8 +25,11 @@ import { getSystemStatus } from '@/lib/status';
 
 export async function generateMetadata() {
   const config = await getConfig();
+  const domain = process.env.NEXT_PUBLIC_DOMAIN_NAME || 'r4tlabs.com';
+  const protocol = domain.includes('localhost') ? 'http' : 'https';
+
   return {
-    metadataBase: new URL('https://r4tlabs.com'),
+    metadataBase: new URL(`${protocol}://${domain}`),
     title: config.siteTitle || "Photo Catalog",
     description: "A professional photo catalog",
     icons: {

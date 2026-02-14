@@ -21,6 +21,8 @@ services:
       # Cloudflare Cache Purge (Optional)
       - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID:-}
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
+      # Domain for Metadata (SSG)
+      - NEXT_PUBLIC_DOMAIN_NAME=${DOMAIN_NAME:-r4tlabs.com}
       # Performance Tuning
       - NODE_OPTIONS='--max-old-space-size=2048'
     volumes:
