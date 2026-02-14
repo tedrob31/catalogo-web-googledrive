@@ -150,8 +150,10 @@ async function buildAlbumStructure(folderId: string, folderName: string): Promis
         album.subAlbums.push(subAlbum);
     }
 
-    // Sort photos and albums by name
-    album.photos.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    // Sort photos DESCENDING by name (Newest first if named sequentially)
+    album.photos.sort((a, b) => b.name.localeCompare(a.name, undefined, { numeric: true }));
+
+    // Sort sub-albums ASCENDING by name (A-Z)
     album.subAlbums.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 
     return album;
