@@ -9,8 +9,7 @@ export function middleware(request: NextRequest) {
     const path = request.nextUrl.pathname;
     const isSensitiveApi = (
         (path.startsWith('/api/config') && request.method === 'POST') ||
-        (path.startsWith('/api/sync') && request.method === 'POST') ||
-        (path.startsWith('/api/upload') && request.method === 'POST')
+        (path.startsWith('/api/sync') && request.method === 'POST')
     );
 
     if (isSensitiveApi) {

@@ -104,29 +104,6 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleUploadCover = async (folderId: string, file: File) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('folderId', folderId);
-
-        const res = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            // Update config with new cover AND SAVE IT
-            const newCovers = { ...config.folderCovers, [folderId]: data.path };
-            const newConfig = { ...config, folderCovers: newCovers };
-
-            await saveConfig(newConfig);
-            fetchCovers(); // Refresh list
-            alert('Cover uploaded and saved!');
-        } else {
-            alert('Upload failed');
-        }
-    };
 
     const handleSelectCover = async (folderId: string, coverPath: string) => {
         let newConfig = { ...config };
@@ -175,7 +152,7 @@ export default function AdminDashboard() {
 
     return (
         <div className="max-w-4xl mx-auto p-8 mb-20 relative">
-            <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
+            <h1 className="text-3xl font-bold mb-8">Panel de administrador</h1>
 
             {/* Selector Modal */}
             {showCoverSelector && (
@@ -206,7 +183,7 @@ export default function AdminDashboard() {
 
             <div className="grid gap-8">
                 <section className="bg-white p-6 rounded shadow">
-                    <h2 className="text-xl font-semibold mb-4">Configuration</h2>
+                    <h2 className="text-xl font-semibold mb-4">Configuracion</h2>
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium">Root Folder ID (Drive)</label>
@@ -228,7 +205,7 @@ export default function AdminDashboard() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium">Auto-Sync Interval (Minutes)</label>
+                            <label className="block text-sm font-medium">Intervalo de autosincronizacion (Minutos)</label>
                             <div className="flex items-center gap-2">
                                 <input
                                     type="number"
@@ -288,10 +265,10 @@ export default function AdminDashboard() {
                         </div>
 
                         <div className="pt-4 border-t border-gray-200">
-                            <h3 className="font-bold mb-2">Seasonal Effects</h3>
+                            <h3 className="font-bold mb-2">Efectos de caida</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium">Effect Type</label>
+                                    <label className="block text-sm font-medium">Tipo de efecto</label>
                                     <select
                                         className="w-full border p-2 rounded"
                                         value={config.seasonalEffect || 'none'}
@@ -582,7 +559,7 @@ export default function AdminDashboard() {
                                     </div>
                                     <div className="flex items-center gap-4">
                                         {(config.folderCovers && config.folderCovers[album.id]) ? (
-                                            <div className="relative w-12 h-12 rounded overflow-hidden group">
+                                            <div className="relative w-12 h-12 rounded overflow-hidden group border border-blue-500">
                                                 <Image
                                                     src={config.folderCovers[album.id]}
                                                     alt="Cover"
@@ -591,29 +568,34 @@ export default function AdminDashboard() {
                                                 />
                                             </div>
                                         ) : (
-                                            <span className="text-xs text-gray-400">Default</span>
+                                            <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center border">
+                                                <span className="text-[10px] text-gray-500 text-center leading-tight">Album<br />First</span>
+                                            </div>
                                         )}
 
                                         <button
                                             onClick={() => setShowCoverSelector(album.id)}
-                                            className="text-xs bg-gray-200 px-2 py-1 rounded hover:bg-gray-300"
+                                            className="text-xs bg-blue-100 text-blue-700 px-3 py-2 rounded hover:bg-blue-200 font-medium"
                                         >
                                             Select Existing
                                         </button>
 
-                                        <label className="cursor-pointer text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200">
-                                            Upload New
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="hidden"
-                                                onChange={(e) => {
-                                                    if (e.target.files?.[0]) {
-                                                        handleUploadCover(album.id, e.target.files[0]);
-                                                    }
+                                        {(config.folderCovers && config.folderCovers[album.id]) ? (
+                                            <button
+                                                onClick={() => {
+                                                    const newCovers = { ...config.folderCovers };
+                                                    delete newCovers[album.id];
+                                                    saveConfig({ ...config, folderCovers: newCovers });
                                                 }}
-                                            />
-                                        </label>
+                                                className="text-xs bg-red-100 text-red-700 px-3 py-2 rounded hover:bg-red-200"
+                                            >
+                                                Reset to Default
+                                            </button>
+                                        ) : (
+                                            <span className="text-xs text-gray-400 px-3 py-2">
+                                                Using Default
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             ))}
