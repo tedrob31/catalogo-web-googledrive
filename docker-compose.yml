@@ -49,8 +49,8 @@ services:
         - traefik.enable=true
         - traefik.docker.network=r4tlabsnet
         
-        # Router unificado para todo lo dinámico con prioridad máxima
-        - "traefik.http.routers.r4t-backend.rule=(Host(`${DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${DOMAIN_NAME:-r4tlabs.com}`)) && (PathPrefix(`/modaadmin`) || PathPrefix(`/api`) || PathPrefix(`/_next`))"
+        # Router unificado para todo el tráfico de la web (Next.js maneja frontend y API con ISR)
+        - "traefik.http.routers.r4t-backend.rule=(Host(`${DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${DOMAIN_NAME:-r4tlabs.com}`))"
         - "traefik.http.routers.r4t-backend.priority=50000"
         - "traefik.http.routers.r4t-backend.entrypoints=websecure"
         - "traefik.http.routers.r4t-backend.tls.certresolver=letsencryptresolver"
@@ -82,9 +82,9 @@ services:
         - traefik.enable=true
         - traefik.docker.network=r4tlabsnet
         
-        # REGLA DE EXCLUSIÓN: Nginx solo responde si NO es una ruta de backend
-        - "traefik.http.routers.r4t-static.rule=(Host(`${DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${DOMAIN_NAME:-r4tlabs.com}`)) && !PathPrefix(`/modaadmin`) && !PathPrefix(`/api`) && !PathPrefix(`/_next`)"
-        - "traefik.http.routers.r4t-static.priority=1000"
+        # REGLA ESTÁTICA EXCLUSIVA: Nginx solo sirve la carpeta /images/ para descargas directas puras
+        - "traefik.http.routers.r4t-static.rule=(Host(`${DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${DOMAIN_NAME:-r4tlabs.com}`)) && PathPrefix(`/images`)"
+        - "traefik.http.routers.r4t-static.priority=60000" # Prioridad mayor al frontend general
         - "traefik.http.routers.r4t-static.entrypoints=websecure"
         - "traefik.http.routers.r4t-static.tls.certresolver=letsencryptresolver"
         - "traefik.http.routers.r4t-static.service=static_server"

@@ -1,0 +1,106 @@
+version: "3.7"
+services:
+
+## --------------------------- BACKEND API (Manager DEV) --------------------------- ##
+  backend_api_dev:
+    image: ghcr.io/tedrob31/catalogo-web-googledrive:manager
+    networks:
+      - r4tlabsnet
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      # ADMIN CREDENTIALS (Load from environment)
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASS=${ADMIN_PASS:-change_me_please}
+      # GOOGLE DRIVE CREDENTIALS
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/cache/credentials.json
+      # Cloudflare Cache Purge (Optional)
+      - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID:-}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
+      # Domain for Metadata (SSG) - Modificado para DEV
+      - NEXT_PUBLIC_DOMAIN_NAME=${DOMAIN_NAME:-r4tlabs.com}
+      # Performance Tuning
+      - NODE_OPTIONS='--max-old-space-size=2048'
+    volumes:
+      # Volúmenes separados para no sobrescribir la caché de v1
+      - catalog_cache_dev:/app/cache
+      - catalog_images_dev:/app/public/images
+      - catalog_out_dev:/app/out
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1024M
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=r4tlabsnet
+        
+        # Router para la web de PRUEBA (Dev) - ISR
+        - "traefik.http.routers.r4t-backend-dev.rule=Host(`${DOMAIN_NAME:-r4tlabs.com}`)"
+        - "traefik.http.routers.r4t-backend-dev.priority=50000"
+        - "traefik.http.routers.r4t-backend-dev.entrypoints=websecure"
+        - "traefik.http.routers.r4t-backend-dev.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.r4t-backend-dev.service=backend_api_dev"
+        - "traefik.http.services.backend_api_dev.loadbalancer.server.port=3000"
+
+## --------------------------- STATIC SERVER (Nginx DEV) --------------------------- ##
+  static_server_dev:
+    image: nginx:alpine
+    networks:
+      - r4tlabsnet
+    volumes:
+      - catalog_images_dev:/usr/share/nginx/html/images:ro
+    configs:
+      - source: nginx_conf_dev
+        target: /etc/nginx/nginx.conf
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 64M
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=r4tlabsnet
+        
+        # Nginx Dev solo sirve la ruta /images/
+        - "traefik.http.routers.r4t-static-dev.rule=Host(`${DOMAIN_NAME:-r4tlabs.com}`) && PathPrefix(`/images`)"
+        - "traefik.http.routers.r4t-static-dev.priority=60000"
+        - "traefik.http.routers.r4t-static-dev.entrypoints=websecure"
+        - "traefik.http.routers.r4t-static-dev.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.r4t-static-dev.service=static_server_dev"
+        - "traefik.http.services.static_server_dev.loadbalancer.server.port=80"
+
+## --------------------------- VOLUMES & NETWORKS --------------------------- ##
+
+volumes:
+  catalog_cache_dev:
+    name: catalog_cache_dev
+  catalog_images_dev:
+    name: catalog_images_dev
+  catalog_out_dev:  # Aunque Nextjs se encargue, mantenemos por si algo interno lo requiere
+    name: catalog_out_dev
+
+networks:
+  r4tlabsnet:
+    external: true
+    name: r4tlabsnet
+
+configs:
+  nginx_conf_dev:
+    file: ./nginx/nginx.conf

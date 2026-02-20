@@ -7,7 +7,8 @@ import { Metadata, ResolvingMetadata } from "next";
 import { slugify } from "@/lib/utils";
 import { Album } from "@/lib/types";
 
-export const dynamic = 'force-static'; // Force static generation
+// Force static rendering is removed to allow ISR (Incremental Static Regeneration)
+// so revalidatePath() in /api/sync will work properly.
 
 // Generate all possible paths from the cache
 export async function generateStaticParams() {
