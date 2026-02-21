@@ -18,6 +18,12 @@ WORKDIR /app
 
 # Install dependencies
 COPY package.json package-lock.json* ./
+
+# Forzar la instalación de binarios precompilados de Sharp para Alpine
+ENV npm_config_platform=linux
+ENV npm_config_arch=x64
+ENV npm_config_libc=musl
+
 RUN npm ci
 
 # Rebuild the source code only when needed
