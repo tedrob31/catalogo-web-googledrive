@@ -1,22 +1,12 @@
 import { NextResponse } from 'next/server';
-import { syncDrive, loadCache } from '@/lib/cache';
-import { getConfig } from '@/lib/config';
-
-import { exec } from 'child_process';
-import util from 'util';
-
-const execAsync = util.promisify(exec);
+import { loadCache } from '@/lib/cache';
+import { executeLocalSync } from '@/lib/rcloneSync';
 
 export async function POST() {
     try {
-        const config = await getConfig();
-        if (!config.rootFolderId) {
-            return NextResponse.json({ error: 'Root Folder ID not configured' }, { status: 400 });
-        }
-
-        console.log('[Sync] Starting Drive Sync...');
-        await syncDrive(config.rootFolderId);
-        console.log('[Sync] Drive Sync complete.');
+        console.log('[Sync] Starting Local Rclone Sync...');
+        await executeLocalSync();
+        console.log('[Sync] Local Sync complete.');
 
         // On-Demand ISR: Invalidate Next.js Cache
         console.log('[Sync] Revalidating Next.js Cache (ISR)...');

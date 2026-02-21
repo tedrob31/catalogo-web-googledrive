@@ -1,9 +1,19 @@
+# Base stage para dependencias y binarios del sistema operativos
 FROM node:20-alpine AS base
 
+# Instalar dependencias esenciales para Sharp y Rclone
+# libvips-dev is needed for Sharp to compile correctly if using raw binaries,
+# although sharp provides prebuilds, it's safer for Alpine.
+# curl and unzip are required to install rclone.
+RUN apk add --no-cache libc6-compat curl unzip bash libvips-dev
+
+# ⬇️ INSTALAR RCLONE OFICIALMENTE ⬇️
+# Usamos el script oficial para descargar y colocar los binarios de rclone nativos
+RUN curl https://rclone.org/install.sh | bash
+
+# -------------------------------------------------------------------------------------- #
 # Install dependencies only when needed
 FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Install dependencies
