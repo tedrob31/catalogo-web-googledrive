@@ -5,7 +5,7 @@ FROM node:20-alpine AS base
 # libvips-dev is needed for Sharp to compile correctly if using raw binaries,
 # although sharp provides prebuilds, it's safer for Alpine.
 # curl and unzip are required to install rclone.
-RUN apk add --no-cache libc6-compat curl unzip bash libvips-dev
+RUN apk add --no-cache libc6-compat curl unzip bash vips-dev
 
 # ⬇️ INSTALAR RCLONE OFICIALMENTE ⬇️
 # Usamos el script oficial para descargar y colocar los binarios de rclone nativos
