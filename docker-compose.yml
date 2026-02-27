@@ -93,12 +93,9 @@ services:
 ## --------------------------- VOLUMES & NETWORKS --------------------------- ##
 
 volumes:
-  catalog_cache:
-    name: catalog_cache
-  catalog_images:
-    name: catalog_images
-  catalog_out:
-    name: catalog_out
+  catalog_cache: {}
+  catalog_images: {}
+  catalog_out: {}
 
 networks:
   r4tlabsnet:
