@@ -3,7 +3,7 @@ services:
 
 ## --------------------------- BACKEND API (Manager) --------------------------- ##
   backend_api:
-    image: ghcr.io/tedrob31/catalogo-web-googledrive:v1.0.0
+    image: ghcr.io/tedrob31/catalogo-web-googledrive:v1.0.2
     build: 
       context: .
       dockerfile: Dockerfile
@@ -23,6 +23,7 @@ services:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
       # Domain for Metadata (SSG)
       - NEXT_PUBLIC_DOMAIN_NAME=${DOMAIN_NAME:-r4tlabs.com}
+      - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-liquidacion_catalogodemoda}
       # Performance Tuning
       - NODE_OPTIONS='--max-old-space-size=2048'
     volumes:
@@ -50,12 +51,12 @@ services:
         - traefik.docker.network=r4tlabsnet
         
         # Router unificado para todo lo dinámico con prioridad máxima
-        - "traefik.http.routers.r4t-backend.rule=(Host(`${DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${DOMAIN_NAME:-r4tlabs.com}`)) && (PathPrefix(`/modaadmin`) || PathPrefix(`/api`) || PathPrefix(`/_next`))"
-        - "traefik.http.routers.r4t-backend.priority=50000"
-        - "traefik.http.routers.r4t-backend.entrypoints=websecure"
-        - "traefik.http.routers.r4t-backend.tls.certresolver=letsencryptresolver"
-        - "traefik.http.routers.r4t-backend.service=backend_api"
-        - "traefik.http.services.backend_api.loadbalancer.server.port=3000"
+        - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.rule=(Host(`${DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${DOMAIN_NAME:-r4tlabs.com}`)) && (PathPrefix(`/modaadmin`) || PathPrefix(`/api`) || PathPrefix(`/_next`))"
+        - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.priority=50000"
+        - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.entrypoints=websecure"
+        - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.service=backend_api-${COMPOSE_PROJECT_NAME:-catsite}"
+        - "traefik.http.services.backend_api-${COMPOSE_PROJECT_NAME:-catsite}.loadbalancer.server.port=3000"
 
 ## --------------------------- STATIC SERVER (Nginx) --------------------------- ##
   static_server:
@@ -83,12 +84,12 @@ services:
         - traefik.docker.network=r4tlabsnet
         
         # REGLA DE EXCLUSIÓN: Nginx solo responde si NO es una ruta de backend
-        - "traefik.http.routers.r4t-static.rule=(Host(`${DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${DOMAIN_NAME:-r4tlabs.com}`)) && !PathPrefix(`/modaadmin`) && !PathPrefix(`/api`) && !PathPrefix(`/_next`)"
-        - "traefik.http.routers.r4t-static.priority=1000"
-        - "traefik.http.routers.r4t-static.entrypoints=websecure"
-        - "traefik.http.routers.r4t-static.tls.certresolver=letsencryptresolver"
-        - "traefik.http.routers.r4t-static.service=static_server"
-        - "traefik.http.services.static_server.loadbalancer.server.port=80"
+        - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.rule=(Host(`${DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${DOMAIN_NAME:-r4tlabs.com}`)) && !PathPrefix(`/modaadmin`) && !PathPrefix(`/api`) && !PathPrefix(`/_next`)"
+        - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.priority=1000"
+        - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.entrypoints=websecure"
+        - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.service=static_server-${COMPOSE_PROJECT_NAME:-catsite}"
+        - "traefik.http.services.static_server-${COMPOSE_PROJECT_NAME:-catsite}.loadbalancer.server.port=80"
 
 ## --------------------------- VOLUMES & NETWORKS --------------------------- ##
 
