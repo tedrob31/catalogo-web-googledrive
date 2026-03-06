@@ -6,7 +6,7 @@ const CACHE_DIR = path.join(process.cwd(), 'cache');
 const STATUS_FILE = path.join(CACHE_DIR, 'status.json');
 const CREDENTIALS_FILE = path.join(CACHE_DIR, 'credentials.json');
 
-export type SystemState = 'SETUP' | 'MAINTENANCE' | 'ACTIVE';
+export type SystemState = 'MAINTENANCE' | 'ACTIVE';
 
 interface SystemStatus {
     state: SystemState;
@@ -15,7 +15,7 @@ interface SystemStatus {
 }
 
 const DEFAULT_STATUS: SystemStatus = {
-    state: 'SETUP',
+    state: 'MAINTENANCE',
 };
 
 // Ensure cache directory exists
@@ -34,7 +34,7 @@ export async function getSystemStatus(): Promise<SystemStatus> {
     try {
         await fs.access(CREDENTIALS_FILE);
     } catch {
-        return { state: 'SETUP', lastError: 'Missing credentials file' };
+        return { state: 'MAINTENANCE', lastError: 'Missing credentials file. Please add via Portainer Volume.' };
     }
 
     // 2. Read stored status override (e.g. if manually set to maintenance)

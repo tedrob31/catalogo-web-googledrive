@@ -3,6 +3,7 @@ import { loadCache } from "@/lib/cache";
 import { findAlbumBySlugPath, findPathToAlbum } from "@/lib/types";
 import { getConfig } from "@/lib/config";
 import { Metadata, ResolvingMetadata } from "next";
+import Maintenance from "@/app/maintenance/page";
 
 import { slugify } from "@/lib/utils";
 import { Album } from "@/lib/types";
@@ -140,6 +141,11 @@ export default async function Page(props: Props) {
     if (foundPath) {
       initialPath = foundPath;
     }
+  }
+
+  // If no root catalog yet, render Maintenance immediately
+  if (!data?.root) {
+    return <Maintenance />;
   }
 
   return (

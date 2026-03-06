@@ -9,28 +9,9 @@ export default function ClientGatekeeper({ initialStatus }: { initialStatus: Sys
     const router = useRouter();
 
     useEffect(() => {
-        // 1. SETUP MODE
-        if (initialStatus === 'SETUP') {
-            // Allow Setup pages, API calls, and ADMIN PANEL (to fix config)
-            if (pathname !== '/setup' && !pathname.startsWith('/api') && !pathname.startsWith('/modaadmin')) {
-                router.push('/setup');
-            }
-        }
-
-        // 2. MAINTENANCE MODE
-        // Allow /admin to bypass maintenance to fix things
-        else if (initialStatus === 'MAINTENANCE') {
-            if (pathname !== '/maintenance' && !pathname.startsWith('/admin') && !pathname.startsWith('/api') && !pathname.startsWith('/modaadmin')) {
-                router.push('/maintenance');
-            }
-        }
-
-        // 3. ACTIVE MODE
-        else if (initialStatus === 'ACTIVE') {
-            if (pathname === '/setup' || pathname === '/maintenance') {
-                router.push('/');
-            }
-        }
+        // En ISR puro, no queremos redirects de middleware que confundan a Next.js 
+        // o generen loops. El layout y los pages manejarán el contenido.
+        // Solo protegemos la administración con middleware real en el servidor.
     }, [pathname, initialStatus, router]);
 
     return null; // This component renders nothing
