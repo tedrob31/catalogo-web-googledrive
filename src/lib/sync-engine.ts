@@ -75,11 +75,12 @@ export async function processImage(file: DriveFile, type: OptimizationProfile = 
     // ValidIds track ID.
     const localFilename = `${file.id}.webp`;
     const localPath = path.join(IMAGES_DIR, localFilename);
+    const vParam = file.modifiedTime ? `?v=${new Date(file.modifiedTime).getTime()}` : '';
 
     // incremental check
     // Now using the official physical 'modifiedTime' instead of EXIF 'imageMediaMetadata.time'
     if (!(await needsUpdate(localPath, file.modifiedTime || undefined))) {
-        return `/images/${localFilename}`;
+        return `/images/${localFilename}${vParam}`;
     }
 
     console.log(`[Sync] Optimizing [${type.toUpperCase()}]: ${file.name}`);
@@ -124,7 +125,7 @@ export async function processImage(file: DriveFile, type: OptimizationProfile = 
             })
             .toFile(localPath);
 
-        return `/images/${localFilename}`;
+        return `/images/${localFilename}${vParam}`;
     } catch (error) {
         console.error(`[Sync] Error processing ${file.name}:`, error);
         return null;

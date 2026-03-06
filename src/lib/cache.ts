@@ -164,7 +164,7 @@ async function buildAlbumStructure(folderId: string, folderName: string): Promis
 
 import { processImage, cleanOrphanedImages } from './sync-engine';
 
-async function processAllImages(album: Album, validIds: Set<string>) {
+async function processAllImages(album: Album, validIds: Map<string, string>) {
     // Process photos in this album
     const CONCURRENCY = 5;
     const photos = album.photos;
@@ -172,7 +172,7 @@ async function processAllImages(album: Album, validIds: Set<string>) {
     for (let i = 0; i < photos.length; i += CONCURRENCY) {
         const chunk = photos.slice(i, i + CONCURRENCY);
         await Promise.all(chunk.map(async (photo) => {
-            validIds.add(photo.id);
+            validIds.set(photo.id, photo.modifiedTime || '');
             // Construct pseudo DriveFile for processImage
             const driveFile: any = {
                 id: photo.id,
@@ -218,7 +218,7 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
     const rootAlbum = await buildAlbumStructure(rootFolderId, rootFolderName);
 
     // 2. Sync Images (Download & Optimize)
-    const validIds = new Set<string>();
+    const validIds = new Map<string, string>();
     console.log('[Sync] Starting Image Mirror process...');
 
     // 2a. Sync Catalog Images
@@ -234,7 +234,7 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
                 const chunk = coverFiles.slice(i, i + CONCURRENCY);
                 await Promise.all(chunk.map(async (file) => {
                     if (file.mimeType.startsWith('image/')) {
-                        validIds.add(file.id);
+                        validIds.set(file.id, file.modifiedTime || '');
                         await processImage(file, 'cover');
                     }
                 }));
@@ -247,7 +247,7 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
     console.log(`[Sync] Image Mirror complete. Valid images: ${validIds.size}`);
 
     // 3. Clean Orphans
-    await cleanOrphanedImages(validIds);
+    await cleanOrphanedImages(new Set(validIds.keys()));
 
     // 4. Update Config URLs to point to Local Mirror
     // Helper to migrate URL (e.g. /api/image?id=XXX -> /images/XXX.webp)
@@ -257,7 +257,9 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
         if (match) {
             const id = match[1];
             if (validIds.has(id)) {
-                return `/images/${id}.webp`;
+                const mTime = validIds.get(id);
+                const vParam = mTime ? `?v=${new Date(mTime).getTime()}` : '';
+                return `/images/${id}.webp${vParam}`;
             }
         }
         return url;
