@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import { listFolderContents, DriveFile } from './drive';
 import { CacheStructure, Album, PhotoItem } from './types';
+import { slugify } from './utils';
 
 export * from './types';
 
@@ -201,6 +202,15 @@ async function processAllImages(album: Album, validIds: Set<string>) {
 export async function syncDrive(rootFolderId: string, rootFolderName: string = 'CATALOGO') {
     console.log(`Starting sync for root: ${rootFolderId}`);
 
+    // Read old cache to compute ISR diff later
+    let oldCache: CacheStructure | null = null;
+    try {
+        const oldCacheStr = await fs.readFile(CACHE_FILE, 'utf-8');
+        oldCache = JSON.parse(oldCacheStr);
+    } catch (e) {
+        // No old cache or parse error
+    }
+
     // 0. Load Config to check for Covers Folder
     let config = await getConfig();
 
@@ -287,7 +297,66 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
         lastSynced: new Date().toISOString(),
     };
 
+    const affectedPaths = computeAffectedPaths(oldCache?.root, rootAlbum);
+    console.log(`[Sync Diff] Detected ${affectedPaths.length} affected paths.`);
+
     await saveCache(cache);
     console.log('Sync complete.');
-    return cache;
+    return { cache, affectedPaths };
+}
+
+// ISR Helper: Compute Diff to know what URLs changed
+export function computeAffectedPaths(oldRoot: Album | undefined, newRoot: Album): string[] {
+    const affected = new Set<string>();
+
+    // helper to extract state
+    function getAlbumState(album: Album) {
+        return {
+            name: album.name,
+            coverId: album.coverId,
+            photos: album.photos.map(p => `${p.id}:${p.modifiedTime || ''}`).join(','),
+            subCount: album.subAlbums.length
+        };
+    }
+
+    function compare(oldA: Album | undefined, newA: Album | undefined, currentPath: string) {
+        if (!oldA && !newA) return;
+
+        if (!oldA && newA) {
+            affected.add(currentPath);
+            newA.subAlbums.forEach(sub => compare(undefined, sub, currentPath === '/' ? `/album/${slugify(sub.name)}` : `${currentPath}/${slugify(sub.name)}`));
+            return;
+        }
+
+        if (oldA && !newA) {
+            affected.add(currentPath);
+            oldA.subAlbums.forEach(sub => compare(sub, undefined, currentPath === '/' ? `/album/${slugify(sub.name)}` : `${currentPath}/${slugify(sub.name)}`));
+            return;
+        }
+
+        const stateOld = getAlbumState(oldA!);
+        const stateNew = getAlbumState(newA!);
+
+        if (JSON.stringify(stateOld) !== JSON.stringify(stateNew)) {
+            affected.add(currentPath);
+        }
+
+        const oldSubs = new Map(oldA!.subAlbums.map(sub => [sub.id, sub]));
+        const newSubs = new Map(newA!.subAlbums.map(sub => [sub.id, sub]));
+
+        for (const [id, sub] of newSubs) {
+            const nextPath = currentPath === '/' ? `/album/${slugify(sub.name)}` : `${currentPath}/${slugify(sub.name)}`;
+            compare(oldSubs.get(id), sub, nextPath);
+        }
+
+        for (const [id, sub] of oldSubs) {
+            if (!newSubs.has(id)) {
+                const nextPath = currentPath === '/' ? `/album/${slugify(sub.name)}` : `${currentPath}/${slugify(sub.name)}`;
+                compare(sub, undefined, nextPath);
+            }
+        }
+    }
+
+    compare(oldRoot, newRoot, '/');
+    return Array.from(affected);
 }
