@@ -8,6 +8,8 @@ export interface PhotoItem {
     width?: number;
     height?: number;
     createdTime?: string;
+    modifiedTime?: string;
+    md5Checksum?: string;
 }
 
 export interface Album {

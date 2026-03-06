@@ -25,9 +25,9 @@ async function needsUpdate(localPath: string, driveModifiedTime?: string): Promi
         const localMtime = new Date(stats.mtime);
         const driveMtime = new Date(driveModifiedTime);
 
-        // Drive time is usually precise, but let's allow a small buffer or just strict compare
-        // Actually, if Drive is newer, update.
-        return driveMtime > localMtime;
+        // Si la fecha de modificación en Drive es más reciente que el archivo optimizado localmente, se debe actualizar.
+        // Se agrega un margen de 1 segundo (1000ms) para evitar falsos positivos por resolución de sistemas de archivos.
+        return driveMtime.getTime() > (localMtime.getTime() + 1000);
     } catch (error) {
         // File doesn't exist
         return true;
@@ -77,7 +77,8 @@ export async function processImage(file: DriveFile, type: OptimizationProfile = 
     const localPath = path.join(IMAGES_DIR, localFilename);
 
     // incremental check
-    if (!(await needsUpdate(localPath, file.imageMediaMetadata?.time || undefined))) {
+    // Now using the official physical 'modifiedTime' instead of EXIF 'imageMediaMetadata.time'
+    if (!(await needsUpdate(localPath, file.modifiedTime || undefined))) {
         return `/images/${localFilename}`;
     }
 

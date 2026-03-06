@@ -139,7 +139,9 @@ async function buildAlbumStructure(folderId: string, folderName: string): Promis
                 fullLink: full,
                 width: item.imageMediaMetadata?.width,
                 height: item.imageMediaMetadata?.height,
-                createdTime: item.imageMediaMetadata?.time
+                createdTime: item.imageMediaMetadata?.time,
+                modifiedTime: item.modifiedTime,
+                md5Checksum: item.md5Checksum
             });
         }
     }
@@ -175,6 +177,8 @@ async function processAllImages(album: Album, validIds: Set<string>) {
                 id: photo.id,
                 name: photo.name,
                 mimeType: 'image/jpeg',
+                modifiedTime: photo.modifiedTime,
+                md5Checksum: photo.md5Checksum,
                 imageMediaMetadata: {
                     time: photo.createdTime
                 }

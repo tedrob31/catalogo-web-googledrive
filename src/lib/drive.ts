@@ -39,6 +39,8 @@ export interface DriveFile {
     webViewLink?: string;
     webContentLink?: string;
     thumbnailLink?: string;
+    modifiedTime?: string;
+    md5Checksum?: string;
     parents?: string[];
     imageMediaMetadata?: {
         width?: number;
@@ -56,7 +58,7 @@ export async function listFolderContents(folderId: string): Promise<DriveFile[]>
         do {
             const res: any = await drive.files.list({
                 q: `'${folderId}' in parents and trashed = false`,
-                fields: 'nextPageToken, files(id, name, mimeType, webViewLink, webContentLink, thumbnailLink, parents, imageMediaMetadata)',
+                fields: 'nextPageToken, files(id, name, mimeType, webViewLink, webContentLink, thumbnailLink, parents, modifiedTime, md5Checksum, imageMediaMetadata)',
                 pageSize: 1000,
                 supportsAllDrives: true,
                 includeItemsFromAllDrives: true,
@@ -103,6 +105,6 @@ export async function getFile(fileId: string) {
     const drive = await getDriveService();
     return drive.files.get({
         fileId,
-        fields: 'id, name, mimeType, webViewLink, webContentLink, thumbnailLink, parents, imageMediaMetadata'
+        fields: 'id, name, mimeType, webViewLink, webContentLink, thumbnailLink, parents, modifiedTime, md5Checksum, imageMediaMetadata'
     });
 }
