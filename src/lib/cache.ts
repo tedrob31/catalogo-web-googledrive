@@ -42,7 +42,7 @@ export async function loadCache(): Promise<CacheStructure | null> {
         // Auto-Sync Logic (Stale-While-Revalidate)
         if (data.lastSynced && data.root) {
             const config = await getConfig();
-            if (config.autoSyncInterval && config.autoSyncInterval > 0) {
+            if (config.autoSyncEnabled !== false && config.autoSyncInterval && config.autoSyncInterval > 0) {
                 const lastSyncTime = new Date(data.lastSynced).getTime();
                 const now = Date.now();
                 const diffMinutes = (now - lastSyncTime) / (1000 * 60);

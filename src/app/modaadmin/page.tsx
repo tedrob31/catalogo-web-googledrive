@@ -205,6 +205,22 @@ export default function AdminDashboard() {
                         </div>
 
                         <div>
+                            <div className="flex items-center justify-between mb-4 bg-gray-50 p-3 rounded border">
+                                <div>
+                                    <label className="block text-sm font-bold">Autosincronización</label>
+                                    <span className="text-xs text-gray-500">Si está apagado, el catálogo nunca se atualizará solo. Mantenlo encendido para producción.</span>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only peer"
+                                        checked={config.autoSyncEnabled !== false}
+                                        onChange={(e) => setConfig({ ...config, autoSyncEnabled: e.target.checked })}
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
                             <label className="block text-sm font-medium">Intervalo de autosincronizacion (Minutos)</label>
                             <div className="flex items-center gap-2">
                                 <input

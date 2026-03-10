@@ -14,7 +14,8 @@ export interface AppConfig {
     folderCovers?: Record<string, string>; // Map folder ID to cover image URL (or Drive ID)
     googleAnalyticsId?: string; // Measurement ID (G-XXXXX)
     analyticsPropertyId?: string; // Numeric Property ID for API
-    autoSyncInterval?: number; // Minutes. 0 = disabled.
+    autoSyncEnabled?: boolean; // Master switch
+    autoSyncInterval?: number; // Minutes.
     autoSyncStartHour?: number; // 0-23
     autoSyncEndHour?: number; // 0-23
     seasonalEffect?: 'none' | 'snow' | 'hearts' | 'custom';
@@ -39,6 +40,7 @@ const DEFAULT_CONFIG: AppConfig = {
     primaryColor: '#000000',
     secondaryColor: '#ffffff',
     gridColumns: 5,
+    autoSyncEnabled: true,
 };
 
 export async function getConfig(): Promise<AppConfig> {
