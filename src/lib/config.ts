@@ -15,6 +15,8 @@ export interface AppConfig {
     googleAnalyticsId?: string; // Measurement ID (G-XXXXX)
     analyticsPropertyId?: string; // Numeric Property ID for API
     autoSyncInterval?: number; // Minutes. 0 = disabled.
+    autoSyncStartHour?: number; // 0-23
+    autoSyncEndHour?: number; // 0-23
     seasonalEffect?: 'none' | 'snow' | 'hearts' | 'custom';
     seasonalCustomIcon?: string; // Proxy URL to image
     seasonalDuration?: number; // Seconds. 0 = infinite.

@@ -48,48 +48,61 @@ export async function loadCache(): Promise<CacheStructure | null> {
                 const diffMinutes = (now - lastSyncTime) / (1000 * 60);
 
                 if (diffMinutes > config.autoSyncInterval) {
+                    const startHour = config.autoSyncStartHour ?? 0;
+                    const endHour = config.autoSyncEndHour ?? 23;
+                    const currentHour = new Date().getHours();
 
-                    // Check Lock
-                    let locked = false;
-                    try {
-                        await fs.access(LOCK_FILE);
-                        locked = true;
-
-                        // Force break lock if stale
-                        if (await isLockStale()) {
-                            console.log('[Cache] Sync Lock is stale. Breaking lock.');
-                            await fs.unlink(LOCK_FILE);
-                            locked = false;
-                        }
-                    } catch {
-                        locked = false;
+                    let isWithinWindow = false;
+                    if (startHour <= endHour) {
+                        isWithinWindow = currentHour >= startHour && currentHour <= endHour;
+                    } else {
+                        // Handles overnight windows (e.g. 22:00 to 06:00)
+                        isWithinWindow = currentHour >= startHour || currentHour <= endHour;
                     }
 
-                    if (!locked) {
-                        console.log(`[Cache] Data is stale (${Math.round(diffMinutes)} mins). Acquiring Lock & Syncing...`);
-
-                        // Create Lock
+                    if (isWithinWindow) {
+                        // Check Lock
+                        let locked = false;
                         try {
-                            await fs.writeFile(LOCK_FILE, new Date().toISOString());
+                            await fs.access(LOCK_FILE);
+                            locked = true;
 
-                            // Run sync without awaiting
-                            syncDrive(config.rootFolderId, config.siteTitle || 'CATALOGO')
-                                .then(async () => {
-                                    console.log('[Cache] Background sync completed.');
-                                })
-                                .catch(err => {
-                                    console.error('[Cache] Background sync failed:', err);
-                                })
-                                .finally(async () => {
-                                    // Release Lock
-                                    try { await fs.unlink(LOCK_FILE); } catch { }
-                                });
-
-                        } catch (err) {
-                            console.log('[Cache] Failed to acquire lock (race condition). Skipping.');
+                            // Force break lock if stale
+                            if (await isLockStale()) {
+                                console.log('[Cache] Sync Lock is stale. Breaking lock.');
+                                await fs.unlink(LOCK_FILE);
+                                locked = false;
+                            }
+                        } catch {
+                            locked = false;
                         }
-                    } else {
-                        // console.log('[Cache] Sync already in progress (Locked). Skipping.');
+
+                        if (!locked) {
+                            console.log(`[Cache] Data is stale (${Math.round(diffMinutes)} mins). Acquiring Lock & Syncing...`);
+
+                            // Create Lock
+                            try {
+                                await fs.writeFile(LOCK_FILE, new Date().toISOString());
+
+                                // Run sync without awaiting
+                                syncDrive(config.rootFolderId, config.siteTitle || 'CATALOGO')
+                                    .then(async () => {
+                                        console.log('[Cache] Background sync completed.');
+                                    })
+                                    .catch(err => {
+                                        console.error('[Cache] Background sync failed:', err);
+                                    })
+                                    .finally(async () => {
+                                        // Release Lock
+                                        try { await fs.unlink(LOCK_FILE); } catch { }
+                                    });
+
+                            } catch (err) {
+                                console.log('[Cache] Failed to acquire lock (race condition). Skipping.');
+                            }
+                        } else {
+                            // console.log('[Cache] Sync already in progress (Locked). Skipping.');
+                        }
                     }
                 }
             }

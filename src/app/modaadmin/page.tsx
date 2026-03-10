@@ -218,6 +218,29 @@ export default function AdminDashboard() {
                                     {(config.autoSyncInterval || 0) === 0 ? '(Disabled)' : 'Wait time before refreshing stale content'}
                                 </span>
                             </div>
+                            <div className="flex items-center gap-2 mt-2">
+                                <label className="text-sm font-medium">Auto-Sync solo operará entre las:</label>
+                                <input
+                                    type="number"
+                                    className="w-16 border p-1 rounded text-center"
+                                    value={config.autoSyncStartHour ?? 0}
+                                    min="0"
+                                    max="23"
+                                    title="Start Hour (0-23)"
+                                    onChange={e => setConfig({ ...config, autoSyncStartHour: parseInt(e.target.value) })}
+                                />
+                                <span className="text-sm">:00 hr —</span>
+                                <input
+                                    type="number"
+                                    className="w-16 border p-1 rounded text-center"
+                                    value={config.autoSyncEndHour ?? 23}
+                                    min="0"
+                                    max="23"
+                                    title="End Hour (0-23)"
+                                    onChange={e => setConfig({ ...config, autoSyncEndHour: parseInt(e.target.value) })}
+                                />
+                                <span className="text-sm">:59 hr</span>
+                            </div>
                         </div>
                         <div>
                             <label className="block text-sm font-medium">Covers Folder ID (Drive)</label>
