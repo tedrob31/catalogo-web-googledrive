@@ -21,8 +21,10 @@ export async function POST() {
                 // Revalidate the specific path (page)
                 revalidatePath(path);
             }
-            // Always revalidate root to be safe if menu/config changes
-            revalidatePath('/');
+            // Always revalidate root layout to clear the entire Next.js internal Data/Full-Route cache
+            // This ensures fs.readFile picks up the new structure.json on next render.
+            // Cloudflare is still targeted below, so users won't feel a global slowdown.
+            revalidatePath('/', 'layout');
         }
 
         // CLOUDFLARE CACHE PURGE (Targeted)

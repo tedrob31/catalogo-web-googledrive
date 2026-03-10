@@ -326,13 +326,13 @@ export function computeAffectedPaths(oldRoot: Album | undefined, newRoot: Album)
 
         if (!oldA && newA) {
             affected.add(currentPath);
-            newA.subAlbums.forEach(sub => compare(undefined, sub, currentPath === '/' ? `/album/${slugify(sub.name)}` : `${currentPath}/${slugify(sub.name)}`));
+            newA.subAlbums.forEach(sub => compare(undefined, sub, currentPath === '/' ? `/${slugify(sub.name)}` : `${currentPath}/${slugify(sub.name)}`));
             return;
         }
 
         if (oldA && !newA) {
             affected.add(currentPath);
-            oldA.subAlbums.forEach(sub => compare(sub, undefined, currentPath === '/' ? `/album/${slugify(sub.name)}` : `${currentPath}/${slugify(sub.name)}`));
+            oldA.subAlbums.forEach(sub => compare(sub, undefined, currentPath === '/' ? `/${slugify(sub.name)}` : `${currentPath}/${slugify(sub.name)}`));
             return;
         }
 
@@ -347,13 +347,13 @@ export function computeAffectedPaths(oldRoot: Album | undefined, newRoot: Album)
         const newSubs = new Map(newA!.subAlbums.map(sub => [sub.id, sub]));
 
         for (const [id, sub] of newSubs) {
-            const nextPath = currentPath === '/' ? `/album/${slugify(sub.name)}` : `${currentPath}/${slugify(sub.name)}`;
+            const nextPath = currentPath === '/' ? `/${slugify(sub.name)}` : `${currentPath}/${slugify(sub.name)}`;
             compare(oldSubs.get(id), sub, nextPath);
         }
 
         for (const [id, sub] of oldSubs) {
             if (!newSubs.has(id)) {
-                const nextPath = currentPath === '/' ? `/album/${slugify(sub.name)}` : `${currentPath}/${slugify(sub.name)}`;
+                const nextPath = currentPath === '/' ? `/${slugify(sub.name)}` : `${currentPath}/${slugify(sub.name)}`;
                 compare(sub, undefined, nextPath);
             }
         }
