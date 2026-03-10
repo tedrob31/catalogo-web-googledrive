@@ -35,8 +35,18 @@ export async function POST() {
             const domain = process.env.NEXT_PUBLIC_DOMAIN_NAME || 'localhost';
             const protocol = domain.includes('localhost') ? 'http://' : 'https://';
 
-            // Convert relative paths to full URLs for Cloudflare
-            const urlsToPurge = affectedPaths.map(p => `${protocol}${domain}${p}`);
+            // Convert relative paths to full URLs for Cloudflare.
+            // Cloudflare Free Plan "Purge by URL" is brutally exact.
+            // A request for `/album` will NOT clear `/album/`.
+            // We must intentionally send both variations to guarantee the cache is broken.
+            const urlsToPurge = affectedPaths.flatMap(p => {
+                const base = `${protocol}${domain}`;
+                if (p === '/') return [`${base}/`];
+                return [
+                    `${base}${p}`,    // e.g. https://r4tlabs.com/moda-hombre
+                    `${base}${p}/`    // e.g. https://r4tlabs.com/moda-hombre/
+                ];
+            });
 
             // Cloudflare Free Plan limits 'files' array to 30 items per API call.
             const BATCH_SIZE = 30;
