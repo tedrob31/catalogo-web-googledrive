@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+    staleTimes: {
+      dynamic: 0,
+      static: 0,
+    },
   },
   // metadataBase removed to prevent config error
 
