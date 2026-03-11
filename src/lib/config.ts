@@ -24,6 +24,8 @@ export interface AppConfig {
     // Aesthetics
     backgroundImage?: string;
     textColor?: string;
+    hideAlbumTitles?: boolean; // Phase 1: Hide text under album covers
+    albumAspectRatio?: 'auto' | 'square' | 'portrait'; // Phase 1: Enforce shape of covers
     cardBorderWidth?: number;
     cardBorderColor?: string;
     clickEffect?: 'none' | 'stars' | 'hearts';
@@ -41,6 +43,8 @@ const DEFAULT_CONFIG: AppConfig = {
     secondaryColor: '#ffffff',
     gridColumns: 5,
     autoSyncEnabled: true,
+    hideAlbumTitles: false,
+    albumAspectRatio: 'auto',
 };
 
 export async function getConfig(): Promise<AppConfig> {

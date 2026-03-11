@@ -186,6 +186,40 @@ export default function AdminDashboard() {
                     <h2 className="text-xl font-semibold mb-4">Configuracion</h2>
                     <div className="space-y-4">
                         <div>
+                            <h3 className="text-lg font-semibold mb-2 mt-4 pb-2 border-b">Storefront Builder (Diseño Editorial)</h3>
+                            
+                            <div className="flex items-center justify-between mb-4 bg-gray-50 p-3 rounded border">
+                                <div>
+                                    <label className="block text-sm font-bold">Ocultar Títulos Obvios de Álbumes</label>
+                                    <span className="text-xs text-gray-500">Si enciendes esto, las portadas de los álbumes se verán como banners puros sin el texto molesto de Google Drive debajo. Perfecto para diseños limpios.</span>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only peer" 
+                                        checked={config.hideAlbumTitles || false}
+                                        onChange={(e) => setConfig({ ...config, hideAlbumTitles: e.target.checked })} 
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+
+                            <div className="mb-4 bg-gray-50 p-3 rounded border">
+                                <label className="block text-sm font-bold mb-1">Forma de las Portadas de Álbum (Aspect Ratio)</label>
+                                <span className="text-xs text-gray-500 block mb-2">Fuerza a que todas las portadas en la página principal tengan exactamente el mismo tamaño visual para que se vean como una grilla profesional ordenada.</span>
+                                <select
+                                    className="w-full border p-2 rounded"
+                                    value={config.albumAspectRatio || 'auto'}
+                                    onChange={e => setConfig({ ...config, albumAspectRatio: e.target.value as any })}
+                                >
+                                    <option value="auto">Libre (Formato original de la foto)</option>
+                                    <option value="square">Cuadrada (1:1 - Estilo Instagram Post)</option>
+                                    <option value="portrait">Vertical (4:5 - Estilo Moda/Retrato)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
                             <label className="block text-sm font-medium">Root Folder ID (Drive)</label>
                             <input
                                 className="w-full border p-2 rounded"
