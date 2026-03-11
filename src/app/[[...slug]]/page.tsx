@@ -7,6 +7,7 @@ import Maintenance from "@/app/maintenance/page";
 
 import { slugify } from "@/lib/utils";
 import { Album } from "@/lib/types";
+import { getStorefront } from "@/lib/storefront";
 
 export const dynamic = 'force-static'; // Force static generation
 
@@ -148,11 +149,14 @@ export default async function Page(props: Props) {
     return <Maintenance />;
   }
 
+  const storefront = await getStorefront();
+
   return (
     <CatalogView
       data={data}
       config={config}
       initialPath={initialPath}
+      storefront={storefront}
     />
   );
 }

@@ -21,10 +21,6 @@ export default function AlbumCard({ album, config, priority = false, onClick }: 
         borderWidth: config.cardBorderWidth ? `${config.cardBorderWidth}px` : '1px',
         borderColor: config.cardBorderColor || undefined,
     };
-    
-    let aspectRatioClass = 'aspect-square';
-    if (config.albumAspectRatio === 'portrait') aspectRatioClass = 'aspect-[4/5]';
-    else if (config.albumAspectRatio === 'auto') aspectRatioClass = 'aspect-[4/3]'; // Fallback to 4:3 for 'auto' horizontal look
 
     return (
         <div
@@ -32,7 +28,7 @@ export default function AlbumCard({ album, config, priority = false, onClick }: 
             onClick={onClick}
         >
             <div
-                className={`relative ${aspectRatioClass} overflow-hidden rounded-lg bg-gray-100 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700`}
+                className="relative aspect-square overflow-hidden rounded-lg bg-gray-100 dark:bg-zinc-800 border-gray-200 dark:border-zinc-700"
                 style={borderStyle}
             >
                 {thumbSrc ? (

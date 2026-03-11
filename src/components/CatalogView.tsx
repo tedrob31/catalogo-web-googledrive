@@ -13,14 +13,17 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 // We can delete the old Lightbox component file later
 import { FiSearch, FiArrowLeft, FiGrid, FiHome } from 'react-icons/fi';
+import { StorefrontConfig } from '@/lib/storefront';
+import StorefrontView from './storefront/StorefrontView';
 
 interface CatalogViewProps {
     data: CacheStructure | null;
     config: AppConfig;
     initialPath?: Album[]; // Now receiving full path
+    storefront?: StorefrontConfig;
 }
 
-export default function CatalogView({ data, config, initialPath }: CatalogViewProps) {
+export default function CatalogView({ data, config, initialPath, storefront }: CatalogViewProps) {
     const rootAlbum = data?.root;
     const router = useRouter();
     const pathname = usePathname();
@@ -224,54 +227,60 @@ export default function CatalogView({ data, config, initialPath }: CatalogViewPr
             {/* Main Content */}
             <main className="max-w-7xl mx-auto p-4 space-y-8 animate-in fade-in duration-500">
 
-                {/* Albums Grid */}
-                {visibleAlbums.length > 0 && (
-                    <section>
-                        <h2 className="text-xl font-bold mb-4 opacity-80 flex items-center gap-2">
-                            <FiGrid /> {isSearching ? 'Álbumes encontrados' : 'Álbumes'}
-                        </h2>
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 md:gap-6 gap-x-4 gap-y-6">
-                            {visibleAlbums.map((album, idx) => (
-                                <AlbumCard key={album.id} album={album} config={config} priority={idx < 6} onClick={() => handleNavigate(album)} />
-                            ))}
-                        </div>
-                    </section>
-                )}
+                {/* --- STOREFRONT BUILDER INJECTION --- */}
+                {!isSearching && currentPath.length === 1 && storefront?.enabled && storefront.blocks.length > 0 ? (
+                    <StorefrontView storefront={storefront} appConfig={config} />
+                ) : (
+                    <>
+                        {/* Albums Grid */}
+                        {visibleAlbums.length > 0 && (
+                            <section>
+                                <h2 className="text-xl font-bold mb-4 opacity-80 flex items-center gap-2">
+                                    <FiGrid /> {isSearching ? 'Álbumes encontrados' : 'Álbumes'}
+                                </h2>
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 md:gap-6 gap-x-4 gap-y-6">
+                                    {visibleAlbums.map((album, idx) => (
+                                        <AlbumCard key={album.id} album={album} config={config} priority={idx < 6} onClick={() => handleNavigate(album)} />
+                                    ))}
+                                </div>
+                            </section>
+                        )}
 
-                {/* Photos Grid */}
-                {visiblePhotos.length > 0 && (
-                    <section>
-                        <h2 className="text-xl font-bold mb-4 opacity-80 mt-8">
-                            {isSearching ? 'Fotos encontradas' : 'Fotos'}
-                        </h2>
-                        <div className="grid gap-1 sm:gap-4 md:gap-6">
-                            <style jsx>{`
-                         @media (min-width: 768px) {
-                             .dynamic-grid {
-                                 grid-template-columns: repeat(${config.gridColumns || 5}, minmax(0, 1fr));
-                             }
-                         }
-                         @media (max-width: 767px) {
-                            .dynamic-grid {
-                                grid-template-columns: repeat(${config.mobileGridColumns || 2}, minmax(0, 1fr));
-                            }
-                         }
-                     `}</style>
-                            <div className="dynamic-grid grid gap-1 sm:gap-4 md:gap-6">
-                                {visiblePhotos.map((photo, idx) => (
-                                    <PhotoCard key={photo.id} photo={photo} priority={idx < 10} onClick={() => openLightbox(idx)} />
-                                ))}
+                        {/* Photos Grid */}
+                        {visiblePhotos.length > 0 && (
+                            <section>
+                                <h2 className="text-xl font-bold mb-4 opacity-80 mt-8">
+                                    {isSearching ? 'Fotos encontradas' : 'Fotos'}
+                                </h2>
+                                <div className="grid gap-1 sm:gap-4 md:gap-6">
+                                    <style jsx>{`
+                                @media (min-width: 768px) {
+                                    .dynamic-grid {
+                                        grid-template-columns: repeat(${config.gridColumns || 5}, minmax(0, 1fr));
+                                    }
+                                }
+                                @media (max-width: 767px) {
+                                    .dynamic-grid {
+                                        grid-template-columns: repeat(${config.mobileGridColumns || 2}, minmax(0, 1fr));
+                                    }
+                                }
+                            `}</style>
+                                    <div className="dynamic-grid grid gap-1 sm:gap-4 md:gap-6">
+                                        {visiblePhotos.map((photo, idx) => (
+                                            <PhotoCard key={photo.id} photo={photo} priority={idx < 10} onClick={() => openLightbox(idx)} />
+                                        ))}
+                                    </div>
+                                </div>
+                            </section>
+                        )}
+
+                        {visibleAlbums.length === 0 && visiblePhotos.length === 0 && (
+                            <div className="text-center py-20 opacity-50">
+                                <p>No se encontró contenido.</p>
                             </div>
-                        </div>
-                    </section>
+                        )}
+                    </>
                 )}
-
-                {visibleAlbums.length === 0 && visiblePhotos.length === 0 && (
-                    <div className="text-center py-20 opacity-50">
-                        <p>No se encontró contenido.</p>
-                    </div>
-                )}
-
             </main>
 
             {/* Lightbox Overlay */}

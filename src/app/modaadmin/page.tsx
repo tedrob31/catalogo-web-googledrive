@@ -5,11 +5,14 @@ import { AppConfig } from '@/lib/config';
 import { CacheStructure, Album } from '@/lib/types';
 import Image from 'next/image';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
+import StorefrontBuilder from '@/components/admin/StorefrontBuilder';
 
 export default function AdminDashboard() {
     const [authorized, setAuthorized] = useState(false);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+
+    const [activeTab, setActiveTab] = useState<'config' | 'storefront'>('config');
 
     const [config, setConfig] = useState<AppConfig>({
         rootFolderId: '',
@@ -181,7 +184,29 @@ export default function AdminDashboard() {
                 </div>
             )}
 
-            <div className="grid gap-8">
+            <div className="flex gap-4 mb-6 border-b border-gray-200">
+                <button 
+                    onClick={() => setActiveTab('config')} 
+                    className={`pb-2 px-1 text-lg font-medium transition-colors ${activeTab === 'config' ? 'border-b-2 border-black text-black' : 'text-gray-500 hover:text-black'}`}
+                >
+                    Ajustes Globales y Sync
+                </button>
+                <button 
+                    onClick={() => setActiveTab('storefront')} 
+                    className={`pb-2 px-1 text-lg font-medium transition-colors ${activeTab === 'storefront' ? 'border-b-2 border-black text-black' : 'text-gray-500 hover:text-black'}`}
+                >
+                    Creador Storefront
+                </button>
+            </div>
+
+            {activeTab === 'storefront' && (
+                <div className="animate-in fade-in duration-300">
+                    <StorefrontBuilder availableCovers={availableCovers} allAlbums={allAlbums} />
+                </div>
+            )}
+
+            {activeTab === 'config' && (
+            <div className="grid gap-8 animate-in fade-in duration-300">
                 <section className="bg-white p-6 rounded shadow">
                     <h2 className="text-xl font-semibold mb-4">Configuracion</h2>
                     <div className="space-y-4">
@@ -202,20 +227,6 @@ export default function AdminDashboard() {
                                     />
                                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                 </label>
-                            </div>
-
-                            <div className="mb-4 bg-gray-50 p-3 rounded border">
-                                <label className="block text-sm font-bold mb-1">Forma de las Portadas de Álbum (Aspect Ratio)</label>
-                                <span className="text-xs text-gray-500 block mb-2">Fuerza a que todas las portadas en la página principal tengan exactamente el mismo tamaño visual para que se vean como una grilla profesional ordenada.</span>
-                                <select
-                                    className="w-full border p-2 rounded"
-                                    value={config.albumAspectRatio || 'auto'}
-                                    onChange={e => setConfig({ ...config, albumAspectRatio: e.target.value as any })}
-                                >
-                                    <option value="auto">Libre (Formato original de la foto)</option>
-                                    <option value="square">Cuadrada (1:1 - Estilo Instagram Post)</option>
-                                    <option value="portrait">Vertical (4:5 - Estilo Moda/Retrato)</option>
-                                </select>
                             </div>
                         </div>
 
@@ -683,6 +694,7 @@ export default function AdminDashboard() {
                     </section>
                 )}
             </div>
+            )}
         </div>
     );
 }
