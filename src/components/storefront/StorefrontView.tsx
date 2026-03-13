@@ -21,7 +21,7 @@ export default function StorefrontView({ storefront, appConfig }: StorefrontView
     const gridColsCls = `grid-cols-${mobileCols} md:grid-cols-${desktopCols}`;
 
     return (
-        <div className="w-full max-w-[1400px] mx-auto min-h-screen pb-20">
+        <div suppressHydrationWarning className="w-full max-w-[1400px] mx-auto min-h-screen pb-20">
             {storefront.blocks.map((block, idx) => {
                 switch (block.type) {
                     case 'hero_banner':

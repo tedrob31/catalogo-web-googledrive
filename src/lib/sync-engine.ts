@@ -5,8 +5,10 @@ import { getDriveService, DriveFile } from './drive';
 // Configure image optimization
 const MAX_WIDTH = 1920;
 const QUALITY = 80;
-const IMAGES_DIR = path.join(process.cwd(), 'public', 'images');
-
+// Use env variable or fallback to process.cwd() for flexibility (Docker vs Dev)
+const IMAGES_DIR = process.env.IS_DOCKER 
+    ? '/app/public/images' 
+    : path.join(process.cwd(), 'public', 'images');
 // Ensure directory exists
 async function ensureImagesDir() {
     try {

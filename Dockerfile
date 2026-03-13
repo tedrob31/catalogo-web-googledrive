@@ -55,9 +55,9 @@ RUN mkdir -p /app/public/images && chown nextjs:nodejs /app/public/images
 # Manager needs root to cleanup shared volumes populated by other containers
 # USER nextjs 
 EXPOSE 3000
-
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV IS_DOCKER="true"
 
 CMD ["node", ".next/standalone/server.js"]
 
