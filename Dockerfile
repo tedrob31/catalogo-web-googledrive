@@ -38,7 +38,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # Extract standalone bundle to app root for optimized execution
-RUN cp -a .next/standalone/. ./ && cp -a .next/static/* ./.next/static/
+RUN cp -a .next/standalone/. ./
 
 # Ensure we can write to filesystem
 RUN addgroup --system --gid 1001 nodejs
