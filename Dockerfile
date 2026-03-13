@@ -38,9 +38,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # Extract standalone bundle to app root for optimized execution
-RUN cp -a .next/standalone/. ./
+# We MUST copy the static files INTO the standalone folder because server.js expects them there
+RUN cp -a .next/standalone/. ./ && \
+    cp -a public ./public && \
+    mkdir -p ./.next && \
+    cp -a .next/static ./.next/static
 
-# Ensure we can write to filesystem
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 RUN mkdir -p /app/cache && chown nextjs:nodejs /app/cache
