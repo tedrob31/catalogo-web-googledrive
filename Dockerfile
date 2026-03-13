@@ -37,12 +37,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Build the project (Standard Server Build) so we can run 'npm start'
 RUN npm run build
 
-# Extract standalone bundle to app root for optimized execution
-# We MUST copy the static files INTO the standalone folder because server.js expects them there
-RUN cp -a .next/standalone/. ./ && \
-    cp -a public ./public && \
-    mkdir -p ./.next && \
-    cp -a .next/static ./.next/static
+# We MUST copy the static files INTO the standalone folder before we run it.
+# Instead of polluting the root workspace which causes recursion, we do:
+RUN cp -a public .next/standalone/public && \
+    mkdir -p .next/standalone/.next && \
+    cp -a .next/static .next/standalone/.next/static
+
+# Now rename the standalone folder to run it cleanly if needed, or simply let it execute from root.
+# Actually, the simplest approach recommended by Next.js is to just run `node .next/standalone/server.js`
+# Let's adjust the CMD and EXPOSE variables below instead of extracting to root.
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -56,7 +59,7 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["node", ".next/standalone/server.js"]
 
 # Production image, copy all the files and run next
 FROM base AS runner
