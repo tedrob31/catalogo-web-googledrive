@@ -9,7 +9,7 @@ import { slugify } from "@/lib/utils";
 import { Album } from "@/lib/types";
 import { getStorefront } from "@/lib/storefront";
 
-export const dynamic = 'force-static'; // Force static generation
+export const revalidate = 60; // Revalidate every 60 seconds (ISR) to trigger background syncs smoothly
 
 // Generate all possible paths from the cache
 export async function generateStaticParams() {

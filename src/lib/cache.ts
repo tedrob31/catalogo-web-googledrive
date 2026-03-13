@@ -47,7 +47,10 @@ export async function loadCache(): Promise<CacheStructure | null> {
                 const now = Date.now();
                 const diffMinutes = (now - lastSyncTime) / (1000 * 60);
 
-                if (diffMinutes > config.autoSyncInterval) {
+                // Add verbose log to debug why it's silent
+                console.log(`[Cache] Checking auto-sync. Diff: ${diffMinutes.toFixed(2)} mins, Interval = ${config.autoSyncInterval} mins.`);
+
+                if (diffMinutes >= config.autoSyncInterval) {
                     const startHour = config.autoSyncStartHour ?? 0;
                     const endHour = config.autoSyncEndHour ?? 23;
                     const currentHour = new Date().getHours();

@@ -5,7 +5,9 @@ import Image from 'next/image';
 import { StorefrontConfig, StorefrontBlock, BlockType } from '@/lib/storefront';
 import { Album } from '@/lib/types';
 import { slugify } from '@/lib/utils';
-import { FiArrowUp, FiArrowDown, FiTrash2, FiPlus } from 'react-icons/fi';
+import { FiArrowUp, FiArrowDown, FiTrash2, FiPlus, FiEye } from 'react-icons/fi';
+import StorefrontView from '../storefront/StorefrontView';
+import { AppConfig } from '@/lib/config';
 
 interface StorefrontBuilderProps {
     availableCovers: string[];
@@ -161,9 +163,26 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                                                 />
                                             </div>
 
-                                            {/* Single Image Blocks (Hero / Classic Grid injected) */}
+                                            {/* Common Layout Controls */}
+                                            <div className="bg-gray-50 border-t border-b py-2 px-3 mt-4 mb-2 -mx-4 flex gap-4">
+                                                <div className="flex-1">
+                                                    <label className="block text-xs font-bold text-gray-700 mb-1">Espaciado Vertical</label>
+                                                    <select 
+                                                        className="w-full border p-1 rounded text-xs"
+                                                        value={block.spacing || 'medium'}
+                                                        onChange={e => updateBlock(index, { spacing: e.target.value as any })}
+                                                    >
+                                                        <option value="none">Sin Espaciado</option>
+                                                        <option value="small">Pequeño</option>
+                                                        <option value="medium">Normal (Default)</option>
+                                                        <option value="large">Grande</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            {/* Single Image Blocks (Hero) */}
                                             {block.type === 'hero_banner' && (
-                                                <div className="grid grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-2 gap-4 pt-1">
                                                     <div>
                                                         <label className="block text-xs font-medium text-gray-500">Imagen</label>
                                                         <div className="flex gap-2 mt-1">
@@ -195,6 +214,39 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                                                             <option value="auto">Paisaje Ancho (16:9)</option>
                                                             <option value="portrait">Vertical Stories (4:5)</option>
                                                             <option value="square">Cuadrado (1:1)</option>
+                                                            <option value="full">Pantalla Completa (Full Bleed)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Classic Grid Settings */}
+                                            {block.type === 'classic_grid' && (
+                                                <div className="grid grid-cols-2 gap-4 pt-1">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-500">Columnas en Computadora</label>
+                                                        <select 
+                                                            className="w-full border p-2 rounded text-sm mt-1"
+                                                            value={block.gridColumnsDesktop || 5}
+                                                            onChange={e => updateBlock(index, { gridColumnsDesktop: parseInt(e.target.value) })}
+                                                        >
+                                                            <option value="2">2 Columnas</option>
+                                                            <option value="3">3 Columnas</option>
+                                                            <option value="4">4 Columnas</option>
+                                                            <option value="5">5 Columnas (Default)</option>
+                                                            <option value="6">6 Columnas</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-500">Columnas en Celular</label>
+                                                        <select 
+                                                            className="w-full border p-2 rounded text-sm mt-1"
+                                                            value={block.gridColumnsMobile || 2}
+                                                            onChange={e => updateBlock(index, { gridColumnsMobile: parseInt(e.target.value) })}
+                                                        >
+                                                            <option value="1">1 Columna (Lista)</option>
+                                                            <option value="2">2 Columnas (Default)</option>
+                                                            <option value="3">3 Columnas</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -261,6 +313,21 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                                                         ))}
                                                     </div>
                                                     
+                                                    {block.type === 'category_carousel' && (
+                                                        <div className="mt-3 flex items-center gap-2 bg-blue-50 p-2 rounded border border-blue-100">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                id={`auto-${block.id}`}
+                                                                checked={block.autoplay || false}
+                                                                onChange={e => updateBlock(index, { autoplay: e.target.checked })}
+                                                                className="w-4 h-4 text-blue-600 bg-gray-100 rounded focus:ring-blue-500"
+                                                            />
+                                                            <label htmlFor={`auto-${block.id}`} className="text-sm font-medium text-blue-900 cursor-pointer">
+                                                                Animar automáticamente (Autoplay)
+                                                            </label>
+                                                        </div>
+                                                    )}
+
                                                     <div className="mt-3">
                                                         <label className="block text-xs font-medium text-gray-500">Forma de las Fotos (Aspect Ratio)</label>
                                                         <select 
@@ -284,55 +351,76 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                         <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
                             <button onClick={() => handleAddBlock('hero_banner')} className="bg-gray-100 text-gray-800 text-sm px-3 py-2 rounded hover:bg-gray-200 font-medium">+ Añadir Héroe Banner</button>
                             <button onClick={() => handleAddBlock('category_carousel')} className="bg-gray-100 text-gray-800 text-sm px-3 py-2 rounded hover:bg-gray-200 font-medium">+ Añadir Carrusel</button>
-                            {/* <button onClick={() => handleAddBlock('promo_grid')} className="bg-gray-100 text-gray-800 text-sm px-3 py-2 rounded hover:bg-gray-200 font-medium">+ Añadir Promo Grid</button> */}
+                            <button onClick={() => handleAddBlock('promo_grid')} className="bg-gray-100 text-gray-800 text-sm px-3 py-2 rounded hover:bg-gray-200 font-medium">+ Añadir Promo Grid</button>
                             <button onClick={() => handleAddBlock('classic_grid')} className="bg-gray-100 text-gray-800 text-sm px-3 py-2 rounded hover:bg-gray-200 font-medium">+ Añadir Grid Tradicional</button>
                         </div>
 
                     </div>
 
-                    {/* Right Panel: Data Dump / Live Preview stub */}
-                    <div className="md:col-span-1 border-l pl-8">
+                    {/* Right Panel: Data Dump / Live Preview */}
+                    <div className="md:col-span-2 lg:col-span-3 xl:col-span-2 border-l px-4 bg-gray-50/50 rounded-r-xl relative shadow-inner">
                         <div className="sticky top-8">
-                            <h3 className="text-lg font-semibold border-b pb-2 mb-4">Mapeador a Rutas Reales</h3>
-                            <p className="text-xs text-gray-500 mb-4">
-                                Usa estos links de abajo como inspiración para pegarlos en el campo de "URL destino" (linkHref) de tus bloques.
-                            </p>
-                            <div className="max-h-96 overflow-y-auto space-y-1 bg-gray-50 p-2 rounded border text-xs font-mono">
-                                {allAlbums.slice(0, 30).map(album => (
-                                    <div key={album.id} className="truncate p-1 hover:bg-gray-200 cursor-copy" title="Copy to clipboard" onClick={() => navigator.clipboard.writeText(`/${slugify(album.name)}`)}>
-                                        /{slugify(album.name)}
-                                    </div>
-                                ))}
-                                {allAlbums.length > 30 && <div className="text-center text-gray-400 p-2">... {allAlbums.length - 30} más</div>}
+                            
+                            <div className="flex justify-between items-center bg-black text-white px-4 py-2 rounded-t-lg">
+                                <h3 className="text-sm font-bold flex items-center gap-2"><FiEye /> Vista Previa en Vivo</h3>
+                                <div className="flex gap-2 text-xs">
+                                    <span className="px-2 py-1 bg-white/20 rounded">Desktop</span>
+                                </div>
                             </div>
                             
-                            <div className="mt-8">
-                                <button
-                                    onClick={handleSave}
-                                    disabled={saving}
-                                    className="w-full bg-black text-white px-4 py-3 rounded-lg hover:bg-gray-800 disabled:opacity-50 font-bold text-lg shadow-xl"
-                                >
-                                    {saving ? 'Guardando...' : 'GUARDAR Y PUBLICAR TIENDA'}
-                                </button>
-                                <p className="text-xs text-center text-gray-500 mt-2">Los cambios purgarán el la caché de Cloudflare automáticamente.</p>
-
-                                <button
-                                    onClick={() => {
-                                        if (confirm('¿Estás seguro de que quieres destruir todo este diseño? La página principal volverá a su estado aburrido original de inmediato (Storefront desactivado).')) {
-                                            const resetConfig = { ...config, enabled: false, blocks: [] };
-                                            setConfig(resetConfig);
-                                            fetch('/api/storefront', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify(resetConfig)
-                                            }).then(() => alert('Storefront desactivado y limpiado.')).catch(() => alert('Error reseteando.'));
-                                        }
-                                    }}
-                                    className="w-full mt-4 bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg hover:bg-red-100 font-semibold"
-                                >
-                                    Botón de Pánico (Reset)
-                                </button>
+                            {/* LIVE PREVIEW CONTAINER */}
+                            <div className="border border-t-0 bg-white h-[60vh] overflow-y-auto mb-6 shadow-sm rounded-b-lg">
+                                {config.blocks.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4">
+                                        <p>Arrastra bloques a la izquierda para verlos aquí.</p>
+                                    </div>
+                                ) : (
+                                    <div className="pointer-events-none scale-90 origin-top w-full"> 
+                                        {/* Stub default config so we don't throw error on config required field */}
+                                        <StorefrontView storefront={config} appConfig={{gridColumns: 5, mobileGridColumns: 2} as any} />
+                                    </div>
+                                )}
                             </div>
+
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <h4 className="text-xs font-bold mb-2">Mapeador de Rutas Rápidas</h4>
+                                    <div className="max-h-40 overflow-y-auto space-y-1 bg-white p-2 rounded border text-[10px] font-mono shadow-inner">
+                                        {allAlbums.slice(0, 30).map(album => (
+                                            <div key={album.id} className="truncate p-1 hover:bg-blue-100 hover:text-blue-800 cursor-copy rounded" title="Copy to clipboard" onClick={() => navigator.clipboard.writeText(`/${slugify(album.name)}`)}>
+                                                /{slugify(album.name)}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex-1 flex flex-col justify-end">
+                                    <button
+                                        onClick={handleSave}
+                                        disabled={saving}
+                                        className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-bold shadow-md transition-colors"
+                                    >
+                                        {saving ? 'Guardando...' : 'GUARDAR Y PUBLICAR'}
+                                    </button>
+                                    
+                                    <button
+                                        onClick={() => {
+                                            if (confirm('¿Estás seguro de que quieres destruir todo este diseño? La página principal volverá a su estado original.')) {
+                                                const resetConfig = { ...config, enabled: false, blocks: [] };
+                                                setConfig(resetConfig);
+                                                fetch('/api/storefront', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify(resetConfig)
+                                                }).then(() => alert('Storefront desactivado y limpiado.')).catch(() => alert('Error reseteando.'));
+                                            }
+                                        }}
+                                        className="w-full mt-3 text-red-500 text-xs hover:underline text-center"
+                                    >
+                                        Desactivar y Limpiar Todo
+                                    </button>
+                                </div>
+                            </div>
+                            
                         </div>
                     </div>
                 </div>

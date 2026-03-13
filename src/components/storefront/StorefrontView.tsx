@@ -2,6 +2,7 @@ import { StorefrontConfig } from '@/lib/storefront';
 import HeroBanner from './HeroBanner';
 import CategoryCarousel from './CategoryCarousel';
 import ClassicGrid from './ClassicGrid';
+import PromoGrid from './PromoGrid';
 import { AppConfig } from '@/lib/config';
 
 interface StorefrontViewProps {
@@ -29,8 +30,8 @@ export default function StorefrontView({ storefront, appConfig }: StorefrontView
                         return <CategoryCarousel key={block.id} block={block} />;
                     case 'classic_grid':
                         return <ClassicGrid key={block.id} block={block} gridColsCls={gridColsCls} />;
-                    // case 'promo_grid':
-                    //     return <PromoGrid key={block.id} block={block} />;
+                    case 'promo_grid':
+                         return <PromoGrid key={block.id} block={block} />;
                     default:
                         return null;
                 }

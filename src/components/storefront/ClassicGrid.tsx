@@ -15,15 +15,22 @@ export default function ClassicGrid({ block, gridColsCls }: ClassicGridProps) {
     if (block.aspectRatio === 'portrait') aspectClass = 'aspect-[4/5]';
     // If auto/undefined, it will fallback to original img proportions without enforced class
 
+    let spacingClass = 'my-12';
+    if (block.spacing === 'none') spacingClass = 'my-0';
+    if (block.spacing === 'small') spacingClass = 'my-6';
+    if (block.spacing === 'large') spacingClass = 'my-20';
+
+    const finalGridColsCls = `grid-cols-${block.gridColumnsMobile || 2} md:grid-cols-${block.gridColumnsDesktop || 5}`;
+
     return (
-        <div className="w-full my-12 px-4">
+        <div className={`w-full px-4 ${spacingClass}`}>
             {block.title && (
                 <h3 className="text-2xl font-bold mb-6">{block.title}</h3>
             )}
             
-            <div className={`grid gap-4 ${gridColsCls}`}>
+            <div className={`grid gap-4 ${finalGridColsCls}`}>
                 {block.items.map((item, idx) => (
-                    <Link key={idx} href={item.linkHref || '#'} className="group block">
+                    <Link key={idx} href={item.linkHref || '#'} prefetch={false} className="group block">
                         <div className={`w-full overflow-hidden rounded-lg bg-gray-50 border border-gray-100 ${aspectClass}`}>
                             <Image
                                 src={item.imageUrl}

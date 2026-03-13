@@ -154,7 +154,7 @@ export default function AdminDashboard() {
     const allAlbums = cache?.root ? getAllAlbums(cache.root) : [];
 
     return (
-        <div className="max-w-4xl mx-auto p-8 mb-20 relative">
+        <div className="w-full max-w-[1600px] mx-auto px-4 md:px-8 py-8 mb-20 relative">
             <h1 className="text-3xl font-bold mb-8">Panel de administrador</h1>
 
             {/* Selector Modal */}

@@ -23,7 +23,11 @@ export interface StorefrontBlock {
     }>;
     
     // Block-specific settings
-    aspectRatio?: 'auto' | 'square' | 'portrait' | 'video'; // Aspect ratio forcing
+    aspectRatio?: 'auto' | 'square' | 'portrait' | 'video' | 'full'; // Added 'full' for full-bleed hero
+    spacing?: 'none' | 'small' | 'medium' | 'large'; // Spacing top/bottom
+    autoplay?: boolean; // For carousels
+    gridColumnsDesktop?: number; // For Classic Grid
+    gridColumnsMobile?: number; // For Classic Grid
 }
 
 export interface StorefrontConfig {

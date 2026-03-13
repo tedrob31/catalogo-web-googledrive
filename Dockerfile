@@ -37,6 +37,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Build the project (Standard Server Build) so we can run 'npm start'
 RUN npm run build
 
+# Extract standalone bundle to app root for optimized execution
+RUN cp -a .next/standalone/. ./ && cp -a .next/static ./.next/static
+
 # Ensure we can write to filesystem
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
@@ -46,7 +49,11 @@ RUN mkdir -p /app/public/images && chown nextjs:nodejs /app/public/images
 # Manager needs root to cleanup shared volumes populated by other containers
 # USER nextjs 
 EXPOSE 3000
-CMD ["npm", "start"]
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]
 
 # Production image, copy all the files and run next
 FROM base AS runner
