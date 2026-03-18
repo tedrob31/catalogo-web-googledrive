@@ -145,10 +145,12 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                                                     {block.type.replace('_', ' ')}
                                                 </span>
                                             </div>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => moveBlock(index, 'up')} disabled={index === 0} className="p-1 text-gray-400 hover:text-black disabled:opacity-30"><FiArrowUp /></button>
-                                                <button onClick={() => moveBlock(index, 'down')} disabled={index === config.blocks.length - 1} className="p-1 text-gray-400 hover:text-black disabled:opacity-30"><FiArrowDown /></button>
-                                                <button onClick={() => handleRemoveBlock(block.id)} className="p-1 text-red-400 hover:text-red-700"><FiTrash2 /></button>
+                                            <div className="flex items-center gap-1">
+                                                <div className="flex bg-gray-100 rounded-lg p-1 gap-1 border">
+                                                    <button onClick={() => moveBlock(index, 'up')} disabled={index === 0} title="Subir (Mover Arriba)" className="p-1.5 text-gray-600 hover:text-black hover:bg-white rounded shadow-sm disabled:opacity-30 disabled:shadow-none transition-all"><FiArrowUp size={16} /></button>
+                                                    <button onClick={() => moveBlock(index, 'down')} disabled={index === config.blocks.length - 1} title="Bajar (Mover Abajo)" className="p-1.5 text-gray-600 hover:text-black hover:bg-white rounded shadow-sm disabled:opacity-30 disabled:shadow-none transition-all"><FiArrowDown size={16} /></button>
+                                                </div>
+                                                <button onClick={() => handleRemoveBlock(block.id)} title="Eliminar Bloque" className="p-2 ml-2 text-red-500 hover:text-white border border-red-200 hover:bg-red-500 hover:border-red-500 rounded-lg transition-all"><FiTrash2 size={16}/></button>
                                             </div>
                                         </div>
 
@@ -348,11 +350,11 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                             </div>
                         )}
 
-                        <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
-                            <button onClick={() => handleAddBlock('hero_banner')} className="bg-gray-100 text-gray-800 text-sm px-3 py-2 rounded hover:bg-gray-200 font-medium">+ Añadir Héroe Banner</button>
-                            <button onClick={() => handleAddBlock('category_carousel')} className="bg-gray-100 text-gray-800 text-sm px-3 py-2 rounded hover:bg-gray-200 font-medium">+ Añadir Carrusel</button>
-                            <button onClick={() => handleAddBlock('promo_grid')} className="bg-gray-100 text-gray-800 text-sm px-3 py-2 rounded hover:bg-gray-200 font-medium">+ Añadir Promo Grid</button>
-                            <button onClick={() => handleAddBlock('classic_grid')} className="bg-gray-100 text-gray-800 text-sm px-3 py-2 rounded hover:bg-gray-200 font-medium">+ Añadir Grid Tradicional</button>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-8 pt-6 border-t border-gray-200">
+                            <button onClick={() => handleAddBlock('hero_banner')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Héroe Banner</button>
+                            <button onClick={() => handleAddBlock('category_carousel')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Carrusel</button>
+                            <button onClick={() => handleAddBlock('promo_grid')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Promo Grid</button>
+                            <button onClick={() => handleAddBlock('classic_grid')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Grid Simple</button>
                         </div>
 
                     </div>
