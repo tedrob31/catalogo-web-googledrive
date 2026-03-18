@@ -13,14 +13,14 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
 // We can delete the old Lightbox component file later
 import { FiSearch, FiArrowLeft, FiGrid, FiHome } from 'react-icons/fi';
-import { Render } from "@puckeditor/core";
-import { puckConfig } from "@/lib/puck.config";
+import { StorefrontConfig } from '@/lib/storefront';
+import StorefrontView from './storefront/StorefrontView';
 
 interface CatalogViewProps {
     data: CacheStructure | null;
     config: AppConfig;
     initialPath?: Album[]; // Now receiving full path
-    storefront?: any;
+    storefront?: StorefrontConfig;
 }
 
 export default function CatalogView({ data, config, initialPath, storefront }: CatalogViewProps) {
@@ -227,11 +227,9 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
             {/* Main Content */}
             <main className="max-w-7xl mx-auto p-4 space-y-8 animate-in fade-in duration-500">
 
-                {/* --- PUCK STOREFRONT BUILDER INJECTION --- */}
-                {!isSearching && currentPath.length === 1 && storefront ? (
-                     <div suppressHydrationWarning className="w-full max-w-[1400px] mx-auto min-h-screen pb-20">
-                         <Render config={puckConfig as any} data={storefront} />
-                     </div>
+                {/* --- STOREFRONT BUILDER INJECTION --- */}
+                {!isSearching && currentPath.length === 1 && storefront?.enabled && storefront.blocks.length > 0 ? (
+                    <StorefrontView storefront={storefront} appConfig={config} />
                 ) : (
                     <>
                         {/* Albums Grid */}

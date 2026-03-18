@@ -5,7 +5,7 @@ import { AppConfig } from '@/lib/config';
 import { CacheStructure, Album } from '@/lib/types';
 import Image from 'next/image';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
-import Link from 'next/link';
+import StorefrontBuilder from '@/components/admin/StorefrontBuilder';
 
 export default function AdminDashboard() {
     const [authorized, setAuthorized] = useState(false);
@@ -200,18 +200,8 @@ export default function AdminDashboard() {
             </div>
 
             {activeTab === 'storefront' && (
-                <div className="animate-in fade-in duration-300 flex flex-col items-center justify-center py-24 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                    <h2 className="text-3xl font-bold mb-4">Diseñador Visual de Tienda</h2>
-                    <p className="text-gray-500 mb-8 max-w-lg text-center text-lg">
-                        Hemos actualizado nuestro motor de diseño a una experiencia Drag-and-Drop en tiempo real. Presiona el botón de abajo para lanzar el lienzo en pantalla completa.
-                    </p>
-                    <a 
-                        href="/modaadmin/puck" 
-                        target="_self"
-                        className="bg-black hover:bg-gray-800 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg flex items-center gap-2 transition-transform hover:scale-105"
-                    >
-                        Abrir Puck Editor →
-                    </a>
+                <div className="animate-in fade-in duration-300">
+                    <StorefrontBuilder availableCovers={availableCovers} allAlbums={allAlbums} />
                 </div>
             )}
 
