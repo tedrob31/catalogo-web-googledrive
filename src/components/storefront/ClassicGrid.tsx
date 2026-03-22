@@ -29,28 +29,40 @@ export default function ClassicGrid({ block, gridColsCls }: ClassicGridProps) {
             )}
             
             <div className={`grid gap-2 md:gap-3 ${finalGridColsCls}`}>
-                {block.items.map((item, idx) => (
-                    <Link key={idx} href={item.linkHref || '#'} prefetch={false} className="group block">
-                        <div className={`w-full overflow-hidden rounded-none ${aspectClass}`}>
-                            {item.imageUrl ? (
-                                <Image
-                                    src={item.imageUrl}
-                                    alt={item.title || `Grid item ${idx}`}
-                                    width={500}
-                                    height={600}
-                                    className={`w-full h-full ${aspectClass ? 'object-cover' : 'object-contain'} transition-transform duration-500 group-hover:scale-105`}
-                                />
-                            ) : (
-                                <div className={`flex items-center justify-center bg-gray-200 text-gray-500 text-xs w-full ${aspectClass ? 'h-full' : 'h-40'}`}>Sin Imagen</div>
+                {block.items.map((item, idx) => {
+                    const content = (
+                        <>
+                            <div className={`w-full overflow-hidden rounded-none ${aspectClass}`}>
+                                {item.imageUrl ? (
+                                    <Image
+                                        src={item.imageUrl}
+                                        alt={item.title || `Grid item ${idx}`}
+                                        width={500}
+                                        height={600}
+                                        className={`w-full h-full ${aspectClass ? 'object-cover' : 'object-contain'} transition-transform duration-500 group-hover:scale-105`}
+                                    />
+                                ) : (
+                                    <div className={`flex items-center justify-center bg-gray-200 text-gray-500 text-xs w-full ${aspectClass ? 'h-full' : 'h-40'}`}>Sin Imagen</div>
+                                )}
+                            </div>
+                            {item.title && (
+                                <h4 className="mt-2 text-sm md:text-base font-medium text-center group-hover:underline">
+                                    {item.title}
+                                </h4>
                             )}
+                        </>
+                    );
+
+                    return item.linkHref ? (
+                        <Link key={idx} href={item.linkHref} prefetch={false} className="group block">
+                            {content}
+                        </Link>
+                    ) : (
+                        <div key={idx} className="group block">
+                            {content}
                         </div>
-                        {item.title && (
-                            <h4 className="mt-2 text-sm md:text-base font-medium text-center group-hover:underline">
-                                {item.title}
-                            </h4>
-                        )}
-                    </Link>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
