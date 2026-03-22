@@ -31,7 +31,7 @@ export default function ClassicGrid({ block, gridColsCls }: ClassicGridProps) {
             <div className={`grid gap-2 md:gap-3 ${finalGridColsCls}`}>
                 {block.items.map((item, idx) => (
                     <Link key={idx} href={item.linkHref || '#'} prefetch={false} className="group block">
-                        <div className={`w-full overflow-hidden rounded-none bg-gray-50 border border-gray-100 ${aspectClass}`}>
+                        <div className={`w-full overflow-hidden rounded-none ${aspectClass}`}>
                             {item.imageUrl ? (
                                 <Image
                                     src={item.imageUrl}

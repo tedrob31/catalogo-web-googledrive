@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, startTransition } from 'react';
+import { useState, useEffect, startTransition, Suspense } from 'react';
 import Image from 'next/image';
 import { StorefrontConfig, StorefrontBlock, BlockType } from '@/lib/storefront';
 import { Album } from '@/lib/types';
@@ -117,6 +117,12 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
 
     return (
         <div className="bg-white p-6 rounded shadow">
+            <datalist id="album-urls">
+                {allAlbums.map(album => (
+                    <option key={album.id} value={`/${slugify(album.name)}`} />
+                ))}
+            </datalist>
+
             <div className="flex justify-between items-center bg-gray-50 p-4 border rounded mb-6">
                 <div>
                     <h2 className="text-xl font-bold">Activar Storefront Personalizado</h2>
@@ -211,6 +217,7 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                                                             className="w-full border p-2 rounded text-sm mt-1" 
                                                             value={block.linkHref || ''} 
                                                             placeholder="Ej: /moda-hombre"
+                                                            list="album-urls"
                                                             onChange={e => updateBlock(index, { linkHref: e.target.value })} 
                                                         />
                                                     </div>
@@ -368,6 +375,7 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                                                                         className="w-full border p-1 rounded text-xs" 
                                                                         value={item.linkHref || ''} 
                                                                         placeholder="URL destino"
+                                                                        list="album-urls"
                                                                         onChange={e => {
                                                                             const newItems = [...(block.items || [])];
                                                                             newItems[itemIdx] = { ...newItems[itemIdx], linkHref: e.target.value };
@@ -453,8 +461,9 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                                     </div>
                                 ) : (
                                     <div className="pointer-events-none scale-90 origin-top w-full"> 
-                                        {/* Stub default config so we don't throw error on config required field */}
-                                        <StorefrontView storefront={config} appConfig={{gridColumns: 5, mobileGridColumns: 2} as any} />
+                                        <Suspense fallback={<div className="p-10 text-center text-gray-500 text-xs font-mono border-2 border-dashed rounded-xl m-4 bg-gray-50">Sincronizando vista en vivo...</div>}>
+                                            <StorefrontView storefront={config} appConfig={{gridColumns: 5, mobileGridColumns: 2} as any} />
+                                        </Suspense>
                                     </div>
                                 )}
                             </div>
