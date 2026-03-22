@@ -17,6 +17,17 @@ export async function POST(request: Request) {
         const oldConfig = await getConfig();
         await saveConfig(body);
 
+        // --- Log admin modifications for Cron Status ---
+        if (oldConfig.autoSyncEnabled !== body.autoSyncEnabled) {
+            console.log(`\n=========================================\n[ADMIN PANEL] El administrador ha ${body.autoSyncEnabled ? 'ENCENDIDO ✅' : 'APAGADO ❌'} el motor Cron de Auto-Sincronización.\n=========================================\n`);
+        }
+        if (oldConfig.autoSyncInterval !== body.autoSyncInterval) {
+            console.log(`[ADMIN PANEL] Intervalo de Auto-Sincronización actualizado a: ${body.autoSyncInterval} minutos`);
+        }
+        if (oldConfig.autoSyncStartHour !== body.autoSyncStartHour || oldConfig.autoSyncEndHour !== body.autoSyncEndHour) {
+            console.log(`[ADMIN PANEL] Ventana de Auto-Sincronización actualizada: de ${body.autoSyncStartHour}:00 a ${body.autoSyncEndHour}:00 horas`);
+        }
+
         let needsGlobalRevalidate = false;
         const affectedPaths = new Set<string>();
 
