@@ -15,13 +15,13 @@ export default function HeroBanner({ block }: HeroBannerProps) {
     if (block.aspectRatio === 'full') aspectClass = 'h-[75vh] md:h-[85vh]'; // Full screen feel
     if (block.aspectRatio === 'intrinsic') aspectClass = 'h-auto'; // Natural responsive height
 
-    let spacingClass = 'my-8'; // Default medium
+    let spacingClass = 'my-6'; // Default medium
     if (block.spacing === 'none') spacingClass = 'my-0';
-    if (block.spacing === 'small') spacingClass = 'my-4';
-    if (block.spacing === 'large') spacingClass = 'my-16';
+    if (block.spacing === 'small') spacingClass = 'my-2';
+    if (block.spacing === 'large') spacingClass = 'my-12';
 
     const Content = () => (
-        <div className={`relative w-full ${aspectClass} overflow-hidden rounded-xl bg-gray-100 group ${spacingClass}`}>
+        <div className={`relative w-full ${aspectClass} overflow-hidden rounded-none bg-gray-100 group ${spacingClass}`}>
             {block.aspectRatio === 'intrinsic' ? (
                 <img 
                     src={block.imageUrl!} 

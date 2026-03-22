@@ -18,10 +18,10 @@ export default function CategoryCarousel({ block }: CategoryCarouselProps) {
     if (block.aspectRatio === 'portrait') aspectClass = 'aspect-[4/5]';
     if (block.aspectRatio === 'auto') aspectClass = 'aspect-[4/5]'; // Default for carousel
 
-    let spacingClass = 'my-12'; // Default medium
+    let spacingClass = 'my-6'; // Default medium
     if (block.spacing === 'none') spacingClass = 'my-0';
-    if (block.spacing === 'small') spacingClass = 'my-6';
-    if (block.spacing === 'large') spacingClass = 'my-20';
+    if (block.spacing === 'small') spacingClass = 'my-2';
+    if (block.spacing === 'large') spacingClass = 'my-12';
 
     // Autoplay logic
     useEffect(() => {
@@ -47,14 +47,14 @@ export default function CategoryCarousel({ block }: CategoryCarouselProps) {
     return (
         <div className={`w-full ${spacingClass}`}>
             {block.title && (
-                <h3 className="text-2xl md:text-3xl font-bold mb-6 px-4">{block.title}</h3>
+                <h3 className="text-xl md:text-2xl font-bold mb-4 px-2">{block.title}</h3>
             )}
             
             <div className="relative">
                 {/* Horizontal scrollable container */}
                 <div 
                     ref={scrollContainerRef}
-                    className="flex overflow-x-auto gap-4 md:gap-6 px-4 pb-6 snap-x snap-mandatory scrollbar-hide"
+                    className="flex overflow-x-auto gap-2 md:gap-3 px-2 pb-4 snap-x snap-mandatory scrollbar-hide"
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
                     {block.items.map((item, idx) => (
@@ -64,13 +64,17 @@ export default function CategoryCarousel({ block }: CategoryCarouselProps) {
                             prefetch={false}
                             className="flex-none w-48 md:w-64 snap-start group"
                         >
-                            <div className={`relative w-full ${aspectClass} overflow-hidden rounded-xl bg-gray-100 mb-3 shadow-sm border border-black/5`}>
-                                <Image
-                                    src={item.imageUrl}
-                                    alt={item.title || `Category ${idx}`}
-                                    fill
-                                    className="object-cover transition-transform duration-500 group-hover:scale-110"
-                                />
+                            <div className={`relative w-full ${aspectClass} overflow-hidden rounded-none bg-gray-100 mb-2 shadow-sm border border-black/5`}>
+                                {item.imageUrl ? (
+                                    <Image
+                                        src={item.imageUrl}
+                                        alt={item.title || `Category ${idx}`}
+                                        fill
+                                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                    />
+                                ) : (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-gray-200 text-gray-500 text-xs text-center p-2">Sin Imagen</div>
+                                )}
                             </div>
                             {item.title && (
                                 <h4 className="font-semibold text-lg text-center group-hover:text-blue-600 transition-colors">

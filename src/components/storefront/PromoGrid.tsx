@@ -16,24 +16,24 @@ export default function PromoGrid({ block }: PromoGridProps) {
         );
     }
 
-    let spacingClass = 'my-12';
+    let spacingClass = 'my-6';
     if (block.spacing === 'none') spacingClass = 'my-0';
-    if (block.spacing === 'small') spacingClass = 'my-6';
-    if (block.spacing === 'large') spacingClass = 'my-20';
+    if (block.spacing === 'small') spacingClass = 'my-2';
+    if (block.spacing === 'large') spacingClass = 'my-12';
 
     const [mainItem, sub1, sub2] = block.items;
 
     return (
-        <div className={`w-full px-4 ${spacingClass}`}>
+        <div className={`w-full px-2 md:px-4 ${spacingClass}`}>
             {block.title && (
-                <h3 className="text-2xl md:text-3xl font-bold mb-6">{block.title}</h3>
+                <h3 className="text-xl md:text-2xl font-bold mb-4">{block.title}</h3>
             )}
             
             {/* Bento Grid Layout */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
                 
                 {/* Main Large Item (Left) */}
-                <Link href={mainItem.linkHref || '#'} prefetch={false} className="group relative block aspect-square md:aspect-auto md:h-[600px] overflow-hidden rounded-2xl bg-gray-100">
+                <Link href={mainItem.linkHref || '#'} prefetch={false} className="group relative block aspect-square md:aspect-auto md:h-[600px] overflow-hidden rounded-none bg-gray-100">
                     <Image
                         src={mainItem.imageUrl}
                         alt={mainItem.title || 'Promo hero'}
@@ -52,8 +52,8 @@ export default function PromoGrid({ block }: PromoGridProps) {
                 </Link>
 
                 {/* Stacked Sub Items (Right/Bottom) */}
-                <div className="grid grid-cols-2 md:grid-cols-1 md:grid-rows-2 gap-4 h-auto md:h-[600px]">
-                    <Link href={sub1.linkHref || '#'} prefetch={false} className="group relative block w-full aspect-square md:aspect-auto md:h-full overflow-hidden rounded-2xl bg-gray-100">
+                <div className="grid grid-cols-2 md:grid-cols-1 md:grid-rows-2 gap-2 md:gap-3 h-auto md:h-[600px]">
+                    <Link href={sub1.linkHref || '#'} prefetch={false} className="group relative block w-full aspect-square md:aspect-auto md:h-full overflow-hidden rounded-none bg-gray-100">
                         <Image
                             src={sub1.imageUrl}
                             alt={sub1.title || 'Promo sub 1'}
@@ -68,7 +68,7 @@ export default function PromoGrid({ block }: PromoGridProps) {
                         )}
                     </Link>
 
-                    <Link href={sub2.linkHref || '#'} prefetch={false} className="group relative block w-full aspect-square md:aspect-auto md:h-full overflow-hidden rounded-2xl bg-gray-100">
+                    <Link href={sub2.linkHref || '#'} prefetch={false} className="group relative block w-full aspect-square md:aspect-auto md:h-full overflow-hidden rounded-none bg-gray-100">
                         <Image
                             src={sub2.imageUrl}
                             alt={sub2.title || 'Promo sub 2'}
