@@ -15,6 +15,7 @@ export default function CategoryCarousel({ block, isPreview }: CategoryCarouselP
     let aspectClass = 'aspect-square';
     if (block.aspectRatio === 'portrait') aspectClass = 'aspect-[4/5]';
     if (block.aspectRatio === 'auto') aspectClass = 'aspect-[4/5]'; // Default for carousel
+    if (block.aspectRatio === 'intrinsic') aspectClass = ''; // Mantiene ratio original
 
     let spacingClass = 'my-6'; // Default medium
     if (block.spacing === 'none') spacingClass = 'my-0';
@@ -38,9 +39,9 @@ export default function CategoryCarousel({ block, isPreview }: CategoryCarouselP
                             <>
                                 <div className={`relative w-full ${aspectClass} overflow-hidden rounded-none bg-gray-100 mb-2 shadow-sm border border-black/5`}>
                                     {item.imageUrl ? (
-                                        isPreview ? (
+                                        isPreview || block.aspectRatio === 'intrinsic' ? (
                                             /* eslint-disable-next-line @next/next/no-img-element */
-                                            <img src={item.imageUrl} alt={item.title || `Category ${idx}`} className="object-cover w-full h-full absolute inset-0 transition-transform duration-500 group-hover:scale-105" />
+                                            <img src={item.imageUrl} alt={item.title || `Category ${idx}`} className={`object-cover w-full transition-transform duration-500 group-hover:scale-105 ${block.aspectRatio === 'intrinsic' ? 'h-auto block' : 'h-full absolute inset-0'}`} />
                                         ) : (
                                             <Image
                                                 src={item.imageUrl}

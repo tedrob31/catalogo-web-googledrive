@@ -5,10 +5,10 @@ interface RichTextBlockProps {
 }
 
 export default function RichTextBlock({ block }: RichTextBlockProps) {
-    let spacingClass = 'py-6 px-4';
-    if (block.spacing === 'none') spacingClass = 'py-1 px-4';
-    if (block.spacing === 'small') spacingClass = 'py-3 px-4';
-    if (block.spacing === 'large') spacingClass = 'py-12 px-4';
+    let spacingClass = 'py-2 px-4';
+    if (block.spacing === 'none') spacingClass = 'py-0 px-4';
+    if (block.spacing === 'small') spacingClass = 'py-1 px-4';
+    if (block.spacing === 'large') spacingClass = 'py-6 px-4';
 
     const textAlignment = block.textAlignment || 'center';
     const alignClass = textAlignment === 'left' ? 'text-left' : textAlignment === 'right' ? 'text-right' : 'text-center';

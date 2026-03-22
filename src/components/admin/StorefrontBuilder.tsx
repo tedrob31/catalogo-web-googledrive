@@ -402,6 +402,9 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                                                             value={block.aspectRatio || 'auto'}
                                                             onChange={e => updateBlock(index, { aspectRatio: e.target.value as any })}
                                                         >
+                                                            {block.type === 'category_carousel' && (
+                                                                <option value="intrinsic">Adaptable a la Imagen (Natural)</option>
+                                                            )}
                                                             <option value="auto">Libre (Original)</option>
                                                             <option value="portrait">Vertical Stories (4:5)</option>
                                                             <option value="square">Cuadrado (1:1)</option>
