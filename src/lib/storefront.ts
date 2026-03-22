@@ -4,7 +4,7 @@ import path from 'path';
 // Define the absolute path for the storefront data
 const STOREFRONT_FILE = path.join(process.cwd(), 'cache', 'storefront.json');
 
-export type BlockType = 'hero_banner' | 'category_carousel' | 'promo_grid' | 'classic_grid';
+export type BlockType = 'hero_banner' | 'category_carousel' | 'promo_grid' | 'classic_grid' | 'rich_text';
 
 export interface StorefrontBlock {
     id: string;
@@ -22,8 +22,15 @@ export interface StorefrontBlock {
         title?: string;
     }>;
     
+    // For rich text blocks
+    textContent?: string;
+    textAlignment?: 'left' | 'center' | 'right';
+    textSize?: 'small' | 'medium' | 'large' | 'xlarge' | 'title';
+    textFont?: 'sans' | 'serif' | 'mono';
+    textWeight?: 'normal' | 'bold' | 'light';
+    
     // Block-specific settings
-    aspectRatio?: 'auto' | 'square' | 'portrait' | 'video' | 'full'; // Added 'full' for full-bleed hero
+    aspectRatio?: 'auto' | 'square' | 'portrait' | 'video' | 'full' | 'intrinsic'; // Added 'intrinsic' para banners libres
     spacing?: 'none' | 'small' | 'medium' | 'large'; // Spacing top/bottom
     autoplay?: boolean; // For carousels
     gridColumnsDesktop?: number; // For Classic Grid

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, startTransition } from 'react';
 import Image from 'next/image';
 import { StorefrontConfig, StorefrontBlock, BlockType } from '@/lib/storefront';
 import { Album } from '@/lib/types';
@@ -59,14 +59,18 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
             type,
             title: '',
             aspectRatio: 'auto',
-            items: type === 'category_carousel' || type === 'promo_grid' ? [] : undefined
+            items: type === 'category_carousel' || type === 'promo_grid' || type === 'classic_grid' ? [] : undefined
         };
-        setConfig({ ...config, blocks: [...config.blocks, newBlock] });
+        startTransition(() => {
+            setConfig({ ...config, blocks: [...config.blocks, newBlock] });
+        });
     };
 
     const handleRemoveBlock = (id: string) => {
         if (!config) return;
-        setConfig({ ...config, blocks: config.blocks.filter(b => b.id !== id) });
+        startTransition(() => {
+            setConfig({ ...config, blocks: config.blocks.filter(b => b.id !== id) });
+        });
     };
 
     const moveBlock = (index: number, direction: 'up' | 'down') => {
@@ -77,14 +81,18 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
         } else if (direction === 'down' && index < newBlocks.length - 1) {
             [newBlocks[index], newBlocks[index + 1]] = [newBlocks[index + 1], newBlocks[index]];
         }
-        setConfig({ ...config, blocks: newBlocks });
+        startTransition(() => {
+            setConfig({ ...config, blocks: newBlocks });
+        });
     };
 
     const updateBlock = (index: number, updates: Partial<StorefrontBlock>) => {
         if (!config) return;
         const newBlocks = [...config.blocks];
         newBlocks[index] = { ...newBlocks[index], ...updates };
-        setConfig({ ...config, blocks: newBlocks });
+        startTransition(() => {
+            setConfig({ ...config, blocks: newBlocks });
+        });
     };
 
     const handleSelectCover = (cover: string) => {
@@ -121,7 +129,7 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                         type="checkbox"
                         className="sr-only peer"
                         checked={config.enabled}
-                        onChange={(e) => setConfig({ ...config, enabled: e.target.checked })}
+                        onChange={(e) => startTransition(() => setConfig({ ...config, enabled: e.target.checked }))}
                     />
                     <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
@@ -217,6 +225,72 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                                                             <option value="portrait">Vertical Stories (4:5)</option>
                                                             <option value="square">Cuadrado (1:1)</option>
                                                             <option value="full">Pantalla Completa (Full Bleed)</option>
+                                                            <option value="intrinsic">Adaptable a la Imagen (Natural)</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Rich Text Block Settings */}
+                                            {block.type === 'rich_text' && (
+                                                <div className="grid grid-cols-2 gap-4 pt-1">
+                                                    <div className="col-span-2">
+                                                        <label className="block text-xs font-medium text-gray-500">Contenido del Texto</label>
+                                                        <textarea 
+                                                            className="w-full border p-2 rounded text-sm mt-1 h-24"
+                                                            value={block.textContent || ''}
+                                                            placeholder="Escribe tu título o texto libre aquí..."
+                                                            onChange={e => updateBlock(index, { textContent: e.target.value })}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-500">Tamaño de Letra</label>
+                                                        <select 
+                                                            className="w-full border p-2 rounded text-sm mt-1"
+                                                            value={block.textSize || 'medium'}
+                                                            onChange={e => updateBlock(index, { textSize: e.target.value as any })}
+                                                        >
+                                                            <option value="small">Pequeño (Etiqueta)</option>
+                                                            <option value="medium">Normal (Párrafo)</option>
+                                                            <option value="large">Grande (Subtítulo)</option>
+                                                            <option value="xlarge">Extra Grande</option>
+                                                            <option value="title">Gigante (Título Principal)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-500">Alineación</label>
+                                                        <select 
+                                                            className="w-full border p-2 rounded text-sm mt-1"
+                                                            value={block.textAlignment || 'center'}
+                                                            onChange={e => updateBlock(index, { textAlignment: e.target.value as any })}
+                                                        >
+                                                            <option value="left">Izquierda</option>
+                                                            <option value="center">Centro</option>
+                                                            <option value="right">Derecha</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-500">Fuente (Tipografía)</label>
+                                                        <select 
+                                                            className="w-full border p-2 rounded text-sm mt-1"
+                                                            value={block.textFont || 'sans'}
+                                                            onChange={e => updateBlock(index, { textFont: e.target.value as any })}
+                                                        >
+                                                            <option value="sans">Moderna (Sans-serif)</option>
+                                                            <option value="serif">Elegante (Serif)</option>
+                                                            <option value="mono">Máquina de Escribir (Mono)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-500">Grosor (Peso)</label>
+                                                        <select 
+                                                            className="w-full border p-2 rounded text-sm mt-1"
+                                                            value={block.textWeight || 'normal'}
+                                                            onChange={e => updateBlock(index, { textWeight: e.target.value as any })}
+                                                        >
+                                                            <option value="light">Fino (Light)</option>
+                                                            <option value="normal">Normal</option>
+                                                            <option value="bold">Grueso (Negrita)</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -254,8 +328,8 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                                                 </div>
                                             )}
 
-                                            {/* Multi Item Blocks (Carousel / Promo Grid) */}
-                                            {(block.type === 'category_carousel' || block.type === 'promo_grid') && (
+                                            {/* Multi Item Blocks (Carousel / Promo Grid / Classic Grid) */}
+                                            {(block.type === 'category_carousel' || block.type === 'promo_grid' || block.type === 'classic_grid') && (
                                                 <div>
                                                     <div className="flex justify-between items-center mb-2">
                                                         <label className="block text-xs font-medium text-gray-500">Elementos del {block.type === 'category_carousel' ? 'Carrusel' : 'Grid'}</label>
@@ -350,11 +424,12 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                             </div>
                         )}
 
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-8 pt-6 border-t border-gray-200">
+                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mt-8 pt-6 border-t border-gray-200">
                             <button onClick={() => handleAddBlock('hero_banner')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Héroe Banner</button>
                             <button onClick={() => handleAddBlock('category_carousel')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Carrusel</button>
                             <button onClick={() => handleAddBlock('promo_grid')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Promo Grid</button>
                             <button onClick={() => handleAddBlock('classic_grid')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Grid Simple</button>
+                            <button onClick={() => handleAddBlock('rich_text')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Texto Libre</button>
                         </div>
 
                     </div>

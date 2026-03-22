@@ -51,9 +51,9 @@ export default function PromoGrid({ block }: PromoGridProps) {
                     )}
                 </Link>
 
-                {/* Stacked Sub Items (Right) */}
-                <div className="grid grid-rows-2 gap-4 h-[600px]">
-                    <Link href={sub1.linkHref || '#'} prefetch={false} className="group relative block w-full h-full overflow-hidden rounded-2xl bg-gray-100">
+                {/* Stacked Sub Items (Right/Bottom) */}
+                <div className="grid grid-cols-2 md:grid-cols-1 md:grid-rows-2 gap-4 h-auto md:h-[600px]">
+                    <Link href={sub1.linkHref || '#'} prefetch={false} className="group relative block w-full aspect-square md:aspect-auto md:h-full overflow-hidden rounded-2xl bg-gray-100">
                         <Image
                             src={sub1.imageUrl}
                             alt={sub1.title || 'Promo sub 1'}
@@ -62,13 +62,13 @@ export default function PromoGrid({ block }: PromoGridProps) {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         {sub1.title && (
-                            <div className="absolute bottom-6 left-6 right-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                                <h4 className="text-white text-xl font-bold">{sub1.title}</h4>
+                            <div className="absolute bottom-6 left-4 md:left-6 right-4 md:right-6 md:translate-y-4 opacity-100 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 transition-all duration-300">
+                                <h4 className="text-white text-lg md:text-xl font-bold">{sub1.title}</h4>
                             </div>
                         )}
                     </Link>
 
-                    <Link href={sub2.linkHref || '#'} prefetch={false} className="group relative block w-full h-full overflow-hidden rounded-2xl bg-gray-100">
+                    <Link href={sub2.linkHref || '#'} prefetch={false} className="group relative block w-full aspect-square md:aspect-auto md:h-full overflow-hidden rounded-2xl bg-gray-100">
                         <Image
                             src={sub2.imageUrl}
                             alt={sub2.title || 'Promo sub 2'}
@@ -77,8 +77,8 @@ export default function PromoGrid({ block }: PromoGridProps) {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         {sub2.title && (
-                            <div className="absolute bottom-6 left-6 right-6 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                                <h4 className="text-white text-xl font-bold">{sub2.title}</h4>
+                            <div className="absolute bottom-6 left-4 md:left-6 right-4 md:right-6 md:translate-y-4 opacity-100 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 transition-all duration-300">
+                                <h4 className="text-white text-lg md:text-xl font-bold">{sub2.title}</h4>
                             </div>
                         )}
                     </Link>
