@@ -90,9 +90,7 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
         if (!config) return;
         const newBlocks = [...config.blocks];
         newBlocks[index] = { ...newBlocks[index], ...updates };
-        startTransition(() => {
-            setConfig({ ...config, blocks: newBlocks });
-        });
+        setConfig({ ...config, blocks: newBlocks });
     };
 
     const handleSelectCover = (cover: string) => {
@@ -397,21 +395,6 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                                                         ))}
                                                     </div>
                                                     
-                                                    {block.type === 'category_carousel' && (
-                                                        <div className="mt-3 flex items-center gap-2 bg-blue-50 p-2 rounded border border-blue-100">
-                                                            <input 
-                                                                type="checkbox" 
-                                                                id={`auto-${block.id}`}
-                                                                checked={block.autoplay || false}
-                                                                onChange={e => updateBlock(index, { autoplay: e.target.checked })}
-                                                                className="w-4 h-4 text-blue-600 bg-gray-100 rounded focus:ring-blue-500"
-                                                            />
-                                                            <label htmlFor={`auto-${block.id}`} className="text-sm font-medium text-blue-900 cursor-pointer">
-                                                                Animar automáticamente (Autoplay)
-                                                            </label>
-                                                        </div>
-                                                    )}
-
                                                     <div className="mt-3">
                                                         <label className="block text-xs font-medium text-gray-500">Forma de las Fotos (Aspect Ratio)</label>
                                                         <select 

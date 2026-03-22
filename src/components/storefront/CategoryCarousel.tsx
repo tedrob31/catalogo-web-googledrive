@@ -1,6 +1,5 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { StorefrontBlock } from '@/lib/storefront';
@@ -11,8 +10,6 @@ interface CategoryCarouselProps {
 }
 
 export default function CategoryCarousel({ block, isPreview }: CategoryCarouselProps) {
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-
     if (!block.items || block.items.length === 0) return null;
 
     let aspectClass = 'aspect-square';
@@ -24,27 +21,6 @@ export default function CategoryCarousel({ block, isPreview }: CategoryCarouselP
     if (block.spacing === 'small') spacingClass = 'my-2';
     if (block.spacing === 'large') spacingClass = 'my-12';
 
-    // Autoplay logic
-    useEffect(() => {
-        if (isPreview || !block.autoplay || !scrollContainerRef.current) return;
-        
-        let interval: NodeJS.Timeout;
-        const autoScroll = () => {
-            if (scrollContainerRef.current) {
-                const maxScrollLeft = scrollContainerRef.current.scrollWidth - scrollContainerRef.current.clientWidth;
-                // If reached end, scroll back to 0, otherwise increment
-                if (scrollContainerRef.current.scrollLeft >= maxScrollLeft - 10) {
-                    scrollContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-                } else {
-                    scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
-                }
-            }
-        };
-
-        interval = setInterval(autoScroll, 3000);
-        return () => clearInterval(interval);
-    }, [block.autoplay]);
-
     return (
         <div className={`w-full ${spacingClass}`}>
             {block.title && (
@@ -54,7 +30,6 @@ export default function CategoryCarousel({ block, isPreview }: CategoryCarouselP
             <div className="relative">
                 {/* Horizontal scrollable container */}
                 <div 
-                    ref={scrollContainerRef}
                     className="flex overflow-x-auto gap-2 md:gap-3 px-2 pb-4 snap-x snap-mandatory scrollbar-hide"
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >

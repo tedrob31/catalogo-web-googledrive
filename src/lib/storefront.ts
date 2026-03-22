@@ -32,7 +32,6 @@ export interface StorefrontBlock {
     // Block-specific settings
     aspectRatio?: 'auto' | 'square' | 'portrait' | 'video' | 'full' | 'intrinsic'; // Added 'intrinsic' para banners libres
     spacing?: 'none' | 'small' | 'medium' | 'large'; // Spacing top/bottom
-    autoplay?: boolean; // For carousels
     gridColumnsDesktop?: number; // For Classic Grid
     gridColumnsMobile?: number; // For Classic Grid
 }
