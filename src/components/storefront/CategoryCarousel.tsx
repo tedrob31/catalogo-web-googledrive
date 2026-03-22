@@ -26,7 +26,7 @@ export default function CategoryCarousel({ block, isPreview }: CategoryCarouselP
 
     // Autoplay logic
     useEffect(() => {
-        if (!block.autoplay || !scrollContainerRef.current) return;
+        if (isPreview || !block.autoplay || !scrollContainerRef.current) return;
         
         let interval: NodeJS.Timeout;
         const autoScroll = () => {
@@ -63,12 +63,17 @@ export default function CategoryCarousel({ block, isPreview }: CategoryCarouselP
                             <>
                                 <div className={`relative w-full ${aspectClass} overflow-hidden rounded-none bg-gray-100 mb-2 shadow-sm border border-black/5`}>
                                     {item.imageUrl ? (
-                                        <Image
-                                            src={item.imageUrl}
-                                            alt={item.title || `Category ${idx}`}
-                                            fill
-                                            className="object-cover transition-transform duration-500 group-hover:scale-105"
-                                        />
+                                        isPreview ? (
+                                            /* eslint-disable-next-line @next/next/no-img-element */
+                                            <img src={item.imageUrl} alt={item.title || `Category ${idx}`} className="object-cover w-full h-full absolute inset-0 transition-transform duration-500 group-hover:scale-105" />
+                                        ) : (
+                                            <Image
+                                                src={item.imageUrl}
+                                                alt={item.title || `Category ${idx}`}
+                                                fill
+                                                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                            />
+                                        )
                                     ) : (
                                         <div className="absolute inset-0 flex items-center justify-center bg-gray-200 text-gray-500 text-xs text-center p-2">Sin Imagen</div>
                                     )}
