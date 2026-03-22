@@ -6,6 +6,7 @@ import { CacheStructure, Album } from '@/lib/types';
 import Image from 'next/image';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import StorefrontBuilder from '@/components/admin/StorefrontBuilder';
+import { slugify } from '@/lib/utils';
 
 export default function AdminDashboard() {
     const [authorized, setAuthorized] = useState(false);
@@ -129,6 +130,16 @@ export default function AdminDashboard() {
         setShowCoverSelector(null);
     }
 
+    // Helper to generate absolute nested paths for the right panel Datalist
+    const getAllAlbumUrls = (album: Album, parentPath: string = ''): string[] => {
+        const currentPath = parentPath === '' ? `/${slugify(album.name)}` : `${parentPath}/${slugify(album.name)}`;
+        let list = [currentPath];
+        album.subAlbums.forEach(sub => {
+            list = list.concat(getAllAlbumUrls(sub, currentPath));
+        });
+        return list;
+    };
+
     // Helper to flatten albums for the dropdown/list
     const getAllAlbums = (album: Album): Album[] => {
         let list = [album];
@@ -151,6 +162,7 @@ export default function AdminDashboard() {
         );
     }
 
+    const allAlbumUrls = cache?.root ? getAllAlbumUrls(cache.root) : [];
     const allAlbums = cache?.root ? getAllAlbums(cache.root) : [];
 
     return (
@@ -201,7 +213,7 @@ export default function AdminDashboard() {
 
             {activeTab === 'storefront' && (
                 <div className="animate-in fade-in duration-300">
-                    <StorefrontBuilder availableCovers={availableCovers} allAlbums={allAlbums} />
+                    <StorefrontBuilder availableCovers={availableCovers} allAlbums={allAlbums} allAlbumUrls={allAlbumUrls} />
                 </div>
             )}
 

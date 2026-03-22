@@ -37,7 +37,7 @@ export default function CategoryCarousel({ block, isPreview }: CategoryCarouselP
                     {block.items.map((item, idx) => {
                         const content = (
                             <>
-                                <div className={`relative w-full ${aspectClass} overflow-hidden rounded-none bg-gray-100 mb-2 shadow-sm border border-black/5`}>
+                                <div className={`relative w-full ${aspectClass} overflow-hidden rounded-none mb-2 shadow-none`}>
                                     {item.imageUrl ? (
                                         isPreview || block.aspectRatio === 'intrinsic' ? (
                                             /* eslint-disable-next-line @next/next/no-img-element */
@@ -62,7 +62,7 @@ export default function CategoryCarousel({ block, isPreview }: CategoryCarouselP
                             </>
                         );
 
-                        const wrapperCls = "flex-none w-48 md:w-64 snap-start group block";
+                        const wrapperCls = `flex-none snap-start group block ${block.aspectRatio === 'intrinsic' ? 'w-[85vw] md:w-full max-w-5xl' : 'w-48 md:w-64'}`;
 
                         return item.linkHref && !isPreview ? (
                             <Link key={idx} href={item.linkHref} prefetch={false} className={wrapperCls}>

@@ -12,9 +12,10 @@ import { AppConfig } from '@/lib/config';
 interface StorefrontBuilderProps {
     availableCovers: string[];
     allAlbums: Album[];
+    allAlbumUrls: string[];
 }
 
-export default function StorefrontBuilder({ availableCovers, allAlbums }: StorefrontBuilderProps) {
+export default function StorefrontBuilder({ availableCovers, allAlbums, allAlbumUrls }: StorefrontBuilderProps) {
     const [config, setConfig] = useState<StorefrontConfig | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -52,7 +53,7 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
         }
     };
 
-    const handleAddBlock = (type: BlockType) => {
+    const handleAddBlock = (type: BlockType, insertIndex?: number) => {
         if (!config) return;
         const newBlock: StorefrontBlock = {
             id: `blk_${Date.now()}`,
@@ -61,9 +62,15 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
             aspectRatio: 'auto',
             items: type === 'category_carousel' || type === 'promo_grid' || type === 'classic_grid' ? [] : undefined
         };
-        startTransition(() => {
-            setConfig({ ...config, blocks: [...config.blocks, newBlock] });
-        });
+        
+        let newBlocks = [...config.blocks];
+        if (insertIndex !== undefined) {
+            newBlocks.splice(insertIndex, 0, newBlock);
+        } else {
+            newBlocks.push(newBlock);
+        }
+
+        setConfig({ ...config, blocks: newBlocks });
     };
 
     const handleRemoveBlock = (id: string) => {
@@ -116,8 +123,8 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
     return (
         <div className="bg-white p-6 rounded shadow">
             <datalist id="album-urls">
-                {allAlbums.map(album => (
-                    <option key={album.id} value={`/${slugify(album.name)}`} />
+                {allAlbumUrls.map((url, i) => (
+                    <option key={i} value={url} />
                 ))}
             </datalist>
 
@@ -140,9 +147,9 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
             </div>
 
             {config.enabled && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
                     {/* Left Panel: Builder Controls */}
-                    <div className="md:col-span-2 space-y-6 flex flex-col">
+                    <div className="lg:col-span-3 space-y-6 flex flex-col">
                         <h3 className="text-lg font-semibold border-b pb-2">Bloques de la Tienda</h3>
                         
                         {config.blocks.length === 0 ? (
@@ -428,25 +435,26 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
 
                     </div>
 
-                    {/* Right Panel: Data Dump / Live Preview */}
-                    <div className="md:col-span-2 lg:col-span-3 xl:col-span-2 border-l px-4 bg-gray-50/50 rounded-r-xl relative shadow-inner">
-                        <div className="sticky top-8">
+                    {/* Right Panel: Fixed Mobile Live Preview */}
+                    <div className="hidden lg:block lg:col-span-2 relative">
+                        <div className="sticky top-8 h-[calc(100vh-4rem)] flex flex-col items-center justify-start pb-8">
                             
-                            <div className="flex justify-between items-center bg-black text-white px-4 py-2 rounded-t-lg">
-                                <h3 className="text-sm font-bold flex items-center gap-2"><FiEye /> Vista Previa en Vivo</h3>
-                                <div className="flex gap-2 text-xs">
-                                    <span className="px-2 py-1 bg-white/20 rounded">Desktop</span>
+                            {/* Device Frame Top */}
+                            <div className="flex justify-between items-center bg-gray-900 border-x-[8px] border-t-[8px] border-gray-900 text-white px-4 py-2 w-full max-w-[400px] rounded-t-3xl shadow-xl z-20">
+                                <h3 className="text-sm font-bold flex items-center gap-2"><FiEye /> Vista Previa En Vivo</h3>
+                                <div className="flex gap-2 text-[10px] uppercase font-bold tracking-widest text-gray-400">
+                                    Móvil Virtual
                                 </div>
                             </div>
                             
                             {/* LIVE PREVIEW CONTAINER */}
-                            <div className="border border-t-0 bg-white h-[60vh] overflow-y-auto mb-6 shadow-sm rounded-b-lg">
+                            <div className="border border-x-[8px] border-gray-900 bg-white w-full max-w-[400px] h-full min-h-[500px] max-h-[800px] overflow-y-auto mb-6 shadow-2xl rounded-b-3xl relative custom-scrollbar">
                                 {config.blocks.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4">
-                                        <p>Arrastra bloques a la izquierda para verlos aquí.</p>
+                                        <p className="text-sm text-center px-4">Arrastra bloques a la izquierda para verlos aquí.</p>
                                     </div>
                                 ) : (
-                                    <div className="pointer-events-none scale-90 origin-top w-full"> 
+                                    <div className="pointer-events-none w-full bg-white"> 
                                         <Suspense fallback={<div className="p-10 text-center text-gray-500 text-xs font-mono border-2 border-dashed rounded-xl m-4 bg-gray-50">Sincronizando vista en vivo...</div>}>
                                             <StorefrontView storefront={config} appConfig={{gridColumns: 5, mobileGridColumns: 2} as any} isPreview={true} />
                                         </Suspense>
