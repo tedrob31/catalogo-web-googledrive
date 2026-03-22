@@ -462,7 +462,7 @@ export default function StorefrontBuilder({ availableCovers, allAlbums }: Storef
                                 ) : (
                                     <div className="pointer-events-none scale-90 origin-top w-full"> 
                                         <Suspense fallback={<div className="p-10 text-center text-gray-500 text-xs font-mono border-2 border-dashed rounded-xl m-4 bg-gray-50">Sincronizando vista en vivo...</div>}>
-                                            <StorefrontView storefront={config} appConfig={{gridColumns: 5, mobileGridColumns: 2} as any} />
+                                            <StorefrontView storefront={config} appConfig={{gridColumns: 5, mobileGridColumns: 2} as any} isPreview={true} />
                                         </Suspense>
                                     </div>
                                 )}

@@ -4,10 +4,11 @@ import { StorefrontBlock } from '@/lib/storefront';
 
 interface ClassicGridProps {
     block: StorefrontBlock;
-    gridColsCls: string; // Passed down from config
+    gridColsCls?: string;
+    isPreview?: boolean;
 }
 
-export default function ClassicGrid({ block, gridColsCls }: ClassicGridProps) {
+export default function ClassicGrid({ block, gridColsCls, isPreview }: ClassicGridProps) {
     if (!block.items || block.items.length === 0) return null;
 
     let aspectClass = '';
@@ -53,7 +54,7 @@ export default function ClassicGrid({ block, gridColsCls }: ClassicGridProps) {
                         </>
                     );
 
-                    return item.linkHref ? (
+                    return item.linkHref && !isPreview ? (
                         <Link key={idx} href={item.linkHref} prefetch={false} className="group block">
                             {content}
                         </Link>

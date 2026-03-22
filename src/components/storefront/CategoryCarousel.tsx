@@ -7,9 +7,10 @@ import { StorefrontBlock } from '@/lib/storefront';
 
 interface CategoryCarouselProps {
     block: StorefrontBlock;
+    isPreview?: boolean;
 }
 
-export default function CategoryCarousel({ block }: CategoryCarouselProps) {
+export default function CategoryCarousel({ block, isPreview }: CategoryCarouselProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     if (!block.items || block.items.length === 0) return null;
@@ -82,7 +83,7 @@ export default function CategoryCarousel({ block }: CategoryCarouselProps) {
 
                         const wrapperCls = "flex-none w-48 md:w-64 snap-start group block";
 
-                        return item.linkHref ? (
+                        return item.linkHref && !isPreview ? (
                             <Link key={idx} href={item.linkHref} prefetch={false} className={wrapperCls}>
                                 {content}
                             </Link>

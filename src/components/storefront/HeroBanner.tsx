@@ -4,9 +4,10 @@ import { StorefrontBlock } from '@/lib/storefront';
 
 interface HeroBannerProps {
     block: StorefrontBlock;
+    isPreview?: boolean;
 }
 
-export default function HeroBanner({ block }: HeroBannerProps) {
+export default function HeroBanner({ block, isPreview }: HeroBannerProps) {
     if (!block.imageUrl) return null;
 
     let aspectClass = 'aspect-video';
@@ -48,7 +49,7 @@ export default function HeroBanner({ block }: HeroBannerProps) {
         </div>
     );
 
-    if (block.linkHref) {
+    if (block.linkHref && !isPreview) {
         return <Link href={block.linkHref} prefetch={false} className="block w-full"><Content /></Link>;
     }
     return <Content />;

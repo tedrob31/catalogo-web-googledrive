@@ -9,9 +9,10 @@ import { AppConfig } from '@/lib/config';
 interface StorefrontViewProps {
     storefront: StorefrontConfig;
     appConfig: AppConfig;
+    isPreview?: boolean;
 }
 
-export default function StorefrontView({ storefront, appConfig }: StorefrontViewProps) {
+export default function StorefrontView({ storefront, appConfig, isPreview = false }: StorefrontViewProps) {
     if (!storefront.enabled || !storefront.blocks || storefront.blocks.length === 0) {
         return null;
     }
@@ -26,13 +27,13 @@ export default function StorefrontView({ storefront, appConfig }: StorefrontView
             {storefront.blocks.map((block, idx) => {
                 switch (block.type) {
                     case 'hero_banner':
-                        return <HeroBanner key={block.id} block={block} />;
+                        return <HeroBanner key={block.id} block={block} isPreview={isPreview} />;
                     case 'category_carousel':
-                        return <CategoryCarousel key={block.id} block={block} />;
+                        return <CategoryCarousel key={block.id} block={block} isPreview={isPreview} />;
                     case 'classic_grid':
-                        return <ClassicGrid key={block.id} block={block} gridColsCls={gridColsCls} />;
+                        return <ClassicGrid key={block.id} block={block} gridColsCls={gridColsCls} isPreview={isPreview} />;
                     case 'promo_grid':
-                         return <PromoGrid key={block.id} block={block} />;
+                         return <PromoGrid key={block.id} block={block} isPreview={isPreview} />;
                     case 'rich_text':
                          return <RichTextBlock key={block.id} block={block} />;
                     default:
