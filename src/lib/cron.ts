@@ -32,7 +32,10 @@ export function startSyncDaemon() {
             if (diffMinutes >= config.autoSyncInterval) {
                 const startHour = config.autoSyncStartHour ?? 0;
                 const endHour = config.autoSyncEndHour ?? 23;
-                const currentHour = new Date().getHours();
+                
+                // Forzar zona horaria Lima/Bogotá (UTC-5) independiente de la región del servidor/contenedor
+                const limaTime = new Date().toLocaleString("en-US", {timeZone: "America/Lima"});
+                const currentHour = new Date(limaTime).getHours();
 
                 let isWithinWindow = false;
                 if (startHour <= endHour) {
@@ -47,7 +50,8 @@ export function startSyncDaemon() {
                     isSyncing = true;
                     try {
                         const port = process.env.PORT || 3000;
-                        const res = await fetch(`http://localhost:${port}/api/sync`, { method: 'POST' });
+                        // Usar 127.0.0.1 evita fallos en Node 18+ por resolución IPv6 (::1) de 'localhost' en ciertos contenedores
+                        const res = await fetch(`http://127.0.0.1:${port}/api/sync`, { method: 'POST' });
                         if (res.ok) {
                             console.log('[Cron] Sincronización, Purga de Cloudflare y Limpieza ISR completadas exitosamente vía API.');
                         } else {
@@ -55,6 +59,11 @@ export function startSyncDaemon() {
                         }
                     } finally {
                         isSyncing = false;
+                    }
+                } else {
+                    // Evitar spam en log: solo avisar si estamos exactamente al inicio del intervalo o en la hora de inicio de una evaluación nueva
+                    if (Math.floor(diffMinutes) === config.autoSyncInterval || new Date().getMinutes() === 0) {
+                        console.log(`[Cron] Sincronización programada en PEAJE: Actualmente son las ${currentHour}:xx h (Hora de Perú). Fuera de tu ventana permitida (${startHour}h-${endHour}h).`);
                     }
                 }
             }
