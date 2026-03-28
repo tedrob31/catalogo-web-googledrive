@@ -76,32 +76,26 @@ export async function POST(request: Request) {
             // Revalidate internal Next.js cache
             revalidatePath('/', 'layout');
 
-            // Purge Cloudflare
-            const paths = Array.from(affectedPaths);
-            if (paths.length > 0) {
-                const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
-                const cfToken = process.env.CLOUDFLARE_API_TOKEN;
+            // Purge Cloudflare Entirely (Handles RSC Payloads safely)
+            const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
+            const cfToken = process.env.CLOUDFLARE_API_TOKEN;
 
-                if (cfZoneId && cfToken) {
-                    const domain = process.env.NEXT_PUBLIC_DOMAIN_NAME || 'localhost';
-                    const protocol = domain.includes('localhost') ? 'http://' : 'https://';
-
-                    const urlsToPurge = paths.flatMap(p => {
-                        const base = `${protocol}${domain}`;
-                        if (p === '/') return [`${base}/`];
-                        return [`${base}${p}`, `${base}${p}/`];
-                    });
-
-                    // Fire Cloudflare request in background
-                    fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${cfToken}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ files: urlsToPurge.slice(0, 30) })
-                    }).catch(err => console.error('CF Purge Error from config:', err));
-                }
+            if (cfZoneId && cfToken) {
+                console.log(`[Config] Ejecutando Purga Global (Purge Everything) en Cloudflare para Configuración...`);
+                // Fire Cloudflare request in background
+                fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${cfToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ purge_everything: true })
+                })
+                .then(res => {
+                    if (res.ok) console.log('[Config] Cloudflare Purged Everything.');
+                    else res.text().then(text => console.error('[Config] Cloudflare Purge Everything Failed:', text));
+                })
+                .catch(err => console.error('[Config] Cloudflare Purge Exception:', err));
             }
         }
 

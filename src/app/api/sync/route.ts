@@ -27,52 +27,31 @@ export async function POST() {
             revalidatePath('/', 'layout');
         }
 
-        // CLOUDFLARE CACHE PURGE (Targeted)
+        // CLOUDFLARE CACHE PURGE (Purge Everything)
+        // La purga selectiva por URL falla porque NextJS inyecta queries dinámicas (?_rsc=xxx) al navegar
         const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
         const cfToken = process.env.CLOUDFLARE_API_TOKEN;
 
         if (cfZoneId && cfToken && affectedPaths.length > 0) {
-            const domain = process.env.NEXT_PUBLIC_DOMAIN_NAME || 'localhost';
-            const protocol = domain.includes('localhost') ? 'http://' : 'https://';
+            console.log(`[Sync] Ejecutando Purga Global (Purge Everything) en Cloudflare para matar el caché de App Router (_rsc)...`);
+            try {
+                const cfResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${cfToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ purge_everything: true })
+                });
 
-            // Convert relative paths to full URLs for Cloudflare.
-            // Cloudflare Free Plan "Purge by URL" is brutally exact.
-            // A request for `/album` will NOT clear `/album/`.
-            // We must intentionally send both variations to guarantee the cache is broken.
-            const urlsToPurge = affectedPaths.flatMap(p => {
-                const base = `${protocol}${domain}`;
-                if (p === '/') return [`${base}/`];
-                return [
-                    `${base}${p}`,    // e.g. https://r4tlabs.com/moda-hombre
-                    `${base}${p}/`    // e.g. https://r4tlabs.com/moda-hombre/
-                ];
-            });
-
-            // Cloudflare Free Plan limits 'files' array to 30 items per API call.
-            const BATCH_SIZE = 30;
-            console.log(`[Sync] Cloudflare credentials found. Purging ${urlsToPurge.length} precise URLs in batches of ${BATCH_SIZE}...`);
-
-            for (let i = 0; i < urlsToPurge.length; i += BATCH_SIZE) {
-                const batch = urlsToPurge.slice(i, i + BATCH_SIZE);
-                try {
-                    const cfResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${cfToken}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ files: batch })
-                    });
-
-                    if (cfResponse.ok) {
-                        console.log(`[Sync] Cloudflare Batch Purged: ${batch.length} URLs.`);
-                    } else {
-                        const cfError = await cfResponse.text();
-                        console.error(`[Sync] Cloudflare Purge Batch Failed:`, cfError);
-                    }
-                } catch (cfErr) {
-                    console.error('[Sync] Cloudflare Purge Exception:', cfErr);
+                if (cfResponse.ok) {
+                    console.log(`[Sync] Cloudflare Purged Everything.`);
+                } else {
+                    const cfError = await cfResponse.text();
+                    console.error(`[Sync] Cloudflare Purge Everything Failed:`, cfError);
                 }
+            } catch (cfErr) {
+                console.error('[Sync] Cloudflare Purge Exception:', cfErr);
             }
         } else if (affectedPaths.length === 0) {
             console.log('[Sync] No paths affected, skipping Cloudflare purge.');
