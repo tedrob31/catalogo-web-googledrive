@@ -157,7 +157,8 @@ export default function StorefrontBuilder({ availableCovers, allAlbums, allAlbum
                         ) : (
                             <div className="space-y-4">
                                 {config.blocks.map((block, index) => (
-                                    <div key={block.id} className="border p-4 rounded bg-white shadow-sm hover:border-blue-300 transition-colors">
+                                    <div key={block.id} className="relative group/block-wrapper">
+                                        <div className="border p-4 rounded bg-white shadow-sm hover:border-blue-300 transition-colors">
                                         <div className="flex justify-between items-center mb-4">
                                             <div className="flex items-center gap-2">
                                                 <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded tracking-widest uppercase">
@@ -421,6 +422,26 @@ export default function StorefrontBuilder({ availableCovers, allAlbums, allAlbum
                                             )}
                                         </div>
                                     </div>
+                                    
+                                    {/* Intermediate Add Block Button / Divider - Now EXPLICIT AND VISIBLE */}
+                                    <div className="relative py-3 my-1 flex flex-col items-center justify-center group opacity-40 hover:opacity-100 transition-opacity w-full">
+                                        <hr className="absolute inset-x-0 h-[2px] bg-blue-100 group-hover:bg-blue-300 border-none transition-colors z-0" />
+                                        
+                                        {/* Icon before hovering */}
+                                        <span className="relative bg-white text-blue-500 group-hover:hidden z-10 text-xs shadow-sm border border-blue-200 rounded-full px-2 py-0.5 cursor-pointer font-bold leading-none" title="Añadir bloque intermedio">+ Insertar Bloque Aquí</span>
+                                        
+                                        {/* Expanded buttons on hover */}
+                                        <div className="relative hidden group-hover:flex bg-white py-1.5 px-3 border-2 border-blue-300 shadow-xl rounded-full gap-2 items-center z-20 mx-auto">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 px-2 border-r border-blue-100">Insertar:</span>
+                                            <button type="button" onClick={() => handleAddBlock('hero_banner', index + 1)} className="text-[11px] bg-gray-50 hover:bg-blue-500 hover:text-white font-bold px-3 py-1.5 rounded-full transition-colors shadow-sm whitespace-nowrap">+ Banner</button>
+                                            <button type="button" onClick={() => handleAddBlock('category_carousel', index + 1)} className="text-[11px] bg-gray-50 hover:bg-blue-500 hover:text-white font-bold px-3 py-1.5 rounded-full transition-colors shadow-sm whitespace-nowrap">+ Carrusel</button>
+                                            <button type="button" onClick={() => handleAddBlock('promo_grid', index + 1)} className="text-[11px] bg-gray-50 hover:bg-blue-500 hover:text-white font-bold px-3 py-1.5 rounded-full transition-colors shadow-sm whitespace-nowrap">+ Grilla Promo</button>
+                                            <button type="button" onClick={() => handleAddBlock('classic_grid', index + 1)} className="text-[11px] bg-gray-50 hover:bg-blue-500 hover:text-white font-bold px-3 py-1.5 rounded-full transition-colors shadow-sm whitespace-nowrap">+ Grilla Simple</button>
+                                            <button type="button" onClick={() => handleAddBlock('rich_text', index + 1)} className="text-[11px] bg-gray-50 hover:bg-blue-500 hover:text-white font-bold px-3 py-1.5 rounded-full transition-colors shadow-sm whitespace-nowrap">+ Texto</button>
+                                        </div>
+                                    </div>
+
+                                </div>
                                 ))}
                             </div>
                         )}

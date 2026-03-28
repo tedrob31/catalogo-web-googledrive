@@ -131,11 +131,17 @@ export default function AdminDashboard() {
     }
 
     // Helper to generate absolute nested paths for the right panel Datalist
-    const getAllAlbumUrls = (album: Album, parentPath: string = ''): string[] => {
-        const currentPath = parentPath === '' ? `/${slugify(album.name)}` : `${parentPath}/${slugify(album.name)}`;
-        let list = [currentPath];
+    // Root level (CATALOGO) starts with no path, its children create the base routes
+    const getAllAlbumUrls = (album: Album, parentPath: string = '', isRoot: boolean = true): string[] => {
+        let currentPath = parentPath;
+        if (!isRoot) {
+            currentPath = parentPath === '' ? `/${slugify(album.name)}` : `${parentPath}/${slugify(album.name)}`;
+        }
+        
+        // Root doesn't exist as a route page, so we don't return it
+        let list = isRoot ? [] : [currentPath];
         album.subAlbums.forEach(sub => {
-            list = list.concat(getAllAlbumUrls(sub, currentPath));
+            list = list.concat(getAllAlbumUrls(sub, currentPath, false));
         });
         return list;
     };
