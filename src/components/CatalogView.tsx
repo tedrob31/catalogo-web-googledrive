@@ -126,21 +126,21 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
         }
 
         setCurrentPath(newPath); // Optimistic
-        router.push(constructUrl(newPath), { scroll: false });
+        window.location.href = constructUrl(newPath);
     };
 
     const handleBack = () => {
         if (currentPath.length > 1) {
             const newPath = currentPath.slice(0, -1);
             setCurrentPath(newPath);
-            router.push(constructUrl(newPath), { scroll: false });
+            window.location.href = constructUrl(newPath);
         }
     };
 
     const handleBreadcrumb = (index: number) => {
         const newPath = currentPath.slice(0, index + 1);
         setCurrentPath(newPath);
-        router.push(constructUrl(newPath), { scroll: false });
+        window.location.href = constructUrl(newPath);
     };
 
     // Lightbox handlers
@@ -171,7 +171,7 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
                                     setSearchQuery('');
                                     if (rootAlbum) {
                                         setCurrentPath([rootAlbum]);
-                                        router.push(constructUrl([rootAlbum]), { scroll: false });
+                                        window.location.href = constructUrl([rootAlbum]);
                                     }
                                 } else {
                                     handleBack();

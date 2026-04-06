@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
+
 import { StorefrontBlock } from '@/lib/storefront';
 
 interface CategoryCarouselProps {
@@ -64,15 +64,19 @@ export default function CategoryCarousel({ block, isPreview }: CategoryCarouselP
 
                         const wrapperCls = `flex-none snap-start group block ${block.aspectRatio === 'intrinsic' ? 'w-[85vw] md:w-full max-w-5xl' : 'w-48 md:w-64'}`;
 
-                        return item.linkHref && !isPreview ? (
-                            <Link key={idx} href={item.linkHref} prefetch={false} className={wrapperCls}>
-                                {content}
-                            </Link>
-                        ) : (
-                            <div key={idx} className={wrapperCls}>
-                                {content}
-                            </div>
-                        );
+                        if (item.linkHref && !isPreview) {
+                            return (
+                                <a key={idx} href={item.linkHref} className={wrapperCls}>
+                                    {content}
+                                </a>
+                            );
+                        } else {
+                            return (
+                                <div key={idx} className={wrapperCls}>
+                                    {content}
+                                </div>
+                            );
+                        }
                     })}
                 </div>
             </div>

@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import Link from 'next/link';
+
 import { StorefrontBlock } from '@/lib/storefront';
 
 interface HeroBannerProps {
@@ -50,7 +50,7 @@ export default function HeroBanner({ block, isPreview }: HeroBannerProps) {
     );
 
     if (block.linkHref && !isPreview) {
-        return <Link href={block.linkHref} prefetch={false} className="block w-full"><Content /></Link>;
+        return <a href={block.linkHref} className="block w-full"><Content /></a>;
     }
     return <Content />;
 }
