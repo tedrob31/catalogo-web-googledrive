@@ -126,21 +126,21 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
         }
 
         setCurrentPath(newPath); // Optimistic
-        window.location.href = constructUrl(newPath);
+        router.push(constructUrl(newPath), { scroll: false });
     };
 
     const handleBack = () => {
         if (currentPath.length > 1) {
             const newPath = currentPath.slice(0, -1);
             setCurrentPath(newPath);
-            window.location.href = constructUrl(newPath);
+            router.push(constructUrl(newPath), { scroll: false });
         }
     };
 
     const handleBreadcrumb = (index: number) => {
         const newPath = currentPath.slice(0, index + 1);
         setCurrentPath(newPath);
-        window.location.href = constructUrl(newPath);
+        router.push(constructUrl(newPath), { scroll: false });
     };
 
     // Lightbox handlers
@@ -171,7 +171,7 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
                                     setSearchQuery('');
                                     if (rootAlbum) {
                                         setCurrentPath([rootAlbum]);
-                                        window.location.href = constructUrl([rootAlbum]);
+                                        router.push(constructUrl([rootAlbum]), { scroll: false });
                                     }
                                 } else {
                                     handleBack();
@@ -253,19 +253,13 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
                                     {isSearching ? 'Fotos encontradas' : 'Fotos'}
                                 </h2>
                                 <div className="grid gap-1 sm:gap-4 md:gap-6">
-                                    <style jsx>{`
-                                @media (min-width: 768px) {
-                                    .dynamic-grid {
-                                        grid-template-columns: repeat(${config.gridColumns || 5}, minmax(0, 1fr));
-                                    }
-                                }
-                                @media (max-width: 767px) {
-                                    .dynamic-grid {
-                                        grid-template-columns: repeat(${config.mobileGridColumns || 2}, minmax(0, 1fr));
-                                    }
-                                }
-                            `}</style>
-                                    <div className="dynamic-grid grid gap-1 sm:gap-4 md:gap-6">
+                                    <div 
+                                        className="dynamic-catalog-grid grid gap-1 sm:gap-4 md:gap-6"
+                                        style={{
+                                            '--grid-cols-desktop': config.gridColumns || 5,
+                                            '--grid-cols-mobile': config.mobileGridColumns || 2
+                                        } as any}
+                                    >
                                         {visiblePhotos.map((photo, idx) => (
                                             <PhotoCard key={photo.id} photo={photo} priority={idx < 10} onClick={() => openLightbox(idx)} />
                                         ))}
