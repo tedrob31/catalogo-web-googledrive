@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
+import fs from 'fs';
+import path from 'path';
 import { syncDrive, loadCache } from '@/lib/cache';
 import { getConfig } from '@/lib/config';
 
@@ -31,27 +33,77 @@ export async function POST() {
         // La purga selectiva por URL falla porque NextJS inyecta queries dinámicas (?_rsc=xxx) al navegar
         const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
         const cfToken = process.env.CLOUDFLARE_API_TOKEN;
+        const domain = process.env.NEXT_PUBLIC_DOMAIN_NAME;
 
-        if (cfZoneId && cfToken && affectedPaths.length > 0 && process.env.NEXT_PUBLIC_DOMAIN_NAME) {
-            console.log(`[Sync] Ejecutando Purga Global por Hostname en Cloudflare para aislar la limpieza de caché de App Router (_rsc)...`);
-            try {
-                const cfResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${cfToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ hosts: [process.env.NEXT_PUBLIC_DOMAIN_NAME] })
-                });
-
-                if (cfResponse.ok) {
-                    console.log(`[Sync] Cloudflare Purged Hostname: ${process.env.NEXT_PUBLIC_DOMAIN_NAME}`);
-                } else {
-                    const cfError = await cfResponse.text();
-                    console.error(`[Sync] Cloudflare Purge Everything Failed:`, cfError);
+        if (cfZoneId && cfToken && affectedPaths.length > 0 && domain) {
+            // Híbrido: Si hay más de 5 rutas afectadas, purgar por hostname es más eficiente y seguro.
+            // Si hay de 1 a 5 rutas, aplicar purga selectiva calculando payloads _rsc.
+            if (affectedPaths.length > 5) {
+                console.log(`[Sync] Ejecutando Purga Global por Hostname en Cloudflare (${affectedPaths.length} rutas afectadas)...`);
+                try {
+                    const cfResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${cfToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ hosts: [domain] })
+                    });
+                    if (cfResponse.ok) {
+                        console.log(`[Sync] Cloudflare Purged Hostname: ${domain}`);
+                    } else {
+                        const cfError = await cfResponse.text();
+                        console.error(`[Sync] Cloudflare Purge Hostname Failed:`, cfError);
+                    }
+                } catch (cfErr) {
+                    console.error('[Sync] Cloudflare Purge Hostname Exception:', cfErr);
                 }
-            } catch (cfErr) {
-                console.error('[Sync] Cloudflare Purge Exception:', cfErr);
+            } else {
+                console.log(`[Sync] Ejecutando Purga Selectiva de URLs en Cloudflare (${affectedPaths.length} rutas afectadas)...`);
+                
+                // Obtener ID de compilación para invalidar RSCs (Single Page Application data)
+                let buildId = '';
+                try {
+                    const buildIdPath = path.join(process.cwd(), '.next', 'BUILD_ID');
+                    if (fs.existsSync(buildIdPath)) {
+                        buildId = fs.readFileSync(buildIdPath, 'utf8').trim();
+                    }
+                } catch (e) {
+                    console.warn('[Sync] No se pudo leer BUILD_ID, asumiendo vacío.');
+                }
+
+                const urlsToPurge: string[] = [];
+                for (const routePath of affectedPaths) {
+                    const baseUrl = `https://${domain}${routePath}`;
+                    urlsToPurge.push(baseUrl);
+                    if (routePath !== '/') urlsToPurge.push(`${baseUrl}/`);
+                    // Inyectar URLs de React Server Components
+                    if (buildId) {
+                        urlsToPurge.push(`${baseUrl}?_rsc=${buildId}`);
+                        if (routePath !== '/') urlsToPurge.push(`${baseUrl}/?_rsc=${buildId}`);
+                    }
+                }
+
+                // Cloudflare API soporta hasta 30 URLs por Request. 5 rutas * 4 variables = 20 URLs máx. Lote apto.
+                try {
+                    const cfResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${cfToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ files: urlsToPurge }) // Purga selectiva activada
+                    });
+                    
+                    if (cfResponse.ok) {
+                        console.log(`[Sync] Cloudflare Purged ${urlsToPurge.length} URLs selectively.`);
+                    } else {
+                        const cfError = await cfResponse.text();
+                        console.error(`[Sync] Cloudflare Purge URLs Failed:`, cfError);
+                    }
+                } catch (cfErr) {
+                    console.error('[Sync] Cloudflare Selective Purge Exception:', cfErr);
+                }
             }
         } else if (affectedPaths.length === 0) {
             console.log('[Sync] No paths affected, skipping Cloudflare purge.');
