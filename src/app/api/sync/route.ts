@@ -32,8 +32,8 @@ export async function POST() {
         const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
         const cfToken = process.env.CLOUDFLARE_API_TOKEN;
 
-        if (cfZoneId && cfToken && affectedPaths.length > 0) {
-            console.log(`[Sync] Ejecutando Purga Global (Purge Everything) en Cloudflare para matar el caché de App Router (_rsc)...`);
+        if (cfZoneId && cfToken && affectedPaths.length > 0 && process.env.NEXT_PUBLIC_DOMAIN_NAME) {
+            console.log(`[Sync] Ejecutando Purga Global por Hostname en Cloudflare para aislar la limpieza de caché de App Router (_rsc)...`);
             try {
                 const cfResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
                     method: 'POST',
@@ -41,11 +41,11 @@ export async function POST() {
                         'Authorization': `Bearer ${cfToken}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ purge_everything: true })
+                    body: JSON.stringify({ hosts: [process.env.NEXT_PUBLIC_DOMAIN_NAME] })
                 });
 
                 if (cfResponse.ok) {
-                    console.log(`[Sync] Cloudflare Purged Everything.`);
+                    console.log(`[Sync] Cloudflare Purged Hostname: ${process.env.NEXT_PUBLIC_DOMAIN_NAME}`);
                 } else {
                     const cfError = await cfResponse.text();
                     console.error(`[Sync] Cloudflare Purge Everything Failed:`, cfError);

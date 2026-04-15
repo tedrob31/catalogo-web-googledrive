@@ -80,8 +80,8 @@ export async function POST(request: Request) {
             const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
             const cfToken = process.env.CLOUDFLARE_API_TOKEN;
 
-            if (cfZoneId && cfToken) {
-                console.log(`[Config] Ejecutando Purga Global (Purge Everything) en Cloudflare para Configuración...`);
+            if (cfZoneId && cfToken && process.env.NEXT_PUBLIC_DOMAIN_NAME) {
+                console.log(`[Config] Ejecutando Purga Global por Hostname en Cloudflare para Configuración...`);
                 // Fire Cloudflare request in background
                 fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
                     method: 'POST',
@@ -89,11 +89,11 @@ export async function POST(request: Request) {
                         'Authorization': `Bearer ${cfToken}`,
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ purge_everything: true })
+                    body: JSON.stringify({ hosts: [process.env.NEXT_PUBLIC_DOMAIN_NAME] })
                 })
                 .then(res => {
-                    if (res.ok) console.log('[Config] Cloudflare Purged Everything.');
-                    else res.text().then(text => console.error('[Config] Cloudflare Purge Everything Failed:', text));
+                    if (res.ok) console.log(`[Config] Cloudflare Purged Hostname: ${process.env.NEXT_PUBLIC_DOMAIN_NAME}`);
+                    else res.text().then(text => console.error('[Config] Cloudflare Purge Hostname Failed:', text));
                 })
                 .catch(err => console.error('[Config] Cloudflare Purge Exception:', err));
             }
