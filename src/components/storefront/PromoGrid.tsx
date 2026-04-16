@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import Link from 'next/link';
+
 import { StorefrontBlock } from '@/lib/storefront';
 
 interface PromoGridProps {
@@ -35,8 +35,8 @@ export default function PromoGrid({ block, isPreview }: PromoGridProps) {
                 
                 {/* Main Large Item (Left) */}
                 {(() => {
-                    const Wrapper = mainItem.linkHref && !isPreview ? Link : 'div';
-                    const props = mainItem.linkHref && !isPreview ? { href: mainItem.linkHref, prefetch: false } : {};
+                    const Wrapper = mainItem.linkHref && !isPreview ? 'a' : 'div';
+                    const props = mainItem.linkHref && !isPreview ? { href: mainItem.linkHref } : {};
                     
                     return (
                         <Wrapper {...props as any} className="group relative block aspect-square md:aspect-auto md:h-[600px] overflow-hidden rounded-none bg-gray-100">
@@ -62,8 +62,8 @@ export default function PromoGrid({ block, isPreview }: PromoGridProps) {
                 {/* Stacked Sub Items (Right/Bottom) */}
                 <div className="grid grid-cols-2 md:grid-cols-1 md:grid-rows-2 gap-2 md:gap-3 h-auto md:h-[600px]">
                     {(() => {
-                        const Wrapper = sub1.linkHref && !isPreview ? Link : 'div';
-                        const props = sub1.linkHref && !isPreview ? { href: sub1.linkHref, prefetch: false } : {};
+                        const Wrapper = sub1.linkHref && !isPreview ? 'a' : 'div';
+                        const props = sub1.linkHref && !isPreview ? { href: sub1.linkHref } : {};
                         return (
                             <Wrapper {...props as any} className="group relative block w-full aspect-square md:aspect-auto md:h-full overflow-hidden rounded-none bg-gray-100">
                                 <Image src={sub1.imageUrl} alt={sub1.title || 'Promo sub 1'} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
@@ -78,8 +78,8 @@ export default function PromoGrid({ block, isPreview }: PromoGridProps) {
                     })()}
 
                     {(() => {
-                        const Wrapper = sub2.linkHref && !isPreview ? Link : 'div';
-                        const props = sub2.linkHref && !isPreview ? { href: sub2.linkHref, prefetch: false } : {};
+                        const Wrapper = sub2.linkHref && !isPreview ? 'a' : 'div';
+                        const props = sub2.linkHref && !isPreview ? { href: sub2.linkHref } : {};
                         return (
                             <Wrapper {...props as any} className="group relative block w-full aspect-square md:aspect-auto md:h-full overflow-hidden rounded-none bg-gray-100">
                                 <Image src={sub2.imageUrl} alt={sub2.title || 'Promo sub 2'} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
