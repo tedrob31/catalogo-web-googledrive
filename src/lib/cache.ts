@@ -304,5 +304,20 @@ export function computeAffectedPaths(oldRoot: Album | undefined, newRoot: Album)
     }
 
     compare(oldRoot, newRoot, '/');
-    return Array.from(affected);
+
+    // MÁGIA DE PURGA EN CASCADA INVERSA:
+    // Si un álbum cambió, sus álbumes padres (antecesores) también deben purgarse
+    // porque usualmente muestran la foto de portada de álbumes hijos.
+    const ancestors = new Set<string>();
+    for (const path of affected) {
+        ancestors.add(path);
+        let current = path;
+        while (current !== '/' && current !== '') {
+            const lastSlash = current.lastIndexOf('/');
+            current = lastSlash <= 0 ? '/' : current.substring(0, lastSlash);
+            ancestors.add(current);
+        }
+    }
+    
+    return Array.from(ancestors);
 }

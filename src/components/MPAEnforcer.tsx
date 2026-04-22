@@ -1,24 +1,25 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 
 /**
  * Destruye la funcionalidad Single Page Application (SPA) del enrutador interno de Next.js.
- * Cuando el usuario presiona la flecha "Atrás" o "Adelante", Next.js intenta interceptarla 
- * para renderizar componentes RSC cacheados sin recargar el navegador.
- * Este componente fuerza a Chrome a recargar la página inmediatamente desde Cloudflare,
- * garantizando el comportamiento de una web tradicional MPA (Multi-Page Application).
+ * Ya que Next.js bloquea los eventos nativos 'popstate', usamos usePathname para detectar
+ * cuando la URL cambia por manipulación de historial (Botón Atrás/Adelante).
+ * Al detectar un cambio de URL sin hard-reload, obligamos al navegador a recargar forzosamente.
  */
 export default function MPAEnforcer() {
-    useEffect(() => {
-        const onPopState = () => {
-            // Fuerza una recarga dura de HTML ignorando la memoria caché de JS de Next.js
-            window.location.reload();
-        };
+    const pathname = usePathname();
+    const mountedPath = useRef(pathname);
 
-        window.addEventListener('popstate', onPopState);
-        return () => window.removeEventListener('popstate', onPopState);
-    }, []);
+    useEffect(() => {
+        // Si el pathname de React cambia pero la ruta inicial del componente es distinta,
+        // significa que Next.js interceptó un Botón Atrás. Hacemos Reload Inmediato.
+        if (pathname !== mountedPath.current) {
+            window.location.reload();
+        }
+    }, [pathname]);
 
     return null;
 }

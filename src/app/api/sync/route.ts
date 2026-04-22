@@ -36,9 +36,10 @@ export async function POST() {
         const domain = process.env.NEXT_PUBLIC_DOMAIN_NAME;
 
         if (cfZoneId && cfToken && affectedPaths.length > 0 && domain) {
-            // Híbrido: Si hay más de 5 rutas afectadas, purgar por hostname es más eficiente y seguro.
-            // Si hay de 1 a 5 rutas, aplicar purga selectiva calculando payloads _rsc.
-            if (affectedPaths.length > 5) {
+            // Híbrido: Si hay más de 7 rutas afectadas (porque a cada hijo se le suman sus ancestros), 
+            // purgar por hostname es más eficiente y seguro ante el límite de Cloudflare.
+            // Cloudflare API soporta máximo 30 URLs. 7 rutas afectadas * 2-4 variantes = ~28 URLs (límite super optimizado).
+            if (affectedPaths.length > 7) {
                 console.log(`[Sync] Ejecutando Purga Global por Hostname en Cloudflare (${affectedPaths.length} rutas afectadas)...`);
                 try {
                     const cfResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
@@ -84,7 +85,7 @@ export async function POST() {
                     }
                 }
 
-                // Cloudflare API soporta hasta 30 URLs por Request. 5 rutas * 4 variables = 20 URLs máx. Lote apto.
+                // Cloudflare API soporta hasta 30 URLs por Request. 7 rutas * 4 variables (max) = 28 URLs máx. Lote apto.
                 try {
                     const cfResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
                         method: 'POST',
