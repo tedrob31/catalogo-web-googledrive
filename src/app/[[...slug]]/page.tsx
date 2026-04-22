@@ -153,6 +153,7 @@ export default async function Page(props: Props) {
 
   return (
     <CatalogView
+      key={slugs.join('/') || 'root'}
       data={data}
       config={config}
       initialPath={initialPath}

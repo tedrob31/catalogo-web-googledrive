@@ -9,16 +9,23 @@ import { useEffect } from 'react';
  */
 export default function MPAEnforcer() {
     useEffect(() => {
-        const onPopState = () => {
-            // Forzar recarga absoluta hacia el URL actual que Chrome acaba de restaurar en la barra
-            window.location.href = window.location.pathname + window.location.search;
+        // Defensa 1: Destruir el BFCache si Chrome decide usarlo
+        const onPageShow = (event: PageTransitionEvent) => {
+            if (event.persisted) {
+                window.location.reload();
+            }
         };
 
-        // El 'true' al final actua en la fase de captura (Event Capturing)
-        // Next.js usa Event Bubbling (false), por ende, nosotros llegamos primero y lo destruimos.
+        // Defensa 2: Destruir el Soft Router si Next.js lo engaña
+        const onPopState = () => {
+            window.location.reload();
+        };
+
+        window.addEventListener('pageshow', onPageShow);
         window.addEventListener('popstate', onPopState, true);
 
         return () => {
+            window.removeEventListener('pageshow', onPageShow);
             window.removeEventListener('popstate', onPopState, true);
         };
     }, []);
