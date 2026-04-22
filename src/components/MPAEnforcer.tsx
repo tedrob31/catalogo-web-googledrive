@@ -1,25 +1,27 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { usePathname } from 'next/navigation';
+import { useEffect } from 'react';
 
 /**
  * Destruye la funcionalidad Single Page Application (SPA) del enrutador interno de Next.js.
- * Ya que Next.js bloquea los eventos nativos 'popstate', usamos usePathname para detectar
- * cuando la URL cambia por manipulación de historial (Botón Atrás/Adelante).
- * Al detectar un cambio de URL sin hard-reload, obligamos al navegador a recargar forzosamente.
+ * Usamos el evento 'popstate' en la fase de CAPTURA (true), lo que garantiza que 
+ * ejecutamos nuestro código ANTES de que Next.js pueda interceptar el botón Atrás.
  */
 export default function MPAEnforcer() {
-    const pathname = usePathname();
-    const mountedPath = useRef(pathname);
-
     useEffect(() => {
-        // Si el pathname de React cambia pero la ruta inicial del componente es distinta,
-        // significa que Next.js interceptó un Botón Atrás. Hacemos Reload Inmediato.
-        if (pathname !== mountedPath.current) {
-            window.location.reload();
-        }
-    }, [pathname]);
+        const onPopState = () => {
+            // Forzar recarga absoluta hacia el URL actual que Chrome acaba de restaurar en la barra
+            window.location.href = window.location.pathname + window.location.search;
+        };
+
+        // El 'true' al final actua en la fase de captura (Event Capturing)
+        // Next.js usa Event Bubbling (false), por ende, nosotros llegamos primero y lo destruimos.
+        window.addEventListener('popstate', onPopState, true);
+
+        return () => {
+            window.removeEventListener('popstate', onPopState, true);
+        };
+    }, []);
 
     return null;
 }
