@@ -1,99 +1,66 @@
-# Catálogo Web Google Drive (Next.js + Docker Swarm)
+# 🚀 Catálogo Web Antigravity (Next.js Standalone + ISR)
 
-Sistema de catálogo web profesional que sincroniza automáticamente su contenido desde una carpeta de Google Drive. Construido con **Next.js 15 (App Router)**, diseñado para **Docker Swarm**, y optimizado para alto rendimiento mediante **Static Export** y **Nginx**.
+Sistema de catálogo e-commerce ultra-rápido que sincroniza de forma transparente su contenido visual desde Google Drive, diseñado para Alto Rendimiento, Cloudflare Edge Caching y Experiencia de Usuario sin FOUC.
 
-![Dashboard Preview](https://via.placeholder.com/800x400?text=Dashboard+Preview)
+Construido sobre **Next.js 15 App Router** en modo `standalone`, asegurando despliegues ágiles en Docker Swarm mientras se mantienen capacidades dinámicas como Edge Middleware y Server Actions.
 
-## 🚀 Características Principales
+---
 
-*   **Sincronización con Google Drive:**
-    *   Gestiona todo tu catálogo (carpetas, subcarpetas, fotos) organizando archivos en tu Google Drive.
-    *   **Dual Profile Optimization:** Las imágenes se convierten automáticamente a WebP:
-        *   **Fotos de Catálogo:** 800px ancho, Calidad 75 (Ligeras y nítidas).
-        *   **Portadas (Covers):** 400x400px Cuadradas, *Smart Crop* (Entropy).
-*   **Arquitectura Híbrida (Hybrid Deployment):**
-    *   **Backend (Node.js):** Gestiona la sincronización, API y Panel de Administración (`/modaadmin`).
-    *   **Frontend (Nginx):** Sirve el sitio como HTML estático ultrarrápido (`output: export`), generado automáticamente tras cada sincronización.
-*   **Panel de Administración Seguro:**
-    *   Acceso protegido (`/modaadmin`) para realizar sincronizaciones manuales y ver logs.
-    *   **Gatekeeper:** Protección de rutas y redirección inteligente (Setup vs Active).
-*   **Despliegue Profesional:**
-    *   **Docker Swarm Ready:** Stack optimizado con `traefik` para balanceo de carga y SSL automático.
-    *   **Cloudflare Auto-Purge:** Limpia la caché de CDN automáticamente tras cada despliegue.
-    *   **Variables de Entorno:** Configuración segura sin exponer credenciales.
+## 🔥 Arquitectura de Caché Estructurada y Sincronizaciones
 
-## 🛠️ Requisitos Previos
+Este proyecto soluciona los complejos problemas de "Stale Data" (Información obsoleta) nativos del App Router de Next.js. El Catálogo NUNCA mostrará una foto antigua gracias a esta ingeniería:
 
-*   Docker & Docker Compose.
-*   Una cuenta de Google Cloud Platform (GCP) con la API de Google Drive habilitada.
-*   Una cuenta de Servicio (Service Account) de Google con permisos de lectura sobre la carpeta de Drive.
+*   **Navegación MPA Forzada:** Todos los componentes de navegación en tienda (`HeroBanner`, `ClassicGrid`, `CatalogView`) utilizan intencionalmente componentes `<a>` puros de HTML clásico en vez de Client-Side `<Link>`. Esto detiene el abusivo *Router Cache* interno de Next.js, forzando peticiones HTTP reales al Edge de Cloudflare que responden en <30ms asegurando consistencia de datos absolutos.
+*   **Purga Híbrida Avanzada (Cloudflare API):**
+    *   **Cambios Menores (1-5 carpetas):** El motor lee el `.next/BUILD_ID` generado durante el despliegue para invalidar selectivamente los assets estáticos y las variables secretas `_rsc` exclusivas de ese álbum. **Ventaja:** El 99% de los otros subdominios e imágenes permanecen súper cargados en disco y memoria CDN.
+    *   **Cambios Masivos/Layout:** El sistema conmuta automáticamente a una purga selectiva por `Hostname`, barriendo el dominio actual sin perjudicar subdominios hermanos en el mismo Zone ID de Cloudflare.
+*   **Edge Middleware Activo:** Inyección de escudos de cabeceras (`Cache-Control: max-age=0`) a Chrome específicamente cuando intenta retener payloads `?_rsc=` en el _Disk Cache_ de las PC de tus clientes. 
 
-## 📦 Instalación y Despliegue
+---
 
-### 1. Configuración de Variables
-Crea un archivo `.env` basado en el ejemplo:
+## 🏎️ Características Visuales (Storefront UX)
 
-```bash
-cp .env.example .env
-```
-Edita `.env` con tus credenciales:
+*   **Sin Destellos Visuales (Zero FOUC):** La grilla de productos dinámica abandonó los estilos inyectables por JS de Next (`<style jsx>`) a favor de Inyección Nativa de Propiedades CSS. Esto hace imposible que las imágenes carguen "gigantes" antes de ajustarse a la grilla durante la transición.
+*   **Diseño de Álbumes Híbrido:** Las previsualizaciones (`CategoryCarousel`) tienen un layout _Intrinsic_ permitiendo flujos similares al de Falabella, donde las fotos imponen el layout para lucir prendas de cuerpo entero con _aspectRatios_ nativos.
+*   **Storefront Builder Interactivo (`/modaadmin`):**
+    *   Controles flotantes que permiten inyectar secciones nuevas entre otras existentes vía splice.
+    *   Simulador Sticky en Desktop que emula la previsualización del cliente móvil.
+    *   Motor de URLs Recursivas que traza rutas absolutas (Ej: `/moda-mujer/blusas/casuales`) para evitar enlaces rotos.
+
+---
+
+## ⚙️ Sincronización Automática (Cron Engine)
+
+*   Cuenta con un Demonio Cron automatizado (`src/lib/cron.ts`) que vigila los servidores y autoejecuta peticiones ISR/Sync en segundo plano sin interrumpir al cliente web.
+*   Sensibilidad de **Capa Horaria Pura**: Corrige las discrepancias de tiempos UTC de Docker localizando artificialmente el horario en `America/Lima` garantizando que los Syncs operen estrictamente en la ventana útil configurada de tu negocio (ej. 10:00 AM - 10:00 PM).
+
+---
+
+## 🛠️ Requisitos e Instalación
+
+*   Docker Swarm / Node.js 20+
+*   Cuenta de GCP Limitada con permisos sobre la carpeta Drive.
+*   Cuenta de Cloudflare apuntada como DNS (Recomendando **Browser Cache TTL: Respect Existing Headers** para que Chrome escuche nuestra configuración dinámica).
+
+### Configuración `.env`
+Crea tu `.env` con las variables seguras:
 ```ini
-ADMIN_USER=tu_usuario
-ADMIN_PASS=tu_password_seguro
-DOMAIN_NAME=tudominio.com
-CLOUDFLARE_ZONE_ID=... (Opcional)
-CLOUDFLARE_API_TOKEN=... (Opcional)
+NEXT_PUBLIC_DOMAIN_NAME=catalogo.tu-sitio.com
+CLOUDFLARE_ZONE_ID=...
+CLOUDFLARE_API_TOKEN=...
+ADMIN_USER=admin
+ADMIN_PASS=...
 ```
 
-### 2. Credenciales de Google Drive
-Coloca tu archivo JSON de cuenta de servicio en `cache/credentials.json`.
-*Nota: En el primer arranque, el sistema te pedirá subir este archivo mediante el Wizard de Setup (`/setup`) si no existe.*
-
-### 3. Despliegue con Docker Swarm (Recomendado)
-
+### Ejecutar Servidor
 ```bash
-# Inicia el Stack
-docker stack deploy -c docker-compose.yml catalogo
-```
-
-### 4. Setup Inicial
-1.  Accede a `https://tudominio.com/setup`.
-2.  Sube las credenciales (si no las pusiste manualmente).
-3.  Ingresa el **ID de la Carpeta Raíz** de Google Drive.
-4.  El sistema realizará la primera sincronización.
-
-## 🔄 Flujo de Trabajo (Sync Sync)
-
-1.  Sube fotos a tu Google Drive.
-2.  Entra a `https://tudominio.com/modaadmin`.
-3.  Dale clic a **"Sincronizar Catálogo"**.
-4.  El sistema:
-    *   Descarga y optimiza las nuevas imágenes.
-    *   Regenera el sitio estático (Next.js Build).
-    *   Despliega el nuevo contenido en Nginx.
-    *   Purga la caché de Cloudflare (si está configurado).
-
-## 🔧 Desarrollo Local
-
-```bash
-# Instalar dependencias
+# Desarrollo
 npm install
-
-# Correr en modo desarrollo
 npm run dev
 
-# Probar el build de producción
-npm run build
-npm start
+# Compilación (Produce la caja negra de producción ./standalone)
+npm run build 
+
+# Run Prd
+node .next/standalone/server.js
 ```
-
-## 📂 Estructura del Proyecto
-
-*   `src/app`: Rutas de Next.js (App Router).
-*   `src/lib/sync-engine.ts`: Lógica de sincronización y optimización (Sharp).
-*   `src/components`: Componentes React (UI).
-*   `nginx/nginx.conf`: Configuración del servidor estático.
-*   `docker-compose.yml`: Definición del Stack.
-
-## 📝 Créditos
-Desarrollado por **R4T Labs**.

@@ -1,5 +1,5 @@
 import Image from 'next/image';
-
+import Link from 'next/link';
 import { StorefrontBlock } from '@/lib/storefront';
 
 interface ClassicGridProps {
@@ -56,9 +56,9 @@ export default function ClassicGrid({ block, gridColsCls, isPreview }: ClassicGr
 
                     if (item.linkHref && !isPreview) {
                         return (
-                            <a key={idx} href={item.linkHref} className="group block">
+                            <Link key={idx} href={item.linkHref} prefetch={false} className="group block">
                                 {content}
-                            </a>
+                            </Link>
                         );
                     }
 

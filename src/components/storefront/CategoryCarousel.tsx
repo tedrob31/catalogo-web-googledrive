@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-
+import Link from 'next/link';
 import { StorefrontBlock } from '@/lib/storefront';
 
 interface CategoryCarouselProps {
@@ -66,9 +66,9 @@ export default function CategoryCarousel({ block, isPreview }: CategoryCarouselP
 
                         if (item.linkHref && !isPreview) {
                             return (
-                                <a key={idx} href={item.linkHref} className={wrapperCls}>
+                                <Link key={idx} href={item.linkHref} prefetch={false} className={wrapperCls}>
                                     {content}
-                                </a>
+                                </Link>
                             );
                         } else {
                             return (
