@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { listFolderContents } from '@/lib/drive';
 import { getConfig } from '@/lib/config';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
     const config = await getConfig();
 

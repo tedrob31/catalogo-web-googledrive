@@ -65,7 +65,7 @@ export default function AdminDashboard() {
 
     const fetchCovers = async () => {
         if (!authorized) return;
-        const res = await fetch('/api/covers');
+        const res = await fetch('/api/covers?t=' + Date.now());
         if (res.ok) {
             const data = await res.json();
             setAvailableCovers(data.covers);
