@@ -7,7 +7,7 @@ import Image from 'next/image';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import StorefrontBuilder from '@/components/admin/StorefrontBuilder';
 import { slugify } from '@/lib/utils';
-import { createClient } from '@/lib/supabase-client';
+import { createClient } from '@/lib/supabase/client';
 
 export default function AdminDashboard() {
     const [authorized, setAuthorized] = useState(false);
