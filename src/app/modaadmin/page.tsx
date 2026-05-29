@@ -7,7 +7,6 @@ import Image from 'next/image';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import StorefrontBuilder from '@/components/admin/StorefrontBuilder';
 import { slugify } from '@/lib/utils';
-import { createClient } from '@/lib/supabase/client';
 
 export default function AdminDashboard() {
     const [authorized, setAuthorized] = useState(false);
@@ -29,39 +28,34 @@ export default function AdminDashboard() {
     const [syncStatus, setSyncStatus] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
+    useEffect(() => {
+        fetchConfig();
+        fetchCache();
+    }, [authorized]);
+
     const [availableCovers, setAvailableCovers] = useState<string[]>([]);
     const [showCoverSelector, setShowCoverSelector] = useState<string | null>(null);
 
     useEffect(() => {
-        const checkSession = async () => {
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                setAuthorized(true);
-            }
-        };
-        if (!authorized) {
-            checkSession();
-        } else {
-            fetchConfig();
-            fetchCache();
-            fetchCovers();
-        }
+        fetchConfig();
+        fetchCache();
+        fetchCovers();
     }, [authorized]);
 
-    const handleGoogleLogin = async () => {
-        const supabase = createClient();
-        await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-                redirectTo: `${window.location.origin}/api/auth/callback?next=/modaadmin`,
-                queryParams: {
-                    access_type: 'offline',
-                    prompt: 'consent',
-                }
-            }
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            body: JSON.stringify({ username, password }),
         });
+        if (res.ok) {
+            setAuthorized(true);
+        } else {
+            alert('Invalid credentials');
+        }
     };
+
+
 
     const fetchConfig = async () => {
         if (!authorized) return;
@@ -166,16 +160,12 @@ export default function AdminDashboard() {
     if (!authorized) {
         return (
             <div className="flex h-screen items-center justify-center bg-gray-100">
-                <div className="p-8 bg-white rounded shadow-md flex flex-col gap-4 text-center max-w-sm w-full">
-                    <h1 className="text-xl font-bold">Acceso Administrativo</h1>
-                    <p className="text-sm text-gray-500 mb-4">Inicia sesión con tu cuenta de Google para gestionar el catálogo y enlazar Google Drive.</p>
-                    <button 
-                        className="bg-blue-600 text-white p-3 rounded font-medium hover:bg-blue-700 transition-colors" 
-                        onClick={handleGoogleLogin}
-                    >
-                        Iniciar Sesión con Google
-                    </button>
-                </div>
+                <form onSubmit={handleLogin} className="p-8 bg-white rounded shadow-md flex flex-col gap-4">
+                    <h1 className="text-xl font-bold">Admin Login</h1>
+                    <input className="border p-2" placeholder="User" value={username} onChange={e => setUsername(e.target.value)} />
+                    <input className="border p-2" type="password" placeholder="Pass" value={password} onChange={e => setPassword(e.target.value)} />
+                    <button className="bg-blue-600 text-white p-2 rounded" type="submit">Login</button>
+                </form>
             </div>
         );
     }
@@ -258,14 +248,14 @@ export default function AdminDashboard() {
                             <div className="flex items-center justify-between mb-4 bg-gray-50 p-3 rounded border">
                                 <div>
                                     <label className="block text-sm font-bold">Vincular con Google Drive</label>
-                                    <span className="text-xs text-gray-500 block">Tu cuenta ya debería estar vinculada si iniciaste sesión. Usa este botón si necesitas reconectar.</span>
+                                    <span className="text-xs text-gray-500 block">Necesario para descargar las fotos del catálogo usando tus propios permisos. Al terminar, volverás a esta página.</span>
                                 </div>
-                                <button 
-                                    onClick={handleGoogleLogin}
+                                <a 
+                                    href={`https://auth.r4tlabs.com/login?next=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : 'https://catalogo.r4tlabs.com/modaadmin')}&scopes=${encodeURIComponent('https://www.googleapis.com/auth/drive.readonly')}`}
                                     className="bg-blue-600 text-white px-4 py-2 rounded text-sm whitespace-nowrap hover:bg-blue-700 font-medium transition-colors"
                                 >
-                                    Reconectar Google
-                                </button>
+                                    Conectar Google
+                                </a>
                             </div>
                         </div>
 
