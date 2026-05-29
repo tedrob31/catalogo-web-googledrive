@@ -1,26 +1,57 @@
 import { google } from 'googleapis';
 import path from 'path';
 import { setSystemStatus } from './status';
+import { createClient } from '@supabase/supabase-js';
+import { getConfig } from './config';
 
-// Scope for read-only access to Drive
 const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 
 export async function getDriveService() {
-    // Updated to use the variable that points to our cache volume file
-    // In docker-compose we set GOOGLE_APPLICATION_CREDENTIALS=/app/cache/credentials.json
-    // But internally we might want to ensure it looks there if env isn't set (fallback)
-    const keyFilePath = process.env.GOOGLE_APPLICATION_CREDENTIALS || path.join(process.cwd(), 'cache', 'credentials.json');
+    const config = await getConfig();
+    
+    // 1. Validar que tengamos las credenciales de Supabase
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
-    if (!keyFilePath) {
-        throw new Error('GOOGLE_APPLICATION_CREDENTIALS environment variable is not set');
+    if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Las variables de entorno SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY no están configuradas.');
     }
 
-    const auth = new google.auth.GoogleAuth({
-        keyFile: keyFilePath,
-        scopes: SCOPES,
+    if (!clientId || !clientSecret) {
+        throw new Error('Faltan GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET en tu .env');
+    }
+
+    if (!config.adminEmail) {
+        throw new Error('No se ha configurado el "adminEmail" en el panel. No podemos buscar el token en Supabase.');
+    }
+
+    // 2. Conectar a Supabase como Administrador (Service Role Bypass RLS)
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // 3. Buscar el refresh_token del administrador en la tabla user_google_tokens
+    const { data, error } = await supabase
+        .from('user_google_tokens')
+        .select('refresh_token')
+        .eq('email', config.adminEmail)
+        .single();
+
+    if (error || !data || !data.refresh_token) {
+        throw new Error(`No se encontró un token de Google para el correo ${config.adminEmail} en Supabase. Por favor autoriza tu cuenta en /modaadmin`);
+    }
+
+    // 4. Construir el cliente OAuth2 usando el Refresh Token recuperado
+    const oauth2Client = new google.auth.OAuth2(
+        clientId,
+        clientSecret
+    );
+
+    oauth2Client.setCredentials({
+        refresh_token: data.refresh_token
     });
 
-    return google.drive({ version: 'v3', auth });
+    return google.drive({ version: 'v3', auth: oauth2Client });
 }
 
 async function handleDriveError(error: any) {

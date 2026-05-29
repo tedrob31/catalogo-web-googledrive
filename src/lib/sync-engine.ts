@@ -1,40 +1,22 @@
-import fs from 'fs/promises';
-import path from 'path';
 import { getDriveService, DriveFile } from './drive';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 // Configure image optimization
 const MAX_WIDTH = 1920;
 const QUALITY = 80;
-// Use env variable or fallback to process.cwd() for flexibility (Docker vs Dev)
-const IMAGES_DIR = process.env.IS_DOCKER 
-    ? '/app/public/images' 
-    : path.join(process.cwd(), 'public', 'images');
-// Ensure directory exists
-async function ensureImagesDir() {
-    try {
-        await fs.access(IMAGES_DIR);
-    } catch {
-        await fs.mkdir(IMAGES_DIR, { recursive: true });
+
+// Configuración S3 (Cloudflare R2)
+const s3Client = new S3Client({
+    region: 'auto',
+    endpoint: process.env.S3_ENDPOINT || '',
+    credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
+        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || ''
     }
-}
-
-// Check if file needs update
-async function needsUpdate(localPath: string, driveModifiedTime?: string): Promise<boolean> {
-    try {
-        const stats = await fs.stat(localPath);
-        if (!driveModifiedTime) return false; // If no modified time from Drive, assume valid if exists
-
-        const localMtime = new Date(stats.mtime);
-        const driveMtime = new Date(driveModifiedTime);
-
-        // Si la fecha de modificación en Drive es más reciente que el archivo optimizado localmente, se debe actualizar.
-        // Se agrega un margen de 1 segundo (1000ms) para evitar falsos positivos por resolución de sistemas de archivos.
-        return driveMtime.getTime() > (localMtime.getTime() + 1000);
-    } catch (error) {
-        // File doesn't exist
-        return true;
-    }
-}
+});
+const BUCKET_NAME = 'r4tlabs-catalog'; // Asegúrate de que coincida o pasarlo por ENV
+const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || '';
+const DOMAIN_PREFIX = process.env.NEXT_PUBLIC_DOMAIN_NAME || 'default';
 
 // Optimization Profiles
 type OptimizationProfile = 'catalog' | 'cover';
@@ -44,48 +26,47 @@ interface SharpOptions {
     height?: number;
     quality: number;
     fit?: 'cover' | 'contain' | 'inside';
-    position?: string; // gravity or entropy
+    position?: string;
 }
 
 const PROFILES: Record<OptimizationProfile, SharpOptions> = {
     catalog: {
-        width: 800, // Reduced from 1920 to 800 for massive size savings
+        width: 800,
         quality: 75,
-        fit: 'inside', // resize({ width: 800, withoutEnlargement: true }) effectively
+        fit: 'inside',
     },
     cover: {
         width: 400,
         height: 400,
         quality: 75,
         fit: 'cover',
-        position: 'entropy' // Smart crop (focus on interesting area)
+        position: 'entropy'
     }
 };
 
-export async function processImage(file: DriveFile, type: OptimizationProfile = 'catalog'): Promise<string | null> {
+export async function processImage(
+    file: DriveFile, 
+    type: OptimizationProfile = 'catalog',
+    oldModifiedTimes?: Map<string, string>
+): Promise<string | null> {
     if (!file.mimeType.startsWith('image/')) return null;
 
     const drive = await getDriveService();
-    // Unique caching key based on Type too (so we can have cover vs catalog versions if needed)
-    // But currently file.id is the key. 
-    // If we use the SAME file for both (rare), we might overwrite.
-    // However, Covers are from a separate folder, and Catalog photos are from album folders.
-    // Overlap is technically possible if user puts same file in both, but usually they are distinct.
-    // If a fallback uses a catalog photo as cover, it uses the 'catalog' version (800px), which is fine.
-
-    // Suffix based on profile? No, keeping simple ID for now unless collision is real.
-    // ValidIds track ID.
-    const localFilename = `${file.id}.webp`;
-    const localPath = path.join(IMAGES_DIR, localFilename);
+    
+    const remoteFilename = `${DOMAIN_PREFIX}/${file.id}.webp`;
+    const publicUrl = `${CDN_URL}/${remoteFilename}`;
     const vParam = file.modifiedTime ? `?v=${new Date(file.modifiedTime).getTime()}` : '';
 
-    // incremental check
-    // Now using the official physical 'modifiedTime' instead of EXIF 'imageMediaMetadata.time'
-    if (!(await needsUpdate(localPath, file.modifiedTime || undefined))) {
-        return `/images/${localFilename}${vParam}`;
+    // Si tenemos el mapa de tiempos antiguos, validamos si necesita actualización
+    if (oldModifiedTimes && file.modifiedTime) {
+        const oldTime = oldModifiedTimes.get(file.id);
+        if (oldTime === file.modifiedTime) {
+            // No ha cambiado en Drive, no necesitamos procesar ni subir a R2 de nuevo
+            return `${publicUrl}${vParam}`;
+        }
     }
 
-    console.log(`[Sync] Optimizing [${type.toUpperCase()}]: ${file.name}`);
+    console.log(`[Sync] Optimizing and Uploading to R2 [${type.toUpperCase()}]: ${file.name}`);
 
     try {
         const response = await drive.files.get(
@@ -100,7 +81,7 @@ export async function processImage(file: DriveFile, type: OptimizationProfile = 
         let pipeline = sharp(buffer);
 
         // Metadata removal (Strip)
-        pipeline = pipeline.rotate().withMetadata(false); // Ensure stripped
+        pipeline = pipeline.rotate().withMetadata(false);
 
         // Resize Logic
         if (type === 'cover') {
@@ -111,7 +92,6 @@ export async function processImage(file: DriveFile, type: OptimizationProfile = 
                 position: opts.position === 'entropy' ? sharp.strategy.entropy : undefined
             });
         } else {
-            // Catalog: Limit width, preserve aspect ratio
             pipeline = pipeline.resize({
                 width: opts.width,
                 withoutEnlargement: true
@@ -119,36 +99,33 @@ export async function processImage(file: DriveFile, type: OptimizationProfile = 
         }
 
         // Output Settings
-        await pipeline
+        const webpBuffer = await pipeline
             .webp({
                 quality: opts.quality,
-                effort: 4, // User requested 4 (faster sync, slightly less compression than 6)
+                effort: 4,
                 smartSubsample: true
             })
-            .toFile(localPath);
+            .toBuffer();
 
-        return `/images/${localFilename}${vParam}`;
+        // Subir a Cloudflare R2
+        await s3Client.send(new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: remoteFilename,
+            Body: webpBuffer,
+            ContentType: 'image/webp',
+            CacheControl: 'public, max-age=31536000'
+        }));
+
+        return `${publicUrl}${vParam}`;
     } catch (error) {
-        console.error(`[Sync] Error processing ${file.name}:`, error);
+        console.error(`[Sync] Error processing/uploading ${file.name}:`, error);
         return null;
     }
 }
 
 export async function cleanOrphanedImages(validFileIds: Set<string>) {
-    try {
-        await ensureImagesDir();
-        const files = await fs.readdir(IMAGES_DIR);
-
-        for (const file of files) {
-            if (!file.endsWith('.webp')) continue;
-
-            const id = file.replace('.webp', '');
-            if (!validFileIds.has(id)) {
-                console.log(`[Sync] Deleting orphaned file: ${file}`);
-                await fs.unlink(path.join(IMAGES_DIR, file));
-            }
-        }
-    } catch (error) {
-        console.error('[Sync] Error cleaning orphans:', error);
-    }
+    // Para R2, limpiar huérfanos requiere listar el bucket y borrar. 
+    // Por ahora omitiremos borrar automáticamente en R2 para evitar latencia extrema, 
+    // a menos que sea un cron aparte. Se podría implementar en el futuro.
+    console.log('[Sync] Limpieza de huérfanos en R2 desactivada por seguridad de latencia.');
 }

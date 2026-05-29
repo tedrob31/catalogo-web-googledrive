@@ -9,7 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1045.0",
     "@next/third-parties": "^16.1.6",
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.105.4",
     "caniuse-lite": "^1.0.30001767",
     "clsx": "^2.1.1",
     "framer-motion": "^12.31.0",

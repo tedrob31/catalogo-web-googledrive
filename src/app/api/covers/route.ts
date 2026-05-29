@@ -13,32 +13,18 @@ export async function GET() {
 
     try {
         const driveFiles = await listFolderContents(config.coversFolderId);
+        
+        const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || '';
+        const DOMAIN_PREFIX = process.env.NEXT_PUBLIC_DOMAIN_NAME || 'default';
 
-        // optimize: Get list of local files to avoid checking each individually
-        const fs = require('fs/promises');
-        const path = require('path');
-        const IMAGES_DIR = path.join(process.cwd(), 'public', 'images');
-
-        let localFiles = new Set<string>();
-        try {
-            const files = await fs.readdir(IMAGES_DIR);
-            files.forEach((f: string) => {
-                if (f.endsWith('.webp')) {
-                    localFiles.add(f.replace('.webp', ''));
-                }
-            });
-        } catch (e) {
-            // Directory might not exist yet, ignore
-        }
-
-        // Filter for images and map to Proxy URL or Local URL
+        // Ahora todo usa la CDN. 
+        // Si no está procesada aún, el CDN dará 404, pero se procesará en el siguiente sync.
+        // Dado que este es el panel de admin y asume que se corrió un sync tras añadir el cover.
         const covers = driveFiles
             .filter(file => file.mimeType.startsWith('image/'))
             .map(file => {
-                if (localFiles.has(file.id)) {
-                    return `/images/${file.id}.webp`;
-                }
-                return `/api/image?id=${file.id}`;
+                const vParam = file.modifiedTime ? `?v=${new Date(file.modifiedTime).getTime()}` : '';
+                return `${CDN_URL}/${DOMAIN_PREFIX}/${file.id}.webp${vParam}`;
             });
 
         return NextResponse.json({ covers });

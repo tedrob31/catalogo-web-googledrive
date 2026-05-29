@@ -12,6 +12,7 @@ export interface AppConfig {
     mobileGridColumns?: number; // For mobile
     coversFolderId?: string; // Google Drive Folder ID for covers
     folderCovers?: Record<string, string>; // Map folder ID to cover image URL (or Drive ID)
+    adminEmail?: string; // Correo del admin para buscar su refresh_token en Supabase
     googleAnalyticsId?: string; // Measurement ID (G-XXXXX)
     analyticsPropertyId?: string; // Numeric Property ID for API
     autoSyncEnabled?: boolean; // Master switch

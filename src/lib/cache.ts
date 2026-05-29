@@ -108,7 +108,19 @@ async function buildAlbumStructure(folderId: string, folderName: string): Promis
 
 import { processImage, cleanOrphanedImages } from './sync-engine';
 
-async function processAllImages(album: Album, validIds: Map<string, string>) {
+function extractModifiedTimes(album: Album | undefined, map: Map<string, string>) {
+    if (!album) return;
+    for (const photo of album.photos) {
+        if (photo.modifiedTime) {
+            map.set(photo.id, photo.modifiedTime);
+        }
+    }
+    for (const sub of album.subAlbums) {
+        extractModifiedTimes(sub, map);
+    }
+}
+
+async function processAllImages(album: Album, validIds: Map<string, string>, oldModifiedTimes: Map<string, string>) {
     // Process photos in this album
     const CONCURRENCY = 5;
     const photos = album.photos;
@@ -129,7 +141,7 @@ async function processAllImages(album: Album, validIds: Map<string, string>) {
                 }
             };
 
-            const localUrl = await processImage(driveFile, 'catalog');
+            const localUrl = await processImage(driveFile, 'catalog', oldModifiedTimes);
             if (localUrl) {
                 photo.thumbnailLink = localUrl;
                 photo.fullLink = localUrl;
@@ -139,20 +151,25 @@ async function processAllImages(album: Album, validIds: Map<string, string>) {
 
     // Recurse
     for (const sub of album.subAlbums) {
-        await processAllImages(sub, validIds);
+        await processAllImages(sub, validIds, oldModifiedTimes);
     }
 }
 
 export async function syncDrive(rootFolderId: string, rootFolderName: string = 'CATALOGO') {
     console.log(`Starting sync for root: ${rootFolderId}`);
 
-    // Read old cache to compute ISR diff later
+    // Read old cache to compute ISR diff later and get modified times
     let oldCache: CacheStructure | null = null;
     try {
         const oldCacheStr = await fs.readFile(CACHE_FILE, 'utf-8');
         oldCache = JSON.parse(oldCacheStr);
     } catch (e) {
         // No old cache or parse error
+    }
+
+    const oldModifiedTimes = new Map<string, string>();
+    if (oldCache) {
+        extractModifiedTimes(oldCache.root, oldModifiedTimes);
     }
 
     // 0. Load Config to check for Covers Folder
@@ -166,7 +183,7 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
     console.log('[Sync] Starting Image Mirror process...');
 
     // 2a. Sync Catalog Images
-    await processAllImages(rootAlbum, validIds);
+    await processAllImages(rootAlbum, validIds, oldModifiedTimes);
 
     // 2b. Sync Covers Folder (if configured)
     if (config.coversFolderId) {
@@ -179,7 +196,7 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
                 await Promise.all(chunk.map(async (file) => {
                     if (file.mimeType.startsWith('image/')) {
                         validIds.set(file.id, file.modifiedTime || '');
-                        await processImage(file, 'cover');
+                        await processImage(file, 'cover', oldModifiedTimes);
                     }
                 }));
             }
@@ -190,20 +207,23 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
 
     console.log(`[Sync] Image Mirror complete. Valid images: ${validIds.size}`);
 
-    // 3. Clean Orphans
+    // 3. Clean Orphans (R2 omits this safely for now)
     await cleanOrphanedImages(new Set(validIds.keys()));
 
-    // 4. Update Config URLs to point to Local Mirror
-    // Helper to migrate URL (e.g. /api/image?id=XXX -> /images/XXX.webp)
+    // 4. Update Config URLs to point to R2 CDN
+    const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || '';
+    const DOMAIN_PREFIX = process.env.NEXT_PUBLIC_DOMAIN_NAME || 'default';
+
     const migrateUrl = (url?: string) => {
         if (!url) return undefined;
-        const match = url.match(/[?&]id=([^&]+)/);
+        // Migrate proxy or old local urls to CDN
+        const match = url.match(/[?&]id=([^&]+)/) || url.match(/\/images\/([a-zA-Z0-9_-]+)\.webp/);
         if (match) {
             const id = match[1];
             if (validIds.has(id)) {
                 const mTime = validIds.get(id);
                 const vParam = mTime ? `?v=${new Date(mTime).getTime()}` : '';
-                return `/images/${id}.webp${vParam}`;
+                return `${CDN_URL}/${DOMAIN_PREFIX}/${id}.webp${vParam}`;
             }
         }
         return url;
@@ -234,7 +254,7 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
     });
 
     if (configChanged) {
-        console.log('[Sync] Updating configuration with local image paths...');
+        console.log('[Sync] Updating configuration with CDN image paths...');
         await saveConfig(config);
     }
 
