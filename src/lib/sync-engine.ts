@@ -77,7 +77,11 @@ export async function processImage(
         }
     }
 
-    console.log(`[Sync] Optimizing and Uploading to R2 [${type.toUpperCase()}]: ${file.name}`);
+    if (syncMode === 'LOCAL') {
+        console.log(`[Sync] Optimizing and saving locally [${type.toUpperCase()}]: ${file.name}`);
+    } else {
+        console.log(`[Sync] Optimizing and Uploading to R2 [${type.toUpperCase()}]: ${file.name}`);
+    }
 
     try {
         const response = await drive.files.get(
