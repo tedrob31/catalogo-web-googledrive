@@ -13,6 +13,7 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
+      - SYNC_MODE=${SYNC_MODE:-LOCAL}
       # ADMIN CREDENTIALS (Load from environment)
       - ADMIN_USER=${ADMIN_USER:-admin}
       - ADMIN_PASS=${ADMIN_PASS:-change_me_please}
@@ -22,7 +23,7 @@ services:
       - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID:-}
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
       # Domain for Metadata (SSG)
-      - NEXT_PUBLIC_DOMAIN_NAME=${DOMAIN_NAME:-r4tlabs.com}
+      - NEXT_PUBLIC_DOMAIN_NAME=${NEXT_PUBLIC_DOMAIN_NAME:-r4tlabs.com}
       - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-liquidacion_catalogodemoda}
       # Performance Tuning
       - NODE_OPTIONS='--max-old-space-size=2048'

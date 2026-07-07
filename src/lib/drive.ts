@@ -8,7 +8,15 @@ const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 
 export async function getDriveService() {
     const config = await getConfig();
+    const syncMode = process.env.SYNC_MODE || 'LOCAL';
     
+    if (syncMode === 'LOCAL') {
+        const auth = new google.auth.GoogleAuth({
+            scopes: SCOPES
+        });
+        return google.drive({ version: 'v3', auth });
+    }
+
     // 1. Validar que tengamos las credenciales de Supabase
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -30,15 +38,14 @@ export async function getDriveService() {
     // 2. Conectar a Supabase como Administrador (Service Role Bypass RLS)
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 3. Buscar el refresh_token del administrador en la tabla user_google_tokens
-    const { data, error } = await supabase
-        .from('user_google_tokens')
-        .select('refresh_token')
-        .eq('email', config.adminEmail)
-        .single();
+    // 3. Buscar el refresh_token del administrador en los usuarios de Supabase Auth
+    const { data: { users }, error } = await supabase.auth.admin.listUsers();
+    
+    const adminUser = users?.find(u => u.email === config.adminEmail);
+    const refreshToken = adminUser?.user_metadata?.provider_refresh_token;
 
-    if (error || !data || !data.refresh_token) {
-        throw new Error(`No se encontró un token de Google para el correo ${config.adminEmail} en Supabase. Por favor autoriza tu cuenta en /modaadmin`);
+    if (error || !adminUser || !refreshToken) {
+        throw new Error(`No se encontró un token de Google para el correo ${config.adminEmail} en Supabase Auth. Por favor autoriza tu cuenta en /modaadmin`);
     }
 
     // 4. Construir el cliente OAuth2 usando el Refresh Token recuperado
@@ -48,7 +55,7 @@ export async function getDriveService() {
     );
 
     oauth2Client.setCredentials({
-        refresh_token: data.refresh_token
+        refresh_token: refreshToken
     });
 
     return google.drive({ version: 'v3', auth: oauth2Client });
