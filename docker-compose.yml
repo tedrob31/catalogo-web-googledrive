@@ -52,7 +52,7 @@ services:
         - traefik.docker.network=r4tlabsnet
         
         # Router unificado para todo lo dinámico y frontend (ISR)
-        - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.rule=(Host(`${DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${DOMAIN_NAME:-r4tlabs.com}`)) && !PathPrefix(`/images`)"
+        - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.rule=(Host(`${NEXT_PUBLIC_DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${NEXT_PUBLIC_DOMAIN_NAME:-r4tlabs.com}`)) && !PathPrefix(`/images`)"
         - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.priority=50000"
         - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.entrypoints=websecure"
         - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.tls.certresolver=letsencryptresolver"
@@ -85,7 +85,7 @@ services:
         - traefik.docker.network=r4tlabsnet
         
         # REGLA EXCLUSIVA: Nginx solo sirve las imágenes hiper-rápidamente
-        - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.rule=(Host(`${DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${DOMAIN_NAME:-r4tlabs.com}`)) && PathPrefix(`/images`)"
+        - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.rule=(Host(`${NEXT_PUBLIC_DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${NEXT_PUBLIC_DOMAIN_NAME:-r4tlabs.com}`)) && PathPrefix(`/images`)"
         - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.priority=1000"
         - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.entrypoints=websecure"
         - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.tls.certresolver=letsencryptresolver"
