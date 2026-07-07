@@ -66,9 +66,14 @@ export async function processImage(
         if (oldTime === file.modifiedTime) {
             // No ha cambiado en Drive, no necesitamos procesar ni subir a R2 de nuevo
             if (syncMode === 'LOCAL') {
-                return `/images/${remoteFilename}${vParam}`;
+                const localFilePath = path.join(process.cwd(), 'public', 'images', DOMAIN_PREFIX, `${file.id}.webp`);
+                if (fs.existsSync(localFilePath)) {
+                    return `/images/${remoteFilename}${vParam}`;
+                }
+                console.log(`[Sync] Local image missing, forcing re-download: ${file.name}`);
+            } else {
+                return `${publicUrl}${vParam}`;
             }
-            return `${publicUrl}${vParam}`;
         }
     }
 
