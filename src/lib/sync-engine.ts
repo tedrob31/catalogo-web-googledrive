@@ -66,7 +66,8 @@ export async function processImage(
         if (oldTime === file.modifiedTime) {
             // No ha cambiado en Drive, no necesitamos procesar ni subir a R2 de nuevo
             if (syncMode === 'LOCAL') {
-                const localFilePath = path.join(process.cwd(), 'public', 'images', DOMAIN_PREFIX, `${file.id}.webp`);
+                const basePath = process.env.IS_DOCKER ? '/app' : process.cwd();
+                const localFilePath = path.join(basePath, 'public', 'images', DOMAIN_PREFIX, `${file.id}.webp`);
                 if (fs.existsSync(localFilePath)) {
                     return `/images/${remoteFilename}${vParam}`;
                 }
@@ -123,7 +124,8 @@ export async function processImage(
             .toBuffer();
 
         if (syncMode === 'LOCAL') {
-            const localDir = path.join(process.cwd(), 'public', 'images', DOMAIN_PREFIX);
+            const basePath = process.env.IS_DOCKER ? '/app' : process.cwd();
+            const localDir = path.join(basePath, 'public', 'images', DOMAIN_PREFIX);
             await fs.promises.mkdir(localDir, { recursive: true });
             await fs.promises.writeFile(path.join(localDir, `${file.id}.webp`), webpBuffer);
             return `/images/${remoteFilename}${vParam}`;
