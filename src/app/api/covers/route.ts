@@ -14,17 +14,21 @@ export async function GET() {
     try {
         const driveFiles = await listFolderContents(config.coversFolderId);
         
-        const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || '';
+        const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.r4tlabs.com';
         const DOMAIN_PREFIX = process.env.NEXT_PUBLIC_DOMAIN_NAME || 'default';
+        const syncMode = process.env.SYNC_MODE || 'LOCAL';
 
-        // Ahora todo usa la CDN. 
-        // Si no está procesada aún, el CDN dará 404, pero se procesará en el siguiente sync.
-        // Dado que este es el panel de admin y asume que se corrió un sync tras añadir el cover.
         const covers = driveFiles
             .filter(file => file.mimeType.startsWith('image/'))
             .map(file => {
                 const vParam = file.modifiedTime ? `?v=${new Date(file.modifiedTime).getTime()}` : '';
-                return `${CDN_URL}/${DOMAIN_PREFIX}/${file.id}.webp${vParam}`;
+                const remoteFilename = `${DOMAIN_PREFIX}/${file.id}.webp`;
+                
+                if (syncMode === 'LOCAL') {
+                    return `/images/${remoteFilename}${vParam}`;
+                } else {
+                    return `${CDN_URL}/${remoteFilename}${vParam}`;
+                }
             });
 
         return NextResponse.json({ covers });
