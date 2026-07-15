@@ -65,6 +65,8 @@ export async function POST() {
         export NEXT_PUBLIC_STATIC_EXPORT=true
         # Set Asset Prefix to separate Static assets from Backend assets
         export NEXT_PUBLIC_ASSET_PREFIX=/static-content
+        # Limit the memory for this specific build process to avoid OOM kills (137)
+        export NODE_OPTIONS="--max-old-space-size=1536"
         
         echo "[Build] Running 'next build'..."
         # Explicitly run next build to avoid dev-mode attributes
