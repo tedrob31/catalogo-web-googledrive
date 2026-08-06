@@ -12,7 +12,7 @@ export const dynamic = 'force-static'; // Force static generation
 // Generate all possible paths from the cache
 export async function generateStaticParams() {
   const cache = await loadCache();
-  if (!cache?.root) return [];
+  if (!cache?.root) return [{ slug: [] }];
 
   const paths: { slug: string[] }[] = [];
 

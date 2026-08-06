@@ -74,7 +74,7 @@ export async function processImage(file: DriveFile, type: OptimizationProfile = 
     // Suffix based on profile? No, keeping simple ID for now unless collision is real.
     // ValidIds track ID.
     const localFilename = `${file.id}.webp`;
-    const localPath = path.join(IMAGES_DIR, localFilename);
+    const localPath = IMAGES_DIR + '/' + localFilename;
 
     // incremental check
     if (!(await needsUpdate(localPath, file.imageMediaMetadata?.time || undefined))) {
@@ -141,7 +141,8 @@ export async function cleanOrphanedImages(validFileIds: Set<string>) {
             const id = file.replace('.webp', '');
             if (!validFileIds.has(id)) {
                 console.log(`[Sync] Deleting orphaned file: ${file}`);
-                await fs.unlink(path.join(IMAGES_DIR, file));
+                const deletePath = IMAGES_DIR + '/' + file;
+                await fs.unlink(deletePath);
             }
         }
     } catch (error) {
