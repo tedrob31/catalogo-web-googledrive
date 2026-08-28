@@ -170,7 +170,14 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
     const oldModifiedTimes = new Map<string, string>();
     if (oldCache) {
         extractModifiedTimes(oldCache.root, oldModifiedTimes);
+        if (oldCache.coversCache) {
+            for (const [id, mtime] of Object.entries(oldCache.coversCache)) {
+                oldModifiedTimes.set(id, mtime);
+            }
+        }
     }
+
+    const coversCache: Record<string, string> = {};
 
     // 0. Load Config to check for Covers Folder
     let config = await getConfig();
@@ -196,6 +203,7 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
                 await Promise.all(chunk.map(async (file) => {
                     if (file.mimeType.startsWith('image/')) {
                         validIds.set(file.id, file.modifiedTime || '');
+                        coversCache[file.id] = file.modifiedTime || '';
                         await processImage(file, 'cover', oldModifiedTimes);
                     }
                 }));
@@ -211,19 +219,26 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
     await cleanOrphanedImages(new Set(validIds.keys()));
 
     // 4. Update Config URLs to point to R2 CDN
+    const syncMode = process.env.SYNC_MODE || 'LOCAL';
     const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || '';
     const DOMAIN_PREFIX = process.env.NEXT_PUBLIC_DOMAIN_NAME || 'default';
 
     const migrateUrl = (url?: string) => {
         if (!url) return undefined;
-        // Migrate proxy or old local urls to CDN
-        const match = url.match(/[?&]id=([^&]+)/) || url.match(/\/images\/([a-zA-Z0-9_-]+)\.webp/);
+        // Migrate proxy or old local urls to new format
+        const match = url.match(/([a-zA-Z0-9_-]{20,})\.webp/) || url.match(/[?&]id=([a-zA-Z0-9_-]{20,})/);
         if (match) {
             const id = match[1];
             if (validIds.has(id)) {
                 const mTime = validIds.get(id);
                 const vParam = mTime ? `?v=${new Date(mTime).getTime()}` : '';
-                return `${CDN_URL}/${DOMAIN_PREFIX}/${id}.webp${vParam}`;
+                const type = coversCache[id] ? 'cover' : 'catalog';
+                
+                if (syncMode === 'LOCAL') {
+                    return `/images/${type}/${id}.webp${vParam}`;
+                } else {
+                    return `${CDN_URL}/${DOMAIN_PREFIX}/${type}/${id}.webp${vParam}`;
+                }
             }
         }
         return url;
@@ -261,6 +276,7 @@ export async function syncDrive(rootFolderId: string, rootFolderName: string = '
     const cache: CacheStructure = {
         root: rootAlbum,
         lastSynced: new Date().toISOString(),
+        coversCache,
     };
 
     const affectedPaths = computeAffectedPaths(oldCache?.root, rootAlbum);

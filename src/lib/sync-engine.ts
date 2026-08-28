@@ -55,10 +55,11 @@ export async function processImage(
 
     const drive = await getDriveService();
     
-    const remoteFilename = `${DOMAIN_PREFIX}/${file.id}.webp`;
-    const publicUrl = `${CDN_URL}/${remoteFilename}`;
-    const vParam = file.modifiedTime ? `?v=${new Date(file.modifiedTime).getTime()}` : '';
     const syncMode = process.env.SYNC_MODE || 'LOCAL';
+    const s3Key = `${DOMAIN_PREFIX}/${type}/${file.id}.webp`;
+    const remoteFilename = `${type}/${file.id}.webp`;
+    const publicUrl = `${CDN_URL}/${s3Key}`;
+    const vParam = file.modifiedTime ? `?v=${new Date(file.modifiedTime).getTime()}` : '';
 
     // Si tenemos el mapa de tiempos antiguos, validamos si necesita actualización
     if (oldModifiedTimes && file.modifiedTime) {
@@ -67,7 +68,7 @@ export async function processImage(
             // No ha cambiado en Drive, no necesitamos procesar ni subir a R2 de nuevo
             if (syncMode === 'LOCAL') {
                 const basePath = process.env.IS_DOCKER ? '/app' : process.cwd();
-                const localFilePath = path.join(basePath, 'public', 'images', DOMAIN_PREFIX, `${file.id}.webp`);
+                const localFilePath = path.join(basePath, 'public', 'images', type, `${file.id}.webp`);
                 if (fs.existsSync(localFilePath)) {
                     return `/images/${remoteFilename}${vParam}`;
                 }
@@ -125,7 +126,7 @@ export async function processImage(
 
         if (syncMode === 'LOCAL') {
             const basePath = process.env.IS_DOCKER ? '/app' : process.cwd();
-            const localDir = path.join(basePath, 'public', 'images', DOMAIN_PREFIX);
+            const localDir = path.join(basePath, 'public', 'images', type);
             await fs.promises.mkdir(localDir, { recursive: true });
             await fs.promises.writeFile(path.join(localDir, `${file.id}.webp`), webpBuffer);
             return `/images/${remoteFilename}${vParam}`;
@@ -133,7 +134,7 @@ export async function processImage(
             // Subir a Cloudflare R2
             await s3Client.send(new PutObjectCommand({
                 Bucket: BUCKET_NAME,
-                Key: remoteFilename,
+                Key: s3Key,
                 Body: webpBuffer,
                 ContentType: 'image/webp',
                 CacheControl: 'public, max-age=31536000'

@@ -23,6 +23,7 @@ export interface Album {
 export interface CacheStructure {
     root: Album;
     lastSynced: string;
+    coversCache?: Record<string, string>; // fileId -> modifiedTime
 }
 
 export function findPathToAlbum(root: Album, targetId: string): Album[] | null {

@@ -22,12 +22,11 @@ export async function GET() {
             .filter(file => file.mimeType.startsWith('image/'))
             .map(file => {
                 const vParam = file.modifiedTime ? `?v=${new Date(file.modifiedTime).getTime()}` : '';
-                const remoteFilename = `${DOMAIN_PREFIX}/${file.id}.webp`;
                 
                 if (syncMode === 'LOCAL') {
-                    return `/images/${remoteFilename}${vParam}`;
+                    return `/images/cover/${file.id}.webp${vParam}`;
                 } else {
-                    return `${CDN_URL}/${remoteFilename}${vParam}`;
+                    return `${CDN_URL}/${DOMAIN_PREFIX}/cover/${file.id}.webp${vParam}`;
                 }
             });
 
