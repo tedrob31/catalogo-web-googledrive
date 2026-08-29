@@ -149,8 +149,41 @@ export async function processImage(
 }
 
 export async function cleanOrphanedImages(validFileIds: Set<string>) {
-    // Para R2, limpiar huérfanos requiere listar el bucket y borrar. 
-    // Por ahora omitiremos borrar automáticamente en R2 para evitar latencia extrema, 
-    // a menos que sea un cron aparte. Se podría implementar en el futuro.
-    console.log('[Sync] Limpieza de huérfanos en R2 desactivada por seguridad de latencia.');
+    const syncMode = process.env.SYNC_MODE || 'LOCAL';
+    
+    if (syncMode === 'LOCAL') {
+        const basePath = process.env.IS_DOCKER ? '/app' : process.cwd();
+        
+        const cleanDir = async (type: string) => {
+            const dir = path.join(basePath, 'public', 'images', type);
+            if (!fs.existsSync(dir)) return;
+            
+            const files = await fs.promises.readdir(dir);
+            let deleted = 0;
+            for (const file of files) {
+                if (file.endsWith('.webp')) {
+                    const id = file.replace('.webp', '');
+                    if (!validFileIds.has(id)) {
+                        await fs.promises.unlink(path.join(dir, file));
+                        deleted++;
+                    }
+                }
+            }
+            if (deleted > 0) {
+                console.log(`[Sync] Cleaned ${deleted} orphaned images from ${type}.`);
+            }
+        };
+
+        try {
+            await cleanDir('catalog');
+            await cleanDir('cover');
+        } catch (err) {
+            console.error('[Sync] Error cleaning local orphans:', err);
+        }
+    } else {
+        // Para R2, limpiar huérfanos requiere listar el bucket y borrar. 
+        // Por ahora omitiremos borrar automáticamente en R2 para evitar latencia extrema, 
+        // a menos que sea un cron aparte. Se podría implementar en el futuro.
+        console.log('[Sync] Limpieza de huérfanos en R2 desactivada por seguridad de latencia.');
+    }
 }
