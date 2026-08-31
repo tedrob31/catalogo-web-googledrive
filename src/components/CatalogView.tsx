@@ -28,19 +28,10 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
     const router = useRouter();
     const pathname = usePathname();
 
-    // State now initialized cleanly from server prop
-    const [currentPath, setCurrentPath] = useState<Album[]>(initialPath || (rootAlbum ? [rootAlbum] : []));
+    // State now driven entirely by Server Component props (URL)
+    const currentPath = initialPath || (rootAlbum ? [rootAlbum] : []);
     const [searchQuery, setSearchQuery] = useState('');
     const [lightboxPhotoIndex, setLightboxPhotoIndex] = useState<number>(-1);
-
-    // Sync state if URL path changes (e.g. back button)
-    useEffect(() => {
-        if (initialPath) {
-            setCurrentPath(initialPath);
-        }
-    }, [initialPath]); // Expect server to re-render with new initialPath on nav, 
-    // but for soft nav we might need to handle it or just rely on router push = full page reload?
-    // Next.js App Router performs soft nav. Page component will re-run and pass new initialPath.
 
     const currentAlbum = currentPath[currentPath.length - 1];
 
@@ -125,22 +116,20 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
             newPath = [...currentPath, album];
         }
 
-        setCurrentPath(newPath); // Optimistic
-        window.location.href = constructUrl(newPath);
+        // Next.js will handle the state update via URL change
+        router.push(constructUrl(newPath));
     };
 
     const handleBack = () => {
         if (currentPath.length > 1) {
             const newPath = currentPath.slice(0, -1);
-            setCurrentPath(newPath);
-            window.location.href = constructUrl(newPath);
+            router.push(constructUrl(newPath));
         }
     };
 
     const handleBreadcrumb = (index: number) => {
         const newPath = currentPath.slice(0, index + 1);
-        setCurrentPath(newPath);
-        window.location.href = constructUrl(newPath);
+        router.push(constructUrl(newPath));
     };
 
     // Lightbox handlers
@@ -170,8 +159,7 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
                                 if (searchQuery) {
                                     setSearchQuery('');
                                     if (rootAlbum) {
-                                        setCurrentPath([rootAlbum]);
-                                        window.location.href = constructUrl([rootAlbum]);
+                                        router.push(constructUrl([rootAlbum]));
                                     }
                                 } else {
                                     handleBack();
