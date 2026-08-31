@@ -19,11 +19,10 @@ export function middleware(request: NextRequest) {
         response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=86400, must-revalidate');
     }
 
-    // === SECURITY: Proteger Rutas API y ModaAdmin ===
+    // === SECURITY: Proteger Rutas API ===
     const isApiRequest = request.nextUrl.pathname.startsWith('/api/');
-    const isModaAdmin = request.nextUrl.pathname.startsWith('/modaadmin');
     
-    if (isApiRequest || isModaAdmin) {
+    if (isApiRequest) {
         // Excepciones públicas
         const isAuthRoute = request.nextUrl.pathname.startsWith('/api/auth/login');
         const isImageRoute = request.nextUrl.pathname.startsWith('/api/image');
@@ -32,11 +31,7 @@ export function middleware(request: NextRequest) {
         if (!isAuthRoute && !isImageRoute && !isHealthRoute) {
             const hasSession = request.cookies.has('admin_session');
             if (!hasSession) {
-                if (isApiRequest) {
-                    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-                } else {
-                    return NextResponse.redirect(new URL('/', request.url));
-                }
+                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
         }
     }
