@@ -30,7 +30,6 @@ services:
     volumes:
       - catalog_cache:/app/cache
       - catalog_images:/app/public/images
-      - catalog_out:/app/out
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/config"]
       interval: 30s
@@ -66,7 +65,6 @@ services:
       - r4tlabsnet
     volumes:
       - catalog_images:/usr/share/nginx/html/images:ro
-      - catalog_out:/usr/share/nginx/html
     configs:
       - source: nginx_conf
         target: /etc/nginx/nginx.conf
@@ -97,7 +95,6 @@ services:
 volumes:
   catalog_cache: {}
   catalog_images: {}
-  catalog_out: {}
 
 networks:
   r4tlabsnet:
