@@ -253,7 +253,7 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
                                     {isSearching ? 'Fotos encontradas' : 'Fotos'}
                                 </h2>
                                 <div className="grid gap-1 sm:gap-4 md:gap-6">
-                                    <div 
+                                    <div
                                         className="dynamic-catalog-grid grid gap-1 sm:gap-4 md:gap-6"
                                         style={{
                                             '--grid-cols-desktop': config.gridColumns || 5,
