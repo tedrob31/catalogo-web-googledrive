@@ -27,8 +27,9 @@ export function middleware(request: NextRequest) {
         // Excepciones públicas
         const isAuthRoute = request.nextUrl.pathname.startsWith('/api/auth/login');
         const isImageRoute = request.nextUrl.pathname.startsWith('/api/image');
+        const isHealthRoute = request.nextUrl.pathname.startsWith('/api/health');
         
-        if (!isAuthRoute && !isImageRoute) {
+        if (!isAuthRoute && !isImageRoute && !isHealthRoute) {
             const hasSession = request.cookies.has('admin_session');
             if (!hasSession) {
                 if (isApiRequest) {
