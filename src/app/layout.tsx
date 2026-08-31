@@ -18,7 +18,6 @@ import { GoogleAnalytics } from '@next/third-parties/google';
 import SeasonalEffects from "@/components/SeasonalEffects";
 import ClickEffects from "@/components/ClickEffects";
 import ClientGatekeeper from "@/components/ClientGatekeeper";
-import MPAEnforcer from "@/components/MPAEnforcer";
 
 // Removed 'next/headers' to allow static export
 // import { headers } from 'next/headers';
@@ -53,7 +52,6 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ClientGatekeeper initialStatus={status.state} />
-        <MPAEnforcer />
         <SeasonalEffects config={config} />
         <ClickEffects config={config} />
         {children}

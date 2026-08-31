@@ -19,19 +19,39 @@ export function middleware(request: NextRequest) {
         response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=86400, must-revalidate');
     }
 
+    // === SECURITY: Proteger Rutas API y ModaAdmin ===
+    const isApiRequest = request.nextUrl.pathname.startsWith('/api/');
+    const isModaAdmin = request.nextUrl.pathname.startsWith('/modaadmin');
+    
+    if (isApiRequest || isModaAdmin) {
+        // Excepciones públicas
+        const isAuthRoute = request.nextUrl.pathname.startsWith('/api/auth/login');
+        const isImageRoute = request.nextUrl.pathname.startsWith('/api/image');
+        
+        if (!isAuthRoute && !isImageRoute) {
+            const hasSession = request.cookies.has('admin_session');
+            if (!hasSession) {
+                if (isApiRequest) {
+                    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+                } else {
+                    return NextResponse.redirect(new URL('/', request.url));
+                }
+            }
+        }
+    }
+
     return response;
 }
 
 export const config = {
     matcher: [
         /*
-         * Aplica el middleware a TODAS las rutas HTML y RSC del catálogo.
+         * Aplica el middleware a TODAS las rutas (HTML, API, RSC).
          * Ignoramos archivos estáticos pesados que SÍ queremos que se queden en el disco duro:
          * - _next/static (código compilado de JS y CSS base)
          * - _next/image (imágenes procesadas)
          * - archivos con extensiones directas (svg, png, jpg, ico)
-         * - /api/ (los endpoints backend no necesitan esto)
          */
-        '/((?!api|_next/static|_next/image|.*\\.(?:png|jpg|jpeg|svg|webp|ico|gz)$).*)',
+        '/((?!_next/static|_next/image|.*\\.(?:png|jpg|jpeg|svg|webp|ico|gz)$).*)',
     ],
 };

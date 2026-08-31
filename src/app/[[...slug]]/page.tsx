@@ -11,36 +11,7 @@ import { getStorefront } from "@/lib/storefront";
 
 export const revalidate = 60; // Revalidate every 60 seconds (ISR) to trigger background syncs smoothly
 
-// Generate all possible paths from the cache
-export async function generateStaticParams() {
-  const cache = await loadCache();
-  if (!cache?.root) return [];
-
-  const paths: { slug: string[] }[] = [];
-
-  // 1. Root path (empty slug)
-  paths.push({ slug: [] });
-
-  // 2. Recursive function to build paths
-  const traverse = (album: Album, currentSlug: string[]) => {
-    // Add current album path
-    if (currentSlug.length > 0) {
-      paths.push({ slug: currentSlug });
-    }
-
-    // Traverse children
-    album.subAlbums.forEach(sub => {
-      traverse(sub, [...currentSlug, slugify(sub.name)]);
-    });
-  };
-
-  // Start traversal from root's children (Root itself is empty slug)
-  cache.root.subAlbums.forEach(sub => {
-    traverse(sub, [slugify(sub.name)]);
-  });
-
-  return paths;
-}
+// Dynamic On-Demand ISR
 
 type Props = {
   params: Promise<{ slug?: string[] }>;
