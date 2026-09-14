@@ -22,6 +22,8 @@ import {
 } from 'react-icons/fa';
 import StorefrontBuilder from '@/components/admin/StorefrontBuilder';
 
+export const dynamic = 'force-dynamic';
+
 export default function TenantDashboard() {
   const router = useRouter();
   const supabase = createClient();

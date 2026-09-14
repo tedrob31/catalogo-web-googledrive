@@ -15,6 +15,8 @@ import {
   FaCrown,
 } from 'react-icons/fa';
 
+export const dynamic = 'force-dynamic';
+
 export default function SuperAdminDashboard() {
   const router = useRouter();
   const supabase = createClient();
