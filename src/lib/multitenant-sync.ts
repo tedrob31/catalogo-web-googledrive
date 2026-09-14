@@ -4,6 +4,7 @@ import { uploadBufferToR2, checkObjectExistsInR2 } from '@/lib/r2';
 import { slugify } from '@/lib/utils';
 import { drive_v3 } from 'googleapis';
 import { revalidatePath } from 'next/cache';
+import { purgeCloudflareCache } from '@/lib/cloudflare';
 
 export interface SyncProgress {
   tenantId: string;
@@ -12,6 +13,7 @@ export interface SyncProgress {
   newUploaded: number;
   skipped: number;
   bytesUploaded: number;
+  modifiedAlbumPaths?: string[];
   error?: string;
 }
 
@@ -100,6 +102,7 @@ export async function runTenantSync(
     newUploaded: 0,
     skipped: 0,
     bytesUploaded: 0,
+    modifiedAlbumPaths: [],
   };
 
   try {
@@ -174,25 +177,28 @@ export async function runTenantSync(
       // Ignorar si se ejecuta fuera de contexto de request
     }
 
-    // Purga de caché en Cloudflare para el subdominio del tenant
-    const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
-    const cfToken = process.env.CLOUDFLARE_API_TOKEN;
-    const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'c4talogo.com';
-
-    if (cfZoneId && cfToken && tenant.subdomain) {
-      const tenantHostname = `${tenant.subdomain}.${baseDomain}`;
-      try {
-        console.log(`[Sync] Purgando caché de Cloudflare para ${tenantHostname}...`);
-        await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${cfToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ hosts: [tenantHostname] }),
+    // Purga inteligente en Cloudflare para el subdominio del tenant
+    if (tenant.subdomain) {
+      if (progress.newUploaded === 0) {
+        console.log('[Sync] Sin cambios en fotos; caché CDN conservado intacto.');
+      } else if (progress.newUploaded <= 5 && progress.modifiedAlbumPaths && progress.modifiedAlbumPaths.length <= 3) {
+        // Pocos cambios: purgar selectivamente solo las URLs de álbumes afectados y la home
+        const affectedUrls = [
+          '/',
+          `/api/storefront?subdomain=${tenant.subdomain}`,
+          ...progress.modifiedAlbumPaths.map((p) => `/${p}`),
+        ];
+        await purgeCloudflareCache({
+          subdomain: tenant.subdomain,
+          urls: affectedUrls,
+          threshold: 5,
         });
-      } catch (cfErr) {
-        console.error('[Sync] Error purgando Cloudflare:', cfErr);
+      } else {
+        // Muchos cambios (> 5 fotos o varios álbumes): purga total del subdominio por Hostname
+        await purgeCloudflareCache({
+          subdomain: tenant.subdomain,
+          purgeAll: true,
+        });
       }
     }
 
@@ -345,6 +351,9 @@ async function syncFolderRecursive({
       progress.newUploaded++;
       progress.photosCount++;
       progress.bytesUploaded += buffer.length;
+      if (progress.modifiedAlbumPaths && !progress.modifiedAlbumPaths.includes(currentPath)) {
+        progress.modifiedAlbumPaths.push(currentPath);
+      }
 
       // Reportar progreso incremental en tiempo real en Supabase para el polling
       if (logId && progress.photosCount % 5 === 0) {

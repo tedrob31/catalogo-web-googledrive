@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
+import { purgeCloudflareCache } from '@/lib/cloudflare';
 
 // GET: Obtener la configuración visual y de marca del tenant actual
 export async function GET(request: NextRequest) {
@@ -143,25 +144,13 @@ export async function POST(request: NextRequest) {
     // Revalidar caché ISR de Next.js
     revalidatePath('/', 'layout');
 
-    // Purgar caché en Cloudflare para el subdominio si está configurado
-    const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
-    const cfToken = process.env.CLOUDFLARE_API_TOKEN;
-    const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'c4talogo.com';
-
-    if (cfZoneId && cfToken && tenantInfo?.subdomain) {
-      const tenantHostname = `${tenantInfo.subdomain}.${baseDomain}`;
-      try {
-        await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${cfToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ hosts: [tenantHostname] }),
-        });
-      } catch (cfErr) {
-        console.error('Error purgando Cloudflare en actualización de config:', cfErr);
-      }
+    // Purgar selectivamente la home y el endpoint de configuración del storefront en Cloudflare
+    if (tenantInfo?.subdomain) {
+      await purgeCloudflareCache({
+        subdomain: tenantInfo.subdomain,
+        urls: ['/', `/api/storefront?subdomain=${tenantInfo.subdomain}`],
+        threshold: 5,
+      });
     }
 
     return NextResponse.json({ success: true, message: 'Configuración guardada exitosamente en Supabase' });
