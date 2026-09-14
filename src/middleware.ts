@@ -2,52 +2,90 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  const url = request.nextUrl.clone();
+  const hostname = request.headers.get('host')?.toLowerCase().split(':')[0] || 'localhost';
+  const pathname = url.pathname;
+
+  // 1. Omitir archivos estáticos e internos de Next.js
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.includes('.')
+  ) {
     const response = NextResponse.next();
-
-    // Interceptar peticiones que solicita el App Router (peticiones _rsc)
-    const isRSCRequest = request.nextUrl.searchParams.has('_rsc') || request.headers.has('RSC');
-
-    if (isRSCRequest) {
-        // 1. Eliminar cualquier caché persistente o "stale-while-revalidate" que Next.js intente poner por defecto.
-        // 2. Obligar al navegador (Chrome/Safari) a NUNCA guardar el JSON en el "Disk Cache" (Disco Duro local).
-        // De esta manera, cada click en un <Link> obliga a tocar la red real (bajando hasta Cloudflare).
-        response.headers.set('Cache-Control', 'no-store, no-cache, max-age=0, must-revalidate, proxy-revalidate');
-    } else {
-        // Para el HTML estándar (la primera visita o al dar F5):
-        // Permitimos que Cloudflare reciba la orden de cachear (s-maxage=86400 que es 1 día)
-        // pero le decimos al navegador del usuario que NO guarde el HTML rígido (max-age=0).
-        response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=86400, must-revalidate');
-    }
-
-    // === SECURITY: Proteger Rutas API ===
-    const isApiRequest = request.nextUrl.pathname.startsWith('/api/');
-    
-    if (isApiRequest) {
-        // Excepciones públicas
-        const isAuthRoute = request.nextUrl.pathname.startsWith('/api/auth/login');
-        const isImageRoute = request.nextUrl.pathname.startsWith('/api/image');
-        const isHealthRoute = request.nextUrl.pathname.startsWith('/api/health');
-        
-        if (!isAuthRoute && !isImageRoute && !isHealthRoute) {
-            const hasSession = request.cookies.has('admin_session');
-            if (!hasSession) {
-                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-            }
-        }
-    }
-
+    applyCacheHeaders(response, request);
     return response;
+  }
+
+  // 2. Extraer subdominio
+  const baseDomain = (process.env.NEXT_PUBLIC_BASE_DOMAIN || 'c4talogo.com').toLowerCase();
+  let subdomain: string | null = null;
+
+  if (hostname.endsWith(`.${baseDomain}`)) {
+    subdomain = hostname.replace(`.${baseDomain}`, '');
+  } else if (hostname.endsWith('.localhost')) {
+    subdomain = hostname.replace('.localhost', '');
+  }
+
+  // 3. Enrutamiento según el tipo de host:
+
+  // CASO A: Panel Maestro SuperAdmin (app.c4talogo.com)
+  if (subdomain === 'app') {
+    url.pathname = `/superadmin${pathname === '/' ? '' : pathname}`;
+    const response = NextResponse.rewrite(url);
+    applyCacheHeaders(response, request);
+    return response;
+  }
+
+  // CASO B: Subdominio de Inquilino / Tenant Storefront (juanito.c4talogo.com)
+  if (subdomain && subdomain !== 'www') {
+    url.pathname = `/t/${subdomain}${pathname === '/' ? '' : pathname}`;
+    const response = NextResponse.rewrite(url);
+    applyCacheHeaders(response, request);
+    return response;
+  }
+
+  // CASO C: Dominio Personalizado de Inquilino (ej. mitienda.pe)
+  const isRootDomain =
+    hostname === baseDomain ||
+    hostname === `www.${baseDomain}` ||
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1';
+
+  if (!isRootDomain) {
+    url.pathname = `/t/${hostname}${pathname === '/' ? '' : pathname}`;
+    const response = NextResponse.rewrite(url);
+    applyCacheHeaders(response, request);
+    return response;
+  }
+
+  // CASO D: Dominio Raíz (c4talogo.com)
+  // Sirve la landing page, login de usuarios y panel de inquilino (/dashboard)
+  const response = NextResponse.next();
+  applyCacheHeaders(response, request);
+  return response;
+}
+
+/**
+ * Aplica los encabezados de caché garantizados para navegación fluida y Cloudflare Edge Caching
+ */
+function applyCacheHeaders(response: NextResponse, request: NextRequest) {
+  const isRSCRequest = request.nextUrl.searchParams.has('_rsc') || request.headers.has('RSC');
+
+  if (isRSCRequest) {
+    // Evita congelamientos al dar atrás/adelante en el navegador
+    response.headers.set('Cache-Control', 'no-store, no-cache, max-age=0, must-revalidate, proxy-revalidate');
+  } else {
+    // Permite a Cloudflare cachear en el Edge (1 día) pero obliga al navegador a validar en cada F5
+    response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=86400, must-revalidate');
+  }
 }
 
 export const config = {
-    matcher: [
-        /*
-         * Aplica el middleware a TODAS las rutas (HTML, API, RSC).
-         * Ignoramos archivos estáticos pesados que SÍ queremos que se queden en el disco duro:
-         * - _next/static (código compilado de JS y CSS base)
-         * - _next/image (imágenes procesadas)
-         * - archivos con extensiones directas (svg, png, jpg, ico)
-         */
-        '/((?!_next/static|_next/image|.*\\.(?:png|jpg|jpeg|svg|webp|ico|gz)$).*)',
-    ],
+  matcher: [
+    /*
+     * Aplica a todas las rutas excepto archivos estáticos pesados
+     */
+    '/((?!_next/static|_next/image|.*\\.(?:png|jpg|jpeg|svg|webp|ico|gz)$).*)',
+  ],
 };

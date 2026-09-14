@@ -15,6 +15,8 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { FiSearch, FiArrowLeft, FiGrid, FiHome } from 'react-icons/fi';
 import { StorefrontConfig } from '@/lib/storefront';
 import StorefrontView from './storefront/StorefrontView';
+import SeasonalEffects from './SeasonalEffects';
+import ClickEffects from './ClickEffects';
 
 interface CatalogViewProps {
     data: CacheStructure | null;
@@ -149,6 +151,8 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
             className="min-h-screen bg-white dark:bg-black text-black dark:text-white pb-20 transition-colors relative"
             style={mainStyle}
         >
+            <SeasonalEffects config={config} />
+            <ClickEffects config={config} />
             {/* Header / Search Bar */}
             <header className="sticky top-0 z-40 bg-white/80 dark:bg-black/80 backdrop-blur-md border-b border-gray-200 dark:border-zinc-800 p-4 relative">
                 <div className="max-w-7xl mx-auto flex gap-4 items-center">

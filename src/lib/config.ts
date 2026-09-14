@@ -1,66 +1,49 @@
-import fs from 'fs/promises';
-import path from 'path';
-
-const CONFIG_FILE = path.join(process.cwd(), 'cache', 'config.json');
+// Tipos de configuración para la interfaz de Catálogo
+// En la arquitectura Multi-Tenant, todas las configuraciones residen en Supabase (tenant_configs y settings JSONB)
 
 export interface AppConfig {
-    rootFolderId: string;
+    rootFolderId?: string;
     siteTitle: string;
     primaryColor: string;
     secondaryColor: string;
-    gridColumns: number; // For desktop
-    mobileGridColumns?: number; // For mobile
-    coversFolderId?: string; // Google Drive Folder ID for covers
-    folderCovers?: Record<string, string>; // Map folder ID to cover image URL (or Drive ID)
-    adminEmail?: string; // Correo del admin para buscar su refresh_token en Supabase
-    googleAnalyticsId?: string; // Measurement ID (G-XXXXX)
-    analyticsPropertyId?: string; // Numeric Property ID for API
-    autoSyncEnabled?: boolean; // Master switch
-    autoSyncInterval?: number; // Minutes.
-    autoSyncStartHour?: number; // 0-23
-    autoSyncEndHour?: number; // 0-23
+    gridColumns: number; // Columnas en desktop
+    mobileGridColumns?: number; // Columnas en móvil
+    coversFolderId?: string;
+    folderCovers?: Record<string, string>; // Mapa de folder ID a imagen de portada
+    adminEmail?: string;
+    googleAnalyticsId?: string;
+    analyticsPropertyId?: string;
+    autoSyncEnabled?: boolean;
+    autoSyncInterval?: number;
+    autoSyncStartHour?: number;
+    autoSyncEndHour?: number;
     seasonalEffect?: 'none' | 'snow' | 'hearts' | 'custom';
-    seasonalCustomIcon?: string; // Proxy URL to image
-    seasonalDuration?: number; // Seconds. 0 = infinite.
-    // Aesthetics
+    seasonalCustomIcon?: string;
+    seasonalDuration?: number;
+    // Estética
     backgroundImage?: string;
     textColor?: string;
-    hideAlbumTitles?: boolean; // Phase 1: Hide text under album covers
+    hideAlbumTitles?: boolean;
     cardBorderWidth?: number;
     cardBorderColor?: string;
     clickEffect?: 'none' | 'stars' | 'hearts';
-    // SEO & Social
-    favicon?: string; // Path or URL to custom Favicon
-    ogImage?: string; // Path or URL to global Preview Image
-    forceGlobalOgImage?: boolean; // If true, always use global image instead of album cover
-    siteDescription?: string; // Custom description for search engines
+    favicon?: string;
+    ogImage?: string;
+    forceGlobalOgImage?: boolean;
+    siteDescription?: string;
+    logoUrl?: string;
+    whatsappNumber?: string;
+    theme?: string;
 }
 
-const DEFAULT_CONFIG: AppConfig = {
-    rootFolderId: '', // User must set this
+export const DEFAULT_CONFIG: AppConfig = {
+    rootFolderId: '',
     siteTitle: 'Mi Catálogo de Fotos',
-    primaryColor: '#000000',
+    primaryColor: '#111827',
     secondaryColor: '#ffffff',
     gridColumns: 5,
+    mobileGridColumns: 2,
     autoSyncEnabled: true,
     hideAlbumTitles: false,
+    theme: 'light',
 };
-
-export async function getConfig(): Promise<AppConfig> {
-    try {
-        const data = await fs.readFile(CONFIG_FILE, 'utf-8');
-        return { ...DEFAULT_CONFIG, ...JSON.parse(data) };
-    } catch {
-        return DEFAULT_CONFIG;
-    }
-}
-
-export async function saveConfig(config: AppConfig) {
-    const dir = path.dirname(CONFIG_FILE);
-    try {
-        await fs.access(dir);
-    } catch {
-        await fs.mkdir(dir, { recursive: true });
-    }
-    await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
-}

@@ -1,44 +1,95 @@
-import { NextResponse } from 'next/server';
-import { getStorefront, saveStorefront } from '@/lib/storefront';
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 
-export async function GET() {
-    const storefront = await getStorefront();
-    return NextResponse.json(storefront);
+// GET: Obtener los bloques de Storefront del tenant actual
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
+
+    const { data: membership } = await supabase
+      .from('tenant_users')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!membership) {
+      return NextResponse.json({ error: 'Sin tenant asignado' }, { status: 403 });
+    }
+
+    const { data: config, error } = await supabase
+      .from('tenant_configs')
+      .select('settings')
+      .eq('tenant_id', membership.tenant_id)
+      .single();
+
+    if (error || !config) {
+      return NextResponse.json({ enabled: false, blocks: [] });
+    }
+
+    const settings = (config.settings as Record<string, any>) || {};
+    return NextResponse.json(settings.storefront || { enabled: false, blocks: [] });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
 
-export async function POST(request: Request) {
-    try {
-        const body = await request.json();
-        
-        // Save the new config
-        await saveStorefront(body);
+// POST: Guardar los bloques de Storefront en Supabase para el tenant actual
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-        // Revalidate internal Next.js cache for the root page where storefront is shown
-        revalidatePath('/', 'layout');
-
-        // Note: For Phase 2 we simply purge the root of Cloudflare since storefront lives at `/`
-        const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
-        const cfToken = process.env.CLOUDFLARE_API_TOKEN;
-
-        if (cfZoneId && cfToken) {
-            const domain = process.env.NEXT_PUBLIC_DOMAIN_NAME || 'localhost';
-            const protocol = domain.includes('localhost') ? 'http://' : 'https://';
-            const base = `${protocol}${domain}`;
-            
-            fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${cfToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ files: [`${base}/`] })
-            }).catch(err => console.error('CF Purge Error from storefront:', err));
-        }
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error('API Storefront error:', error);
-        return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    if (!user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }
+
+    const { data: membership } = await supabase
+      .from('tenant_users')
+      .select('tenant_id, role, tenants ( subdomain )')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!membership || !['owner', 'admin', 'superadmin'].includes(membership.role)) {
+      return NextResponse.json({ error: 'Sin permisos de edición' }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const tenantId = membership.tenant_id;
+    const adminClient = createAdminClient();
+
+    // Obtener settings actuales
+    const { data: currentConfig } = await adminClient
+      .from('tenant_configs')
+      .select('settings')
+      .eq('tenant_id', tenantId)
+      .single();
+
+    const settings = (currentConfig?.settings as Record<string, any>) || {};
+    settings.storefront = body;
+
+    const { error: updateError } = await adminClient
+      .from('tenant_configs')
+      .update({
+        settings,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('tenant_id', tenantId);
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    revalidatePath('/', 'layout');
+
+    return NextResponse.json({ success: true, message: 'Storefront guardado en Supabase' });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }

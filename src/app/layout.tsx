@@ -12,52 +12,25 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-import { getConfig } from "@/lib/config";
-import { GoogleAnalytics } from '@next/third-parties/google';
+export const metadata: Metadata = {
+  title: "c4talogo.com | Plataforma de Catálogos Digitales",
+  description: "Crea y administra catálogos profesionales conectados a Google Drive con subdominio propio.",
+  icons: {
+    icon: '/favicon.ico',
+  },
+};
 
-import SeasonalEffects from "@/components/SeasonalEffects";
-import ClickEffects from "@/components/ClickEffects";
-import ClientGatekeeper from "@/components/ClientGatekeeper";
-
-// Removed 'next/headers' to allow static export
-// import { headers } from 'next/headers';
-import { getSystemStatus } from '@/lib/status';
-
-export async function generateMetadata() {
-  const config = await getConfig();
-  const domain = process.env.NEXT_PUBLIC_DOMAIN_NAME || 'r4tlabs.com';
-  const protocol = domain.includes('localhost') ? 'http' : 'https';
-
-  return {
-    metadataBase: new URL(`${protocol}://${domain}`),
-    title: config.siteTitle || "Photo Catalog",
-    description: "A professional photo catalog",
-    icons: {
-      icon: config.favicon || '/favicon.ico',
-    },
-  };
-}
-
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const config = await getConfig();
-  const status = await getSystemStatus();
-
   return (
-    <html lang="en">
+    <html lang="es">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ClientGatekeeper initialStatus={status.state} />
-        <SeasonalEffects config={config} />
-        <ClickEffects config={config} />
         {children}
-        {config.googleAnalyticsId && (
-          <GoogleAnalytics gaId={config.googleAnalyticsId} />
-        )}
       </body>
     </html>
   );

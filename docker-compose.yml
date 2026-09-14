@@ -1,7 +1,7 @@
 version: "3.7"
 services:
 
-## --------------------------- BACKEND API (Manager) --------------------------- ##
+## --------------------------- SAAS PLATFORM (Next.js Multi-Tenant) --------------------------- ##
   backend_api:
     image: ghcr.io/tedrob31/catalogo-web-googledrive:main
     build: 
@@ -13,23 +13,37 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
-      - SYNC_MODE=${SYNC_MODE:-LOCAL}
-      # ADMIN CREDENTIALS (Load from environment)
-      - ADMIN_USER=${ADMIN_USER:-admin}
-      - ADMIN_PASS=${ADMIN_PASS:-change_me_please}
-      # GOOGLE DRIVE CREDENTIALS
-      - GOOGLE_APPLICATION_CREDENTIALS=/app/cache/credentials.json
-      # Cloudflare Cache Purge (Optional)
+      # Dominio Base de la Plataforma
+      - NEXT_PUBLIC_BASE_DOMAIN=${NEXT_PUBLIC_BASE_DOMAIN:-c4talogo.com}
+      - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-c4talogo_platform}
+
+      # Supabase Cloud (Base de Datos & Auth Multi-Tenant)
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+
+      # Cloudflare R2 (Almacenamiento Puro de Imágenes)
+      - R2_ENDPOINT=${R2_ENDPOINT}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME:-c4talogo-media}
+      - R2_PUBLIC_DOMAIN=${R2_PUBLIC_DOMAIN:-https://cdn.c4talogo.com}
+
+      # Imgproxy (Procesamiento firmado HMAC-SHA256)
+      - IMGPROXY_URL=${IMGPROXY_URL:-https://img.c4talogo.com}
+      - IMGPROXY_KEY=${IMGPROXY_KEY}
+      - IMGPROXY_SALT=${IMGPROXY_SALT}
+
+      # Google OAuth 2.0 (Google Drive Integration)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+
+      # Cloudflare Cache Purge
       - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID:-}
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
-      # Domain for Metadata (SSG)
-      - NEXT_PUBLIC_DOMAIN_NAME=${NEXT_PUBLIC_DOMAIN_NAME:-r4tlabs.com}
-      - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-liquidacion_catalogodemoda}
-      # Performance Tuning
-      - NODE_OPTIONS='--max-old-space-size=2048'
-    volumes:
-      - catalog_cache:/app/cache
-      - catalog_images:/app/public/images
+
+      # Performance de Alta Concurrencia (VPS 6 Cores / 12GB RAM)
+      - NODE_OPTIONS='--max-old-space-size=3584'
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
       interval: 30s
@@ -44,63 +58,23 @@ services:
           - node.role == manager
       resources:
         limits:
-          cpus: "2.0"
-          memory: 2048M
+          cpus: "4.0"
+          memory: 4096M
       labels:
         - traefik.enable=true
         - traefik.docker.network=r4tlabsnet
         
-        # Router unificado para todo lo dinámico y frontend (ISR)
-        - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.rule=(Host(`${NEXT_PUBLIC_DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${NEXT_PUBLIC_DOMAIN_NAME:-r4tlabs.com}`)) && !PathPrefix(`/images`)"
-        - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.priority=50000"
-        - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.entrypoints=websecure"
-        - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.tls.certresolver=letsencryptresolver"
-        - "traefik.http.routers.r4t-backend-${COMPOSE_PROJECT_NAME:-catsite}.service=backend_api-${COMPOSE_PROJECT_NAME:-catsite}"
-        - "traefik.http.services.backend_api-${COMPOSE_PROJECT_NAME:-catsite}.loadbalancer.server.port=3000"
+        # Enrutamiento Wildcard para c4talogo.com, app.c4talogo.com y todos los subdominios (*.c4talogo.com)
+        - "traefik.http.routers.r4t-c4talogo.rule=Host(`${NEXT_PUBLIC_BASE_DOMAIN:-c4talogo.com}`) || Host(`www.${NEXT_PUBLIC_BASE_DOMAIN:-c4talogo.com}`) || Host(`app.${NEXT_PUBLIC_BASE_DOMAIN:-c4talogo.com}`) || HostRegexp(`{subdomain:[a-z0-9-]+}.${NEXT_PUBLIC_BASE_DOMAIN:-c4talogo.com}`)"
+        - "traefik.http.routers.r4t-c4talogo.priority=50000"
+        - "traefik.http.routers.r4t-c4talogo.entrypoints=websecure"
+        - "traefik.http.routers.r4t-c4talogo.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.r4t-c4talogo.service=backend_api-c4talogo"
+        - "traefik.http.services.backend_api-c4talogo.loadbalancer.server.port=3000"
 
-## --------------------------- STATIC SERVER (Nginx) --------------------------- ##
-  static_server:
-    image: nginx:alpine
-    networks:
-      - r4tlabsnet
-    volumes:
-      - catalog_images:/usr/share/nginx/html/images:ro
-    configs:
-      - source: nginx_conf
-        target: /etc/nginx/nginx.conf
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      resources:
-        limits:
-          cpus: "1.0"
-          memory: 128M
-      labels:
-        - traefik.enable=true
-        - traefik.docker.network=r4tlabsnet
-        
-        # REGLA EXCLUSIVA: Nginx solo sirve las imágenes hiper-rápidamente
-        - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.rule=(Host(`${NEXT_PUBLIC_DOMAIN_NAME:-r4tlabs.com}`) || Host(`www.${NEXT_PUBLIC_DOMAIN_NAME:-r4tlabs.com}`)) && PathPrefix(`/images`)"
-        - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.priority=1000"
-        - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.entrypoints=websecure"
-        - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.tls.certresolver=letsencryptresolver"
-        - "traefik.http.routers.r4t-static-${COMPOSE_PROJECT_NAME:-catsite}.service=static_server-${COMPOSE_PROJECT_NAME:-catsite}"
-        - "traefik.http.services.static_server-${COMPOSE_PROJECT_NAME:-catsite}.loadbalancer.server.port=80"
-
-## --------------------------- VOLUMES & NETWORKS --------------------------- ##
-
-volumes:
-  catalog_cache: {}
-  catalog_images: {}
+## --------------------------- REDES --------------------------- ##
 
 networks:
   r4tlabsnet:
     external: true
     name: r4tlabsnet
-
-configs:
-  nginx_conf:
-    file: ./nginx/nginx.conf

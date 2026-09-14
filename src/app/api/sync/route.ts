@@ -1,125 +1,147 @@
-import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
-import fs from 'fs';
-import path from 'path';
-import { syncDrive, loadCache } from '@/lib/cache';
-import { getConfig } from '@/lib/config';
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { runTenantSync } from '@/lib/multitenant-sync';
 
-export async function POST() {
-    try {
-        const config = await getConfig();
-        if (!config.rootFolderId) {
-            return NextResponse.json({ error: 'Root Folder ID not configured' }, { status: 400 });
-        }
+// POST: Iniciar sincronización asíncrona en segundo plano (Evita Timeout 524 de Cloudflare)
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-        console.log('[Sync] Starting Drive Sync...');
-        const { cache, affectedPaths } = await syncDrive(config.rootFolderId);
-        console.log(`[Sync] Drive Sync complete. ${affectedPaths.length} paths changed.`);
-
-        // ISR REVALIDATION: Clear Next.js internal cache for affected paths
-        if (affectedPaths.length > 0) {
-            console.log(`[ISR] Revalidating ${affectedPaths.length} paths...`);
-            for (const path of affectedPaths) {
-                // Revalidate the specific path (page)
-                revalidatePath(path);
-            }
-            // Always revalidate root layout to clear the entire Next.js internal Data/Full-Route cache
-            // This ensures fs.readFile picks up the new structure.json on next render.
-            // Cloudflare is still targeted below, so users won't feel a global slowdown.
-            revalidatePath('/', 'layout');
-        }
-
-        // CLOUDFLARE CACHE PURGE (Purge Everything)
-        // La purga selectiva por URL falla porque NextJS inyecta queries dinámicas (?_rsc=xxx) al navegar
-        const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
-        const cfToken = process.env.CLOUDFLARE_API_TOKEN;
-        const domain = process.env.NEXT_PUBLIC_DOMAIN_NAME;
-
-        if (cfZoneId && cfToken && affectedPaths.length > 0 && domain) {
-            // Híbrido: Si hay más de 7 rutas afectadas (porque a cada hijo se le suman sus ancestros), 
-            // purgar por hostname es más eficiente y seguro ante el límite de Cloudflare.
-            // Cloudflare API soporta máximo 30 URLs. 7 rutas afectadas * 2-4 variantes = ~28 URLs (límite super optimizado).
-            if (affectedPaths.length > 7) {
-                console.log(`[Sync] Ejecutando Purga Global por Hostname en Cloudflare (${affectedPaths.length} rutas afectadas)...`);
-                try {
-                    const cfResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${cfToken}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ hosts: [domain] })
-                    });
-                    if (cfResponse.ok) {
-                        console.log(`[Sync] Cloudflare Purged Hostname: ${domain}`);
-                    } else {
-                        const cfError = await cfResponse.text();
-                        console.error(`[Sync] Cloudflare Purge Hostname Failed:`, cfError);
-                    }
-                } catch (cfErr) {
-                    console.error('[Sync] Cloudflare Purge Hostname Exception:', cfErr);
-                }
-            } else {
-                console.log(`[Sync] Ejecutando Purga Selectiva de URLs en Cloudflare (${affectedPaths.length} rutas afectadas)...`);
-                
-                // Obtener ID de compilación para invalidar RSCs (Single Page Application data)
-                let buildId = '';
-                try {
-                    const buildIdPath = path.join(process.cwd(), '.next', 'BUILD_ID');
-                    if (fs.existsSync(buildIdPath)) {
-                        buildId = fs.readFileSync(buildIdPath, 'utf8').trim();
-                    }
-                } catch (e) {
-                    console.warn('[Sync] No se pudo leer BUILD_ID, asumiendo vacío.');
-                }
-
-                const urlsToPurge: string[] = [];
-                for (const routePath of affectedPaths) {
-                    const baseUrl = `https://${domain}${routePath}`;
-                    urlsToPurge.push(baseUrl);
-                    if (routePath !== '/') urlsToPurge.push(`${baseUrl}/`);
-                    // Inyectar URLs de React Server Components
-                    if (buildId) {
-                        urlsToPurge.push(`${baseUrl}?_rsc=${buildId}`);
-                        if (routePath !== '/') urlsToPurge.push(`${baseUrl}/?_rsc=${buildId}`);
-                    }
-                }
-
-                // Cloudflare API soporta hasta 30 URLs por Request. 7 rutas * 4 variables (max) = 28 URLs máx. Lote apto.
-                try {
-                    const cfResponse = await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${cfToken}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ files: urlsToPurge }) // Purga selectiva activada
-                    });
-                    
-                    if (cfResponse.ok) {
-                        console.log(`[Sync] Cloudflare Purged ${urlsToPurge.length} URLs selectively.`);
-                    } else {
-                        const cfError = await cfResponse.text();
-                        console.error(`[Sync] Cloudflare Purge URLs Failed:`, cfError);
-                    }
-                } catch (cfErr) {
-                    console.error('[Sync] Cloudflare Selective Purge Exception:', cfErr);
-                }
-            }
-        } else if (affectedPaths.length === 0) {
-            console.log('[Sync] No paths affected, skipping Cloudflare purge.');
-        } else {
-            console.log('[Sync] No Cloudflare credentials configured. Skipping cache purge.');
-        }
-
-        return NextResponse.json({ success: true, message: `Sync complete. ${affectedPaths.length} paths updated.` });
-    } catch (error: any) {
-        console.error('Sync error:', error);
-        return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    if (!user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
     }
+
+    // Obtener tenant del usuario
+    const { data: membership } = await supabase
+      .from('tenant_users')
+      .select('tenant_id, role, tenants ( name, subdomain, status )')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!membership || !['owner', 'admin', 'superadmin'].includes(membership.role)) {
+      return NextResponse.json({ error: 'No tienes permisos de sincronización' }, { status: 403 });
+    }
+
+    const tenantId = membership.tenant_id;
+    const adminClient = createAdminClient();
+
+    // 1. Verificar si ya hay una sincronización activa reciente (últimos 15 minutos)
+    const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { data: activeSync } = await adminClient
+      .from('sync_logs')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('status', 'syncing')
+      .gt('started_at', fifteenMinsAgo)
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (activeSync) {
+      return NextResponse.json({
+        success: true,
+        status: 'already_running',
+        logId: activeSync.id,
+        message: 'Ya hay una sincronización en curso para este catálogo',
+      });
+    }
+
+    // 2. Registrar el nuevo Job en sync_logs (Supabase)
+    const { data: newLog, error: logError } = await adminClient
+      .from('sync_logs')
+      .insert({
+        tenant_id: tenantId,
+        status: 'syncing',
+        started_at: new Date().toISOString(),
+      })
+      .select('id')
+      .single();
+
+    if (logError || !newLog) {
+      return NextResponse.json({ error: 'Error al registrar el job de sincronización' }, { status: 500 });
+    }
+
+    const logId = newLog.id;
+
+    // 3. Ejecutar en segundo plano desacoplado (Background Promise)
+    // No usamos await aquí para responder en ~50ms a Cloudflare y evitar el timeout 524
+    runTenantSync(tenantId, logId).catch((err) => {
+      console.error(`[Background Sync Error - Tenant ${tenantId}]:`, err);
+    });
+
+    // 4. Retornar inmediatamente al cliente
+    return NextResponse.json({
+      success: true,
+      status: 'started',
+      logId,
+      message: 'Sincronización iniciada en segundo plano con éxito',
+    });
+  } catch (error: any) {
+    console.error('[Sync API] Error iniciando job:', error);
+    return NextResponse.json(
+      { error: error.message || 'Error interno al iniciar sincronización' },
+      { status: 500 }
+    );
+  }
 }
 
-export async function GET() {
-    const cache = await loadCache();
-    return NextResponse.json(cache || {});
+// GET: Consultar el estado actual del job de sincronización (Polling)
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
+
+    const { data: membership } = await supabase
+      .from('tenant_users')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!membership) {
+      return NextResponse.json({ error: 'Sin tenant asignado' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const logId = searchParams.get('logId');
+
+    const adminClient = createAdminClient();
+    let query = adminClient
+      .from('sync_logs')
+      .select('*')
+      .eq('tenant_id', membership.tenant_id);
+
+    if (logId) {
+      query = query.eq('id', logId);
+    } else {
+      query = query.order('started_at', { ascending: false }).limit(1);
+    }
+
+    const { data: log, error } = await query.single();
+
+    if (error || !log) {
+      return NextResponse.json({ error: 'No se encontró registro de sincronización' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      log: {
+        id: log.id,
+        status: log.status,
+        total_albums: log.total_albums || 0,
+        total_photos: log.total_photos || 0,
+        items_processed: log.items_processed || 0,
+        error_message: log.error_message,
+        started_at: log.started_at,
+        completed_at: log.completed_at,
+      },
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
