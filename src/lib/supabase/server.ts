@@ -2,6 +2,15 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { Database } from '@/types/database.types';
 
+function sanitizeSupabaseUrl(rawUrl: string): string {
+  if (!rawUrl) return '';
+  let url = rawUrl.trim();
+  if (url.includes('/auth/v1')) {
+    url = url.split('/auth/v1')[0];
+  }
+  return url.replace(/\/+$/, '');
+}
+
 export async function createClient() {
   const cookieStore = await cookies();
   const env = process.env;
@@ -9,8 +18,8 @@ export async function createClient() {
   const anonKey = env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] || env['SUPABASE_ANON_KEY'] || 'placeholder-anon-key';
 
   return createServerClient<Database>(
-    url,
-    anonKey,
+    sanitizeSupabaseUrl(url),
+    anonKey.trim(),
     {
       cookies: {
         getAll() {

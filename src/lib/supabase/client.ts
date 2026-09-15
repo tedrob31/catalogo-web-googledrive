@@ -1,6 +1,15 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { Database } from '@/types/database.types';
 
+function sanitizeSupabaseUrl(rawUrl: string): string {
+  if (!rawUrl) return '';
+  let url = rawUrl.trim();
+  if (url.includes('/auth/v1')) {
+    url = url.split('/auth/v1')[0];
+  }
+  return url.replace(/\/+$/, '');
+}
+
 export function createClient() {
   let url = '';
   let anonKey = '';
@@ -37,5 +46,5 @@ export function createClient() {
     }
   }
 
-  return createBrowserClient<Database>(url, anonKey);
+  return createBrowserClient<Database>(sanitizeSupabaseUrl(url), anonKey.trim());
 }

@@ -27,8 +27,12 @@ export default function RootLayout({
 }>) {
   // Inyección de variables de entorno en tiempo de ejecución (runtime) para el navegador
   const env = process.env;
-  const runtimeSupabaseUrl = env['NEXT_PUBLIC_SUPABASE_URL'] || env['SUPABASE_URL'] || '';
-  const runtimeSupabaseAnonKey = env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] || env['SUPABASE_ANON_KEY'] || '';
+  let rawUrl = env['NEXT_PUBLIC_SUPABASE_URL'] || env['SUPABASE_URL'] || '';
+  if (rawUrl.includes('/auth/v1')) {
+    rawUrl = rawUrl.split('/auth/v1')[0];
+  }
+  const runtimeSupabaseUrl = rawUrl.trim().replace(/\/+$/, '');
+  const runtimeSupabaseAnonKey = (env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] || env['SUPABASE_ANON_KEY'] || '').trim();
   const runtimeBaseDomain = env['NEXT_PUBLIC_BASE_DOMAIN'] || 'c4talogo.com';
 
   return (
