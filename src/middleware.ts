@@ -31,7 +31,27 @@ export function middleware(request: NextRequest) {
 
   // CASO A: Panel Maestro SuperAdmin (app.c4talogo.com)
   if (subdomain === 'app') {
-    url.pathname = `/superadmin${pathname === '/' ? '' : pathname}`;
+    // Si la ruta solicitada es login u otra ruta global, servir directamente sin prefijo /superadmin
+    if (
+      pathname === '/login' ||
+      pathname.startsWith('/login/') ||
+      pathname === '/dashboard' ||
+      pathname.startsWith('/dashboard/') ||
+      pathname === '/privacy' ||
+      pathname === '/terms'
+    ) {
+      const response = NextResponse.next();
+      applyCacheHeaders(response, request);
+      return response;
+    }
+
+    // Si entra a la raíz o a /superadmin, servir la vista del panel maestro
+    if (pathname === '/' || pathname === '/superadmin') {
+      url.pathname = '/superadmin';
+    } else {
+      url.pathname = `/superadmin${pathname}`;
+    }
+
     const response = NextResponse.rewrite(url);
     applyCacheHeaders(response, request);
     return response;

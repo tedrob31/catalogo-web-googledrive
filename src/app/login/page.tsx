@@ -15,9 +15,19 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [isAppSubdomain, setIsAppSubdomain] = useState(false);
 
   const router = useRouter();
   const supabase = createClient();
+
+  // Detectar si estamos accediendo desde el subdominio de administración app.c4talogo.com
+  const getRedirectTarget = () => {
+    if (typeof window === 'undefined') return '/dashboard';
+    const params = new URLSearchParams(window.location.search);
+    const redirectParam = params.get('redirect');
+    if (redirectParam) return redirectParam;
+    return window.location.hostname.startsWith('app.') ? '/' : '/dashboard';
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,12 +36,13 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      const destination = getRedirectTarget();
       if (isRegister) {
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            emailRedirectTo: `${window.location.origin}${destination}`,
           },
         });
         if (error) throw error;
@@ -43,7 +54,7 @@ export default function LoginPage() {
           password,
         });
         if (error) throw error;
-        router.push('/dashboard');
+        router.push(destination);
         router.refresh();
       }
     } catch (err: any) {
@@ -56,10 +67,11 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setError(null);
     try {
+      const destination = getRedirectTarget();
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}${destination}`,
         },
       });
       if (error) throw error;
@@ -81,7 +93,7 @@ export default function LoginPage() {
           <p className="text-sm text-gray-400 mt-2">
             {isRegister
               ? 'Registra tu tienda y conecta tus carpetas de Google Drive en minutos'
-              : 'Accede al panel de control de tu catálogo'}
+              : 'Accede al panel de control de tu catálogo o administración'}
           </p>
         </div>
 
