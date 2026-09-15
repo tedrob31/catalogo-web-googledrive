@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
   const tenantId = searchParams.get('state');
   const error = searchParams.get('error');
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'c4talogo.com';
+  const protocol = request.headers.get('x-forwarded-proto') || 'https';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${appUrl}/api/auth/google/callback`;
 
   if (error || !code || !tenantId) {
     console.error('Error en Google OAuth Callback:', error || 'Faltan parámetros');
@@ -16,7 +19,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const oauth2Client = getOAuth2Client();
+    const oauth2Client = getOAuth2Client(redirectUri);
     const { tokens } = await oauth2Client.getToken(code);
 
     let googleEmail: string | null = null;

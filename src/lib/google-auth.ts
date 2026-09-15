@@ -4,9 +4,10 @@ import { createAdminClient } from '@/lib/supabase/admin';
 const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 
 export function getOAuth2Client(redirectUri?: string) {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const baseRedirect = redirectUri || process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/google/callback`;
+  const env = process.env;
+  const clientId = env['GOOGLE_CLIENT_ID'];
+  const clientSecret = env['GOOGLE_CLIENT_SECRET'];
+  const baseRedirect = redirectUri || env['GOOGLE_REDIRECT_URI'] || `${env['NEXT_PUBLIC_APP_URL'] || 'https://c4talogo.com'}/api/auth/google/callback`;
 
   if (!clientId || !clientSecret) {
     throw new Error('GOOGLE_CLIENT_ID o GOOGLE_CLIENT_SECRET no están configurados en el entorno.');

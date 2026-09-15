@@ -21,6 +21,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'No tienes permisos de administración sobre este tenant' }, { status: 403 });
   }
 
-  const url = generateGoogleAuthUrl(membership.tenant_id);
+  // Determinar dinámicamente la redirect_uri basada en el host real o variables de entorno
+  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'c4talogo.com';
+  const protocol = request.headers.get('x-forwarded-proto') || 'https';
+  const dynamicOrigin = `${protocol}://${host}`;
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL || dynamicOrigin}/api/auth/google/callback`;
+
+  const url = generateGoogleAuthUrl(membership.tenant_id, redirectUri);
   return NextResponse.redirect(url);
 }
