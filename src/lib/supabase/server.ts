@@ -4,8 +4,9 @@ import { Database } from '@/types/database.types';
 
 export async function createClient() {
   const cookieStore = await cookies();
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+  const env = process.env;
+  const url = env['NEXT_PUBLIC_SUPABASE_URL'] || env['SUPABASE_URL'] || 'https://placeholder.supabase.co';
+  const anonKey = env['NEXT_PUBLIC_SUPABASE_ANON_KEY'] || env['SUPABASE_ANON_KEY'] || 'placeholder-anon-key';
 
   return createServerClient<Database>(
     url,

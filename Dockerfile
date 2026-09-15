@@ -20,9 +20,10 @@ COPY . .
 # Learn more here: https://nextjs.org/telemetry
 # Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV STANDALONE_BUILD=true
-ENV NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key
+ARG NEXT_PUBLIC_SUPABASE_URL=""
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=""
+ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
 
 RUN npm run build
 
@@ -34,8 +35,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key
+ARG NEXT_PUBLIC_SUPABASE_URL=""
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=""
+ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
 
 # Build the project (Standard Server Build) so we can run 'npm start'
 RUN npm run build
