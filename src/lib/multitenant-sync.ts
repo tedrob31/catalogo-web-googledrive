@@ -107,10 +107,13 @@ export async function runTenantSync(
 
   try {
     // 4. Recorrer árbol de carpetas a partir de catalog_folder_id
+    const tenantSubdomain = tenant.subdomain || tenantId;
+
     await syncFolderRecursive({
       drive,
       supabase,
       tenantId,
+      tenantSubdomain,
       logId,
       folderId: integration.catalog_folder_id,
       folderName: integration.catalog_folder_name || 'Catálogo Principal',
@@ -128,6 +131,7 @@ export async function runTenantSync(
         drive,
         supabase,
         tenantId,
+        tenantSubdomain,
         logId,
         folderId: integration.cover_folder_id,
         folderName: integration.cover_folder_name || 'Portadas',
@@ -223,6 +227,7 @@ interface RecursiveSyncParams {
   drive: drive_v3.Drive;
   supabase: ReturnType<typeof createAdminClient>;
   tenantId: string;
+  tenantSubdomain: string;
   logId?: string;
   folderId: string;
   folderName: string;
@@ -238,6 +243,7 @@ async function syncFolderRecursive({
   drive,
   supabase,
   tenantId,
+  tenantSubdomain,
   logId,
   folderId,
   folderName,
@@ -301,8 +307,15 @@ async function syncFolderRecursive({
       break;
     }
 
-    const ext = img.name.split('.').pop() || 'jpg';
-    const r2Key = `tenants/${tenantId}/photos/${img.id}.${ext}`;
+    const ext = (img.name.split('.').pop() || 'jpg').toLowerCase();
+    const rawFileName = img.name.substring(0, img.name.lastIndexOf('.')) || img.name;
+    const cleanFileName = slugify(rawFileName);
+    const isCover = parentPath === '_covers' || parentPath.startsWith('_covers/');
+    const folderType = isCover ? 'portadas' : 'catalogo';
+    const tenantHandle = tenantSubdomain || tenantId;
+
+    // Ruta legible y limpia: ej. juanstore/catalogo/polo-y-short-hombre-1OYFFR25.jpg
+    const r2Key = `${tenantHandle}/${folderType}/${cleanFileName ? cleanFileName + '-' : ''}${img.id}.${ext}`;
 
     // Verificar si ya existe en la base de datos con la misma fecha de modificación
     const { data: existingPhoto } = await supabase
@@ -380,6 +393,7 @@ async function syncFolderRecursive({
       drive,
       supabase,
       tenantId,
+      tenantSubdomain,
       logId,
       folderId: subfolder.id,
       folderName: subfolder.name,

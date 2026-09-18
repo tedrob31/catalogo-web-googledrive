@@ -13,6 +13,7 @@ import {
   FaShieldAlt,
   FaSignOutAlt,
   FaCrown,
+  FaLock,
 } from 'react-icons/fa';
 
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,8 @@ export default function SuperAdminDashboard() {
 
   const [loading, setLoading] = useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [tenants, setTenants] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [globalStats, setGlobalStats] = useState({
@@ -45,6 +48,8 @@ export default function SuperAdminDashboard() {
       return;
     }
 
+    setCurrentUserEmail(user.email || null);
+
     // 1. Verificar si el usuario autenticado tiene rol superadmin
     const { data: myRoles } = await supabase
       .from('tenant_users')
@@ -54,12 +59,13 @@ export default function SuperAdminDashboard() {
     const isSuper = myRoles?.some((r: any) => r.role === 'superadmin');
 
     if (!isSuper) {
-      alert('Acceso restringido: Solo SuperAdministradores pueden ingresar a este panel.');
-      router.push('/dashboard');
+      setLoading(false);
+      setAccessDenied(true);
       return;
     }
 
     setIsSuperAdmin(true);
+    setAccessDenied(false);
 
     // Cargar todos los inquilinos
     const { data: dbTenants } = await supabase
@@ -136,10 +142,41 @@ export default function SuperAdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
+        <div className="flex items-center gap-3 text-slate-400">
+          <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
           <span className="text-sm font-medium">Cargando Panel Maestro SuperAdmin...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center mb-4 text-2xl shadow-lg shadow-amber-500/10">
+          <FaLock />
+        </div>
+        <h1 className="text-2xl font-black mb-2 tracking-tight">Acceso Restringido</h1>
+        <p className="text-slate-400 max-w-md text-sm mb-6 leading-relaxed">
+          Has iniciado sesión como <span className="text-white font-semibold">{currentUserEmail}</span>, pero esta cuenta no tiene privilegios de SuperAdministrador en la plataforma.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition cursor-pointer"
+          >
+            Ir a mi Dashboard de Inquilino
+          </button>
+          <button
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.push('/login');
+            }}
+            className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-rose-500/20 cursor-pointer"
+          >
+            Cerrar sesión e ingresar con otra cuenta
+          </button>
         </div>
       </div>
     );
