@@ -257,11 +257,29 @@ async function syncFolderRecursive({
   const currentSlug = slugify(folderName);
   const currentPath = parentPath ? `${parentPath}/${currentSlug}` : currentSlug;
 
-  // 1. Guardar / actualizar álbum en Supabase
-  const { data: album, error: albumError } = await supabase
+  // 1. Guardar / actualizar álbum en Supabase buscando por folderId
+  const { data: existingAlbum } = await supabase
     .from('albums')
-    .upsert(
-      {
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('drive_folder_id', folderId)
+    .maybeSingle();
+
+  let albumId = existingAlbum?.id;
+
+  if (albumId) {
+    await supabase.from('albums').update({
+      name: folderName,
+      slug: currentSlug,
+      parent_id: parentId,
+      path: currentPath,
+      order_index: orderIndex,
+      updated_at: new Date().toISOString(),
+    }).eq('id', albumId);
+  } else {
+    const { data: newAlbum, error: albumError } = await supabase
+      .from('albums')
+      .insert({
         tenant_id: tenantId,
         drive_folder_id: folderId,
         name: folderName,
@@ -270,16 +288,18 @@ async function syncFolderRecursive({
         path: currentPath,
         order_index: orderIndex,
         updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'id' }
-    )
-    .select('id')
-    .single();
+      })
+      .select('id')
+      .single();
 
-  if (albumError || !album) {
-    console.error('Error guardando álbum:', albumError);
-    return;
+    if (albumError || !newAlbum) {
+      console.error('Error guardando álbum:', albumError);
+      return;
+    }
+    albumId = newAlbum.id;
   }
+
+  const album = { id: albumId };
 
   progress.albumsCount++;
 
@@ -346,8 +366,18 @@ async function syncFolderRecursive({
       await uploadBufferToR2(r2Key, buffer, img.mimeType || 'image/jpeg');
 
       // Guardar en la tabla photos de Supabase
-      await supabase.from('photos').upsert(
-        {
+      if (existingPhoto) {
+        await supabase.from('photos').update({
+          album_id: album.id,
+          name: img.name,
+          r2_key: r2Key,
+          mime_type: img.mimeType || 'image/jpeg',
+          size_bytes: buffer.length,
+          drive_modified_time: img.modifiedTime,
+          order_index: photoIndex++,
+        }).eq('id', existingPhoto.id);
+      } else {
+        await supabase.from('photos').insert({
           tenant_id: tenantId,
           album_id: album.id,
           drive_file_id: img.id,
@@ -357,9 +387,8 @@ async function syncFolderRecursive({
           size_bytes: buffer.length,
           drive_modified_time: img.modifiedTime,
           order_index: photoIndex++,
-        },
-        { onConflict: 'id' }
-      );
+        });
+      }
 
       progress.newUploaded++;
       progress.photosCount++;
