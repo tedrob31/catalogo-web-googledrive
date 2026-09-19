@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { ImgproxyProfiles } from '@/lib/imgproxy';
 import { CacheStructure, Album, PhotoItem, findAlbumBySlugPath } from '@/lib/types';
 import { AppConfig } from '@/lib/config';
-
+import { slugify } from '@/lib/utils';
 import { StorefrontConfig } from '@/lib/storefront';
 
 export interface TenantCatalogPayload {
@@ -57,6 +57,13 @@ export async function loadTenantCatalog(
     return null;
   }
 
+  // 1.1 Obtener integración de Google Drive para identificar carpetas de catálogo y portadas
+  const { data: integration } = await supabase
+    .from('google_integrations')
+    .select('catalog_folder_id, cover_folder_id')
+    .eq('tenant_id', tenant.id)
+    .maybeSingle();
+
   const rawConfig = Array.isArray(tenant.tenant_configs)
     ? tenant.tenant_configs[0]
     : tenant.tenant_configs;
@@ -68,6 +75,14 @@ export async function loadTenantCatalog(
     .eq('tenant_id', tenant.id)
     .order('order_index', { ascending: true })
     .order('name', { ascending: true });
+
+  // Filtrar estrictamente: EXCLUIR cualquier carpeta de portadas (_covers) del catálogo público
+  const catalogAlbums = (dbAlbums || []).filter(
+    (a) =>
+      !a.path?.startsWith('_covers') &&
+      a.drive_folder_id !== integration?.cover_folder_id &&
+      a.name.toLowerCase() !== 'portadas'
+  );
 
   // 3. Obtener todas las fotos del tenant
   const { data: dbPhotos } = await supabase
@@ -96,11 +111,11 @@ export async function loadTenantCatalog(
     photosByAlbum.get(p.album_id)!.push(item);
   }
 
-  // 5. Construir árbol jerárquico de álbumes
+  // 5. Construir árbol jerárquico de álbumes del catálogo
   const albumMap = new Map<string, Album>();
   const folderCovers: Record<string, string> = {};
 
-  for (const a of dbAlbums || []) {
+  for (const a of catalogAlbums) {
     albumMap.set(a.id, {
       id: a.id,
       name: a.name,
@@ -113,21 +128,41 @@ export async function loadTenantCatalog(
     }
   }
 
-  // Raíz virtual que agrupa los álbumes superiores
+  // Identificar el álbum contenedor del catálogo (la carpeta principal "CATALOGO" configurada en Paso 2)
+  const mainCatalogAlbum = catalogAlbums.find(
+    (a) =>
+      (integration?.catalog_folder_id && a.drive_folder_id === integration.catalog_folder_id) ||
+      a.parent_id === null
+  );
+
+  // Raíz virtual del catálogo público:
+  // Sus fotos son las fotos directas de la carpeta principal
+  // Sus subálbumes son las subcarpetas del catálogo (ej. 0. ABRIGOS, 0. CARTERAS, Moda mujer, Moda hombre...)
   const rootAlbum: Album = {
     id: `root_${tenant.id}`,
     name: rawConfig?.title || tenant.name || 'Catálogo',
-    photos: photosByAlbum.get(`root_${tenant.id}`) || [],
+    photos: mainCatalogAlbum
+      ? (photosByAlbum.get(mainCatalogAlbum.id) || [])
+      : (photosByAlbum.get(`root_${tenant.id}`) || []),
     subAlbums: [],
   };
 
-  for (const a of dbAlbums || []) {
+  for (const a of catalogAlbums) {
+    // Si este álbum es el contenedor principal (ej. "CATALOGO"), no lo mostramos como tarjeta
+    if (mainCatalogAlbum && a.id === mainCatalogAlbum.id) {
+      continue;
+    }
+
     const albumObj = albumMap.get(a.id);
     if (!albumObj) continue;
 
-    if (a.parent_id && albumMap.has(a.parent_id)) {
+    if (mainCatalogAlbum && a.parent_id === mainCatalogAlbum.id) {
+      // Es una carpeta de primer nivel dentro de CATALOGO -> va directamente a la raíz del catálogo público
+      rootAlbum.subAlbums.push(albumObj);
+    } else if (a.parent_id && albumMap.has(a.parent_id)) {
+      // Es una subcarpeta anidada (ej. Blusas dentro de Moda mujer)
       albumMap.get(a.parent_id)!.subAlbums.push(albumObj);
-    } else {
+    } else if (!mainCatalogAlbum && a.parent_id === null) {
       rootAlbum.subAlbums.push(albumObj);
     }
   }
@@ -166,9 +201,19 @@ export async function loadTenantCatalog(
   };
 
   // 6. Resolver ruta inicial según los slugs de la URL
+  let resolvedSlugs = [...slugs];
+  // Si la URL venía con el prefijo /catalogo (ej. /catalogo/0-abrigos o /catalogo), lo normalizamos
+  if (
+    resolvedSlugs.length > 0 &&
+    mainCatalogAlbum &&
+    (resolvedSlugs[0] === slugify(mainCatalogAlbum.name) || resolvedSlugs[0] === mainCatalogAlbum.slug)
+  ) {
+    resolvedSlugs.shift();
+  }
+
   let initialPath = [rootAlbum];
-  if (slugs.length > 0) {
-    const foundPath = findAlbumBySlugPath(rootAlbum, slugs);
+  if (resolvedSlugs.length > 0) {
+    const foundPath = findAlbumBySlugPath(rootAlbum, resolvedSlugs);
     if (foundPath) {
       initialPath = foundPath;
     }
