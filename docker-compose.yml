@@ -64,12 +64,15 @@ services:
         - traefik.enable=true
         - traefik.docker.network=r4tlabsnet
         
-        # Enrutamiento Wildcard para c4talogo.com, app.c4talogo.com y todos los subdominios (*.c4talogo.com)
-        - "traefik.http.routers.r4t-c4talogo.rule=Host(`${NEXT_PUBLIC_BASE_DOMAIN:-c4talogo.com}`) || Host(`www.${NEXT_PUBLIC_BASE_DOMAIN:-c4talogo.com}`) || Host(`app.${NEXT_PUBLIC_BASE_DOMAIN:-c4talogo.com}`) || HostRegexp(`{subdomain:[a-z0-9-]+}.${NEXT_PUBLIC_BASE_DOMAIN:-c4talogo.com}`)"
-        - "traefik.http.routers.r4t-c4talogo.priority=50000"
-        - "traefik.http.routers.r4t-c4talogo.entrypoints=websecure"
-        - "traefik.http.routers.r4t-c4talogo.tls.certresolver=letsencryptresolver"
-        - "traefik.http.routers.r4t-c4talogo.service=backend_api-c4talogo"
+        # Enrutamiento Wildcard para c4talogo.com, app, y cualquier subdominio (*.c4talogo.com)
+        - "traefik.http.routers.r4t-c4talogo-secure.rule=Host(`c4talogo.com`) || HostRegexp(`.*\\.c4talogo\\.com`)"
+        - "traefik.http.routers.r4t-c4talogo-secure.entrypoints=websecure"
+        - "traefik.http.routers.r4t-c4talogo-secure.tls=true"
+        - "traefik.http.routers.r4t-c4talogo-secure.tls.certresolver=letsencryptresolver"
+        - "traefik.http.routers.r4t-c4talogo-secure.service=backend_api-c4talogo"
+        - "traefik.http.routers.r4t-c4talogo-http.rule=Host(`c4talogo.com`) || HostRegexp(`.*\\.c4talogo\\.com`)"
+        - "traefik.http.routers.r4t-c4talogo-http.entrypoints=web"
+        - "traefik.http.routers.r4t-c4talogo-http.service=backend_api-c4talogo"
         - "traefik.http.services.backend_api-c4talogo.loadbalancer.server.port=3000"
 
 ## --------------------------- REDES --------------------------- ##

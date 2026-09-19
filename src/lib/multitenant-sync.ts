@@ -332,10 +332,10 @@ async function syncFolderRecursive({
     const cleanFileName = slugify(rawFileName);
     const isCover = parentPath === '_covers' || parentPath.startsWith('_covers/');
     const folderType = isCover ? 'portadas' : 'catalogo';
-    const tenantHandle = tenantSubdomain || tenantId;
 
-    // Ruta legible y limpia: ej. juanstore/catalogo/polo-y-short-hombre-1OYFFR25.jpg
-    const r2Key = `${tenantHandle}/${folderType}/${cleanFileName ? cleanFileName + '-' : ''}${img.id}.${ext}`;
+    // Ruta inmutable por ID único del Tenant: ej. tenants/f8fe9291-.../catalogo/polo-y-short-hombre-1OYFFR25.jpg
+    // Garantiza que si el usuario cambia el nombre comercial o subdominio, los archivos en R2 siguen siendo 100% válidos
+    const r2Key = `tenants/${tenantId}/${folderType}/${cleanFileName ? cleanFileName + '-' : ''}${img.id}.${ext}`;
 
     // Verificar si ya existe en la base de datos con la misma fecha de modificación
     const { data: existingPhoto } = await supabase

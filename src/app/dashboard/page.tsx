@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import {
@@ -86,6 +86,9 @@ export default function TenantDashboard() {
     folder_covers: {} as Record<string, string>,
   });
 
+  // Copia de respaldo guardada en Supabase para detección de cambios
+  const [savedFolderCovers, setSavedFolderCovers] = useState<Record<string, string>>({});
+
   // Logs
   const [logs, setLogs] = useState<any[]>([]);
 
@@ -143,6 +146,8 @@ export default function TenantDashboard() {
 
     if (cfg) {
       const rawSettings = (cfg.settings as Record<string, any>) || {};
+      const loadedCovers = (rawSettings.folder_covers as Record<string, string>) || {};
+      setSavedFolderCovers(loadedCovers);
       setConfigForm({
         name: t.name,
         subdomain: t.subdomain,
@@ -167,7 +172,7 @@ export default function TenantDashboard() {
         seasonal_custom_icon: rawSettings.seasonal_custom_icon || '',
         seasonal_duration: Number(rawSettings.seasonal_duration) || 0,
         click_effect: rawSettings.click_effect || 'none',
-        folder_covers: rawSettings.folder_covers || {},
+        folder_covers: loadedCovers,
       });
     }
 
@@ -367,23 +372,13 @@ export default function TenantDashboard() {
     setSavingConfig(true);
     try {
       const cleanSub = configForm.subdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
-      if (cleanSub !== tenant.subdomain || configForm.name !== tenant.name) {
-        const { error: tErr } = await supabase
-          .from('tenants')
-          .update({
-            name: configForm.name,
-            subdomain: cleanSub,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', tenant.id);
-
-        if (tErr) throw tErr;
-      }
 
       const res = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          name: configForm.name,
+          subdomain: cleanSub,
           siteTitle: configForm.title,
           siteDescription: configForm.subtitle,
           whatsappNumber: configForm.whatsapp,
@@ -446,7 +441,28 @@ export default function TenantDashboard() {
   }
 
   const [pendingR2Keys, setPendingR2Keys] = useState<Record<string, string | null>>({});
-  const [savingCovers, setSavingCovers] = useState(false);
+  const [savingCovers, setSavingCovers] = useState<boolean>(false);
+
+  // Detección precisa de cambios comparando estado actual vs guardado en Supabase
+  const hasCoverChanges = useMemo(() => {
+    const savedKeys = Object.keys(savedFolderCovers);
+    const currentKeys = Object.keys(configForm.folder_covers);
+
+    if (savedKeys.length !== currentKeys.length) return true;
+    for (const key of currentKeys) {
+      if (configForm.folder_covers[key] !== savedFolderCovers[key]) return true;
+    }
+    return false;
+  }, [savedFolderCovers, configForm.folder_covers]);
+
+  const pendingCoverCount = useMemo(() => {
+    let count = 0;
+    const allKeys = new Set([...Object.keys(savedFolderCovers), ...Object.keys(configForm.folder_covers)]);
+    for (const k of allKeys) {
+      if (configForm.folder_covers[k] !== savedFolderCovers[k]) count++;
+    }
+    return count;
+  }, [savedFolderCovers, configForm.folder_covers]);
 
   async function handleSelectCover(url: string, r2Key?: string) {
     if (!coverModal.targetId) return;
@@ -470,17 +486,28 @@ export default function TenantDashboard() {
     }
   }
 
-  async function handleSaveCoverChanges(
-    newCovers: Record<string, string>,
-    r2KeyMap?: Record<string, string | null>
-  ) {
+  function handleResetCover(albumId: string) {
+    setConfigForm((prev) => {
+      const next = { ...prev.folder_covers };
+      delete next[albumId];
+      return { ...prev, folder_covers: next };
+    });
+    setPendingR2Keys((prev) => ({ ...prev, [albumId]: null }));
+  }
+
+  function handleDiscardCoverChanges() {
+    setConfigForm((prev) => ({ ...prev, folder_covers: savedFolderCovers }));
+    setPendingR2Keys({});
+  }
+
+  async function handleSaveCoverChanges() {
     setSavingCovers(true);
     try {
       // 1. Guardar en tenant_configs (purga Cloudflare automáticamente una sola vez)
       const res = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folderCovers: newCovers }),
+        body: JSON.stringify({ folderCovers: configForm.folder_covers }),
       });
 
       if (!res.ok) {
@@ -488,19 +515,18 @@ export default function TenantDashboard() {
         throw new Error(data.error || 'Error al guardar portadas');
       }
 
-      // 2. Si hay claves R2 que actualizar en la tabla albums
-      const combinedR2 = { ...pendingR2Keys, ...(r2KeyMap || {}) };
-      for (const [albumId, r2Key] of Object.entries(combinedR2)) {
+      // 2. Si hay claves R2 que actualizar o borrar en la tabla albums
+      for (const [albumId, r2Key] of Object.entries(pendingR2Keys)) {
         await supabase
           .from('albums')
           .update({ cover_photo_r2_key: r2Key, updated_at: new Date().toISOString() })
           .eq('id', albumId);
       }
 
+      setSavedFolderCovers(configForm.folder_covers);
       setPendingR2Keys({});
-      setConfigForm((prev) => ({ ...prev, folder_covers: newCovers }));
       alert('¡Portadas guardadas exitosamente y catálogo actualizado!');
-      loadDashboardData();
+      await loadDashboardData();
     } catch (err: any) {
       alert(err.message || 'Error guardando portadas');
     } finally {
@@ -508,31 +534,33 @@ export default function TenantDashboard() {
     }
   }
 
+  const handleSignOut = () => supabase.auth.signOut().then(() => router.push('/login'));
+
   const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'c4talogo.com';
 
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-medium">Cargando tu tienda...</span>
+        <div className="flex flex-col items-center gap-4">
+          <FaSync className="animate-spin text-4xl text-amber-500" />
+          <p className="text-slate-400 font-medium">Cargando panel de inquilino...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      {/* 1. Header Modular */}
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      {/* 1. Header Global */}
       <DashboardHeader
         tenant={tenant}
         plan={plan}
         baseDomain={baseDomain}
-        onSignOut={() => supabase.auth.signOut().then(() => router.push('/login'))}
+        onSignOut={handleSignOut}
       />
 
       {/* Main Container */}
-      <main className="max-w-6xl mx-auto px-4 py-8 flex-1 w-full">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
         {/* 2. Métricas Modulares */}
         <DashboardMetrics
           tenant={tenant}
@@ -544,7 +572,7 @@ export default function TenantDashboard() {
         />
 
         {/* 3. Navegación de Pestañas */}
-        <div className="flex border-b border-white/10 mb-6 gap-6 text-sm font-medium overflow-x-auto">
+        <div className="flex border-b border-white/10 mb-8 overflow-x-auto gap-4 sm:gap-8 scrollbar-none">
           <button
             onClick={() => setActiveTab('drive')}
             className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${
@@ -630,7 +658,12 @@ export default function TenantDashboard() {
             onSaveFolders={handleSaveFolders}
             albums={albums}
             folderCovers={configForm.folder_covers}
+            savedFolderCovers={savedFolderCovers}
+            hasPendingChanges={hasCoverChanges}
+            pendingCount={pendingCoverCount}
             onSaveCoverChanges={handleSaveCoverChanges}
+            onDiscardCoverChanges={handleDiscardCoverChanges}
+            onResetCover={handleResetCover}
             savingCovers={savingCovers}
             onOpenCoverSelector={handleOpenCoverSelector}
           />

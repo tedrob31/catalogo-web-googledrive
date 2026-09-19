@@ -47,10 +47,12 @@ interface DriveTabProps {
   onSaveFolders: () => void;
   albums: AlbumItem[];
   folderCovers: Record<string, string>;
-  onSaveCoverChanges: (
-    newCovers: Record<string, string>,
-    r2KeyMap?: Record<string, string | null>
-  ) => Promise<void>;
+  savedFolderCovers: Record<string, string>;
+  hasPendingChanges: boolean;
+  pendingCount: number;
+  onSaveCoverChanges: () => Promise<void>;
+  onDiscardCoverChanges: () => void;
+  onResetCover: (albumId: string) => void;
   savingCovers: boolean;
   onOpenCoverSelector: (albumId: string) => void;
 }
@@ -77,7 +79,12 @@ export default function DriveTab({
   onSaveFolders,
   albums = [],
   folderCovers = {},
+  savedFolderCovers = {},
+  hasPendingChanges = false,
+  pendingCount = 0,
   onSaveCoverChanges,
+  onDiscardCoverChanges,
+  onResetCover,
   savingCovers,
   onOpenCoverSelector,
 }: DriveTabProps) {
@@ -86,66 +93,6 @@ export default function DriveTab({
 
   // Estado de carpetas expandidas en el árbol (por ID)
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
-
-  // Estado local 'staged' para cambios de portadas (evita peticiones API continuas)
-  const [stagedCovers, setStagedCovers] = useState<Record<string, string>>(folderCovers);
-  const [stagedR2Keys, setStagedR2Keys] = useState<Record<string, string | null>>({});
-
-  // Sincronizar estado local cuando las props cambian desde el servidor
-  useEffect(() => {
-    setStagedCovers(folderCovers);
-    setStagedR2Keys({});
-  }, [folderCovers]);
-
-  // Detectar si hay cambios pendientes por guardar
-  const hasChanges = useMemo(() => {
-    const originalKeys = Object.keys(folderCovers);
-    const stagedKeys = Object.keys(stagedCovers);
-
-    if (originalKeys.length !== stagedKeys.length) return true;
-    for (const key of stagedKeys) {
-      if (stagedCovers[key] !== folderCovers[key]) return true;
-    }
-    return false;
-  }, [folderCovers, stagedCovers]);
-
-  const pendingCount = useMemo(() => {
-    let count = 0;
-    const allKeys = new Set([...Object.keys(folderCovers), ...Object.keys(stagedCovers)]);
-    for (const k of allKeys) {
-      if (stagedCovers[k] !== folderCovers[k]) count++;
-    }
-    return count;
-  }, [folderCovers, stagedCovers]);
-
-  // Manejar asignación local de portada
-  const handleStageCover = (albumId: string, url: string, r2Key?: string) => {
-    setStagedCovers((prev) => ({ ...prev, [albumId]: url }));
-    if (r2Key) {
-      setStagedR2Keys((prev) => ({ ...prev, [albumId]: r2Key }));
-    }
-  };
-
-  // Manejar restablecimiento local a portada por defecto
-  const handleStageResetCover = (albumId: string) => {
-    setStagedCovers((prev) => {
-      const next = { ...prev };
-      delete next[albumId];
-      return next;
-    });
-    setStagedR2Keys((prev) => ({ ...prev, [albumId]: null }));
-  };
-
-  // Descartar cambios locales
-  const handleDiscardChanges = () => {
-    setStagedCovers(folderCovers);
-    setStagedR2Keys({});
-  };
-
-  // Guardar todos los cambios en batch
-  const handleSaveAll = async () => {
-    await onSaveCoverChanges(stagedCovers, stagedR2Keys);
-  };
 
   // 1. Construcción del Árbol Jerárquico de Álbumes
   const { rootNodes, allNodeIds } = useMemo(() => {
@@ -223,17 +170,18 @@ export default function DriveTab({
   function renderTreeNode(node: TreeNode) {
     const isExpanded = expandedFolderIds.has(node.id);
     const hasChildren = node.children.length > 0;
-    const customCover = stagedCovers[node.id];
+    const customCover = folderCovers[node.id];
+    const isChanged = folderCovers[node.id] !== savedFolderCovers[node.id];
     const displayCover = customCover || node.coverPhotoUrl || node.firstPhotoThumb;
 
     return (
       <div key={node.id} className="flex flex-col">
         {/* Fila del Álbum */}
         <div
-          className={`py-3 px-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl transition border border-transparent ${
-            hasChanges && stagedCovers[node.id] !== folderCovers[node.id]
-              ? 'bg-amber-500/10 border-amber-500/30'
-              : 'hover:bg-white/[0.03]'
+          className={`py-3 px-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl transition border ${
+            isChanged
+              ? 'bg-amber-500/10 border-amber-500/40 shadow-sm'
+              : 'border-transparent hover:bg-white/[0.03]'
           }`}
           style={{ paddingLeft: `${Math.max(12, node.level * 24 + 12)}px` }}
         >
@@ -298,6 +246,12 @@ export default function DriveTab({
                     1ra Foto
                   </span>
                 ) : null}
+
+                {isChanged && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-medium border border-rose-500/30 shrink-0 animate-pulse">
+                    Sin guardar
+                  </span>
+                )}
               </div>
 
               <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5 truncate">
@@ -332,7 +286,7 @@ export default function DriveTab({
             {customCover && (
               <button
                 type="button"
-                onClick={() => handleStageResetCover(node.id)}
+                onClick={() => onResetCover(node.id)}
                 title="Restablecer a la primera foto del álbum"
                 className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-medium transition cursor-pointer"
               >
@@ -511,7 +465,7 @@ export default function DriveTab({
       {/* PASO 3: NAVEGACIÓN JERÁRQUICA DE ÁLBUMES Y ASIGNACIÓN DE PORTADAS */}
       <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-6 relative">
         {/* Banner Sticky de Cambios Pendientes */}
-        {hasChanges && (
+        {hasPendingChanges && (
           <div className="sticky top-20 z-20 mb-6 p-4 rounded-xl bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-amber-500/20 border border-amber-500/40 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xl animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-sm shrink-0 shadow">
@@ -530,7 +484,7 @@ export default function DriveTab({
             <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
               <button
                 type="button"
-                onClick={handleDiscardChanges}
+                onClick={onDiscardCoverChanges}
                 disabled={savingCovers}
                 className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-300 rounded-lg text-xs font-medium transition cursor-pointer"
               >
@@ -538,7 +492,7 @@ export default function DriveTab({
               </button>
               <button
                 type="button"
-                onClick={handleSaveAll}
+                onClick={onSaveCoverChanges}
                 disabled={savingCovers}
                 className="flex items-center gap-1.5 px-4 py-1.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-lg text-xs font-bold transition shadow cursor-pointer disabled:opacity-50"
               >
@@ -563,10 +517,29 @@ export default function DriveTab({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="text-xs px-2.5 py-1 rounded-lg bg-white/5 text-slate-300 font-mono border border-white/5">
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+            <span className="text-xs px-2.5 py-1.5 rounded-lg bg-white/5 text-slate-300 font-mono border border-white/5">
               {albums.length} carpetas
             </span>
+
+            {/* BOTÓN PRINCIPAL EN CABECERA: Siempre visible */}
+            {hasPendingChanges ? (
+              <button
+                type="button"
+                onClick={onSaveCoverChanges}
+                disabled={savingCovers}
+                className="flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-rose-500/25 cursor-pointer animate-pulse"
+                title="Guardar todos los cambios de portadas en la base de datos"
+              >
+                <FaSave className="text-xs" />
+                <span>{savingCovers ? 'Guardando...' : `Guardar Cambios (${pendingCount})`}</span>
+              </button>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
+                <FaCheckCircle className="text-xs" />
+                <span>Portadas al día</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -594,29 +567,55 @@ export default function DriveTab({
               )}
             </div>
 
-            {/* Acciones de Árbol */}
-            {!albumFilter && (
-              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                <button
-                  type="button"
-                  onClick={expandAll}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-xs font-medium transition cursor-pointer"
-                  title="Expandir todas las carpetas"
-                >
-                  <FaExpandArrowsAlt className="text-[10px]" />
-                  <span>Expandir todo</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={collapseAll}
-                  className="flex items-center gap-1 px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-xs font-medium transition cursor-pointer"
-                  title="Colapsar todas las carpetas"
-                >
-                  <FaCompressArrowsAlt className="text-[10px]" />
-                  <span>Colapsar todo</span>
-                </button>
-              </div>
-            )}
+            {/* Acciones de Árbol y Botones de Guardado Rápido */}
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              {!albumFilter && (
+                <>
+                  <button
+                    type="button"
+                    onClick={expandAll}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-xs font-medium transition cursor-pointer"
+                    title="Expandir todas las carpetas"
+                  >
+                    <FaExpandArrowsAlt className="text-[10px]" />
+                    <span>Expandir todo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={collapseAll}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-xs font-medium transition cursor-pointer"
+                    title="Colapsar todas las carpetas"
+                  >
+                    <FaCompressArrowsAlt className="text-[10px]" />
+                    <span>Colapsar todo</span>
+                  </button>
+                </>
+              )}
+
+              {hasPendingChanges && (
+                <>
+                  <button
+                    type="button"
+                    onClick={onDiscardCoverChanges}
+                    disabled={savingCovers}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-slate-300 rounded-lg text-xs font-semibold transition cursor-pointer"
+                    title="Descartar cambios no guardados"
+                  >
+                    <FaTimesCircle className="text-[10px]" />
+                    <span>Descartar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onSaveCoverChanges}
+                    disabled={savingCovers}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs rounded-lg transition shadow-md shadow-rose-500/20 cursor-pointer"
+                  >
+                    <FaSave className="text-[10px]" />
+                    <span>{savingCovers ? 'Guardando...' : `Guardar (${pendingCount})`}</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -642,13 +641,18 @@ export default function DriveTab({
               </div>
             ) : (
               searchResults.map((album) => {
-                const customCover = stagedCovers[album.id];
+                const customCover = folderCovers[album.id];
+                const isChanged = folderCovers[album.id] !== savedFolderCovers[album.id];
                 const displayCover = customCover || album.coverPhotoUrl || album.firstPhotoThumb;
 
                 return (
                   <div
                     key={album.id}
-                    className="py-3 px-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 rounded-xl transition"
+                    className={`py-3 px-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl transition border ${
+                      isChanged
+                        ? 'bg-amber-500/10 border-amber-500/40 shadow-sm'
+                        : 'bg-white/[0.02] hover:bg-white/[0.05] border-white/5'
+                    }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-slate-950 border border-white/10 shrink-0 flex items-center justify-center">
@@ -679,6 +683,12 @@ export default function DriveTab({
                               1ra Foto
                             </span>
                           )}
+
+                          {isChanged && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-medium border border-rose-500/30 shrink-0 animate-pulse">
+                              Sin guardar
+                            </span>
+                          )}
                         </div>
                         <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
                           <span className="font-mono text-amber-400/80">{album.path || album.slug}</span>
@@ -703,7 +713,7 @@ export default function DriveTab({
                       {customCover && (
                         <button
                           type="button"
-                          onClick={() => handleStageResetCover(album.id)}
+                          onClick={() => onResetCover(album.id)}
                           className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg text-xs font-medium transition cursor-pointer"
                         >
                           <FaUndo className="text-[10px]" />
@@ -724,7 +734,7 @@ export default function DriveTab({
         )}
 
         {/* Botón flotante al pie si hay cambios */}
-        {hasChanges && (
+        {hasPendingChanges && (
           <div className="mt-6 pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="text-xs text-amber-400 font-medium flex items-center gap-2">
               <FaLayerGroup />
@@ -733,7 +743,7 @@ export default function DriveTab({
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
               <button
                 type="button"
-                onClick={handleDiscardChanges}
+                onClick={onDiscardCoverChanges}
                 disabled={savingCovers}
                 className="px-4 py-2 bg-white/10 hover:bg-white/20 text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
               >
@@ -741,7 +751,7 @@ export default function DriveTab({
               </button>
               <button
                 type="button"
-                onClick={handleSaveAll}
+                onClick={onSaveCoverChanges}
                 disabled={savingCovers}
                 className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs rounded-xl transition shadow-lg shadow-rose-500/10 cursor-pointer disabled:opacity-50"
               >

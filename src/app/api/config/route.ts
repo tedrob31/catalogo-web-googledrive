@@ -101,7 +101,59 @@ export async function POST(request: NextRequest) {
 
     const existingSettings = (currentConfig?.settings as Record<string, any>) || {};
 
-    // 2. Empaquetar configuraciones visuales avanzadas en settings JSONB
+    // 2. Si se solicitó cambio de subdominio o nombre comercial, validar y actualizar tenants
+    let activeSubdomain = tenantInfo?.subdomain || '';
+    if (body.subdomain !== undefined && body.subdomain !== null) {
+      const cleanSub = String(body.subdomain).toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
+      const reserved = ['app', 'api', 'www', 'admin', 'dashboard', 'cdn', 'static', 'mail', 'superadmin'];
+      if (reserved.includes(cleanSub)) {
+        return NextResponse.json(
+          { error: `El subdominio "${cleanSub}" está reservado por el sistema. Por favor elige otro.` },
+          { status: 400 }
+        );
+      }
+      if (cleanSub.length < 3) {
+        return NextResponse.json(
+          { error: 'El subdominio debe tener al menos 3 caracteres.' },
+          { status: 400 }
+        );
+      }
+
+      if (cleanSub !== tenantInfo?.subdomain) {
+        const { data: existingTenant } = await adminClient
+          .from('tenants')
+          .select('id')
+          .eq('subdomain', cleanSub)
+          .neq('id', tenantId)
+          .maybeSingle();
+
+        if (existingTenant) {
+          return NextResponse.json(
+            { error: `El subdominio "${cleanSub}" ya está ocupado por otra tienda. Por favor elige un subdominio diferente.` },
+            { status: 400 }
+          );
+        }
+        activeSubdomain = cleanSub;
+      }
+    }
+
+    if (body.name !== undefined || activeSubdomain !== tenantInfo?.subdomain) {
+      const { error: tUpdateErr } = await adminClient
+        .from('tenants')
+        .update({
+          name: body.name !== undefined ? body.name : tenantInfo?.name,
+          subdomain: activeSubdomain,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', tenantId);
+
+      if (tUpdateErr) {
+        console.error('Error actualizando tabla tenants en Supabase:', tUpdateErr);
+        return NextResponse.json({ error: tUpdateErr.message }, { status: 500 });
+      }
+    }
+
+    // 3. Empaquetar configuraciones visuales avanzadas en settings JSONB
     const settingsPayload = {
       ...existingSettings,
       secondary_color: body.secondaryColor !== undefined ? body.secondaryColor : (existingSettings.secondary_color || '#ffffff'),
@@ -124,7 +176,7 @@ export async function POST(request: NextRequest) {
     const { error: updateError } = await adminClient
       .from('tenant_configs')
       .update({
-        title: body.siteTitle || tenantInfo?.name || 'Mi Catálogo',
+        title: body.siteTitle || body.name || tenantInfo?.name || 'Mi Catálogo',
         subtitle: body.siteDescription || null,
         whatsapp: body.whatsappNumber || null,
         logo_url: body.logoUrl || null,
@@ -145,10 +197,10 @@ export async function POST(request: NextRequest) {
     revalidatePath('/', 'layout');
 
     // Purgar selectivamente la home y el endpoint de configuración del storefront en Cloudflare
-    if (tenantInfo?.subdomain) {
+    if (activeSubdomain) {
       await purgeCloudflareCache({
-        subdomain: tenantInfo.subdomain,
-        urls: ['/', `/api/storefront?subdomain=${tenantInfo.subdomain}`],
+        subdomain: activeSubdomain,
+        urls: ['/', `/api/storefront?subdomain=${activeSubdomain}`],
         threshold: 5,
       });
     }
