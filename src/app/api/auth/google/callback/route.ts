@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { google } from 'googleapis';
 import { getOAuth2Client } from '@/lib/google-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -21,14 +22,30 @@ export async function GET(request: NextRequest) {
   try {
     const oauth2Client = getOAuth2Client(redirectUri);
     const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
 
     let googleEmail: string | null = null;
     if (tokens.id_token) {
-      const ticket = await oauth2Client.verifyIdToken({
-        idToken: tokens.id_token,
-        audience: process.env.GOOGLE_CLIENT_ID,
-      });
-      googleEmail = ticket.getPayload()?.email || null;
+      try {
+        const ticket = await oauth2Client.verifyIdToken({
+          idToken: tokens.id_token,
+          audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        googleEmail = ticket.getPayload()?.email || null;
+      } catch (tokenErr) {
+        console.warn('No se pudo verificar id_token:', tokenErr);
+      }
+    }
+
+    // Fallback: Si no viene id_token, consultar directamente a la API de Drive
+    if (!googleEmail) {
+      try {
+        const drive = google.drive({ version: 'v3', auth: oauth2Client });
+        const about = await drive.about.get({ fields: 'user' });
+        googleEmail = about.data.user?.emailAddress || null;
+      } catch (aboutErr) {
+        console.warn('No se pudo consultar drive.about.get:', aboutErr);
+      }
     }
 
     const supabase = createAdminClient();

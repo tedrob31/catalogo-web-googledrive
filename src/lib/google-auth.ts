@@ -1,7 +1,12 @@
 import { google } from 'googleapis';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
+const SCOPES = [
+  'https://www.googleapis.com/auth/drive.readonly',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
+  'openid',
+];
 
 export function getOAuth2Client(redirectUri?: string) {
   const env = process.env;

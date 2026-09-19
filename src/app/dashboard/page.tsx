@@ -204,7 +204,10 @@ export default function TenantDashboard() {
       if (data.covers) setAvailableCovers(data.covers);
       if (data.photos) {
         setDetailedPhotos(data.photos);
-        data.photos.forEach((p: any) => photosMap.set(p.id, p));
+        data.photos.forEach((p: any) => {
+          photosMap.set(p.id, p);
+          photosMap.set(p.r2_key, p);
+        });
       }
     } catch (err) {
       console.error('Error cargando portadas:', err);
@@ -222,14 +225,19 @@ export default function TenantDashboard() {
       const mappedAlbums: AlbumItem[] = dbAlbums.map((a: any) => {
         const albumPhotos = a.photos || [];
         const firstP = albumPhotos[0];
-        const matchFirst = firstP ? photosMap.get(firstP.id) : null;
+        const matchFirst = firstP ? photosMap.get(firstP.id) || photosMap.get(firstP.r2_key) : null;
+        const matchCover = a.cover_photo_r2_key ? photosMap.get(a.cover_photo_r2_key) : null;
+
         return {
           id: a.id,
           name: a.name,
           slug: a.slug,
           path: a.path,
+          parent_id: a.parent_id,
           photosCount: albumPhotos.length,
           firstPhotoThumb: matchFirst?.thumbnailUrl || matchFirst?.url || undefined,
+          coverPhotoUrl: matchCover?.url || matchCover?.thumbnailUrl || undefined,
+          cover_photo_r2_key: a.cover_photo_r2_key,
         };
       });
       setAlbums(mappedAlbums);
@@ -437,6 +445,9 @@ export default function TenantDashboard() {
     });
   }
 
+  const [pendingR2Keys, setPendingR2Keys] = useState<Record<string, string | null>>({});
+  const [savingCovers, setSavingCovers] = useState(false);
+
   async function handleSelectCover(url: string, r2Key?: string) {
     if (!coverModal.targetId) return;
 
@@ -446,17 +457,8 @@ export default function TenantDashboard() {
       setConfigForm((prev) => ({ ...prev, folder_covers: newCovers }));
 
       if (r2Key) {
-        await supabase
-          .from('albums')
-          .update({ cover_photo_r2_key: r2Key })
-          .eq('id', albumId);
+        setPendingR2Keys((prev) => ({ ...prev, [albumId]: r2Key }));
       }
-
-      await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folderCovers: newCovers }),
-      });
     } else if (coverModal.targetType === 'media') {
       if (coverModal.targetId === '__LOGO__') {
         setConfigForm((prev) => ({ ...prev, logo_url: url }));
@@ -468,21 +470,42 @@ export default function TenantDashboard() {
     }
   }
 
-  async function handleResetCover(albumId: string) {
-    const newCovers = { ...configForm.folder_covers };
-    delete newCovers[albumId];
-    setConfigForm((prev) => ({ ...prev, folder_covers: newCovers }));
+  async function handleSaveCoverChanges(
+    newCovers: Record<string, string>,
+    r2KeyMap?: Record<string, string | null>
+  ) {
+    setSavingCovers(true);
+    try {
+      // 1. Guardar en tenant_configs (purga Cloudflare automáticamente una sola vez)
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folderCovers: newCovers }),
+      });
 
-    await supabase
-      .from('albums')
-      .update({ cover_photo_r2_key: null })
-      .eq('id', albumId);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Error al guardar portadas');
+      }
 
-    await fetch('/api/config', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ folderCovers: newCovers }),
-    });
+      // 2. Si hay claves R2 que actualizar en la tabla albums
+      const combinedR2 = { ...pendingR2Keys, ...(r2KeyMap || {}) };
+      for (const [albumId, r2Key] of Object.entries(combinedR2)) {
+        await supabase
+          .from('albums')
+          .update({ cover_photo_r2_key: r2Key, updated_at: new Date().toISOString() })
+          .eq('id', albumId);
+      }
+
+      setPendingR2Keys({});
+      setConfigForm((prev) => ({ ...prev, folder_covers: newCovers }));
+      alert('¡Portadas guardadas exitosamente y catálogo actualizado!');
+      loadDashboardData();
+    } catch (err: any) {
+      alert(err.message || 'Error guardando portadas');
+    } finally {
+      setSavingCovers(false);
+    }
   }
 
   const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'c4talogo.com';
@@ -607,8 +630,9 @@ export default function TenantDashboard() {
             onSaveFolders={handleSaveFolders}
             albums={albums}
             folderCovers={configForm.folder_covers}
+            onSaveCoverChanges={handleSaveCoverChanges}
+            savingCovers={savingCovers}
             onOpenCoverSelector={handleOpenCoverSelector}
-            onResetCover={handleResetCover}
           />
         )}
 
