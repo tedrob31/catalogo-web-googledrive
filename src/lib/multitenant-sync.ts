@@ -161,6 +161,27 @@ export async function runTenantSync(
       })
       .eq('tenant_id', tenantId);
 
+    // 5.1 Migrar claves de portadas en albums si apuntaban a rutas antiguas con subdominio
+    if (tenantSubdomain) {
+      const { data: oldCoverAlbums } = await supabase
+        .from('albums')
+        .select('id, cover_photo_r2_key')
+        .eq('tenant_id', tenantId)
+        .like('cover_photo_r2_key', `${tenantSubdomain}/%`);
+
+      if (oldCoverAlbums && oldCoverAlbums.length > 0) {
+        for (const alb of oldCoverAlbums) {
+          if (alb.cover_photo_r2_key) {
+            const migratedKey = alb.cover_photo_r2_key.replace(`${tenantSubdomain}/`, `tenants/${tenantId}/`);
+            await supabase
+              .from('albums')
+              .update({ cover_photo_r2_key: migratedKey, updated_at: new Date().toISOString() })
+              .eq('id', alb.id);
+          }
+        }
+      }
+    }
+
     if (logId) {
       await supabase
         .from('sync_logs')
@@ -337,15 +358,18 @@ async function syncFolderRecursive({
     // Garantiza que si el usuario cambia el nombre comercial o subdominio, los archivos en R2 siguen siendo 100% válidos
     const r2Key = `tenants/${tenantId}/${folderType}/${cleanFileName ? cleanFileName + '-' : ''}${img.id}.${ext}`;
 
-    // Verificar si ya existe en la base de datos con la misma fecha de modificación
+    // Verificar si ya existe en la base de datos con la misma fecha de modificación Y la misma clave canónica en R2
     const { data: existingPhoto } = await supabase
       .from('photos')
-      .select('id, drive_modified_time')
+      .select('id, drive_modified_time, r2_key')
       .eq('tenant_id', tenantId)
       .eq('drive_file_id', img.id)
       .single();
 
-    const isUpToDate = existingPhoto && existingPhoto.drive_modified_time === img.modifiedTime;
+    const isUpToDate =
+      existingPhoto &&
+      existingPhoto.drive_modified_time === img.modifiedTime &&
+      existingPhoto.r2_key === r2Key;
 
     if (isUpToDate) {
       progress.skipped++;
