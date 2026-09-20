@@ -126,6 +126,22 @@ export async function runTenantSync(
     const visitedDriveFileIds = new Set<string>();
     const visitedDriveFolderIds = new Set<string>();
 
+    // 3.2 VALIDACIÓN AUTOMÁTICA DE INTEGRIDAD EN R2:
+    // Si existen fotos registradas en Supabase, verificamos si una muestra existe en Cloudflare R2.
+    // Si el usuario eliminó manualmente la carpeta del tenant en Cloudflare R2 para hacer limpieza,
+    // detectamos que R2 está vacío y activamos forceReupload para descargar y volver a subir todo desde Google Drive.
+    let forceReupload = false;
+    if (existingPhotosMap.size > 0) {
+      const samplePhoto = existingPhotosMap.values().next().value;
+      if (samplePhoto?.r2_key) {
+        const sampleExists = await checkObjectExistsInR2(samplePhoto.r2_key);
+        if (!sampleExists) {
+          console.warn(`[Sync Tenant ${tenantId}] La foto de muestra (${samplePhoto.r2_key}) no existe en Cloudflare R2. Se detectó carpeta limpiada en R2 -> Forzando re-subida completa.`);
+          forceReupload = true;
+        }
+      }
+    }
+
     // 4. Recorrer árbol de carpetas a partir de catalog_folder_id
     const tenantSubdomain = tenant.subdomain || tenantId;
 
@@ -147,6 +163,7 @@ export async function runTenantSync(
       existingPhotosMap,
       visitedDriveFileIds,
       visitedDriveFolderIds,
+      forceReupload,
     });
 
     // 4.1 Sincronizar carpeta de portadas si está configurada
@@ -169,6 +186,7 @@ export async function runTenantSync(
         existingPhotosMap,
         visitedDriveFileIds,
         visitedDriveFolderIds,
+        forceReupload,
       });
     }
 
@@ -336,6 +354,7 @@ interface RecursiveSyncParams {
   existingPhotosMap: Map<string, any>;
   visitedDriveFileIds: Set<string>;
   visitedDriveFolderIds: Set<string>;
+  forceReupload?: boolean;
 }
 
 async function syncFolderRecursive({
@@ -356,6 +375,7 @@ async function syncFolderRecursive({
   existingPhotosMap,
   visitedDriveFileIds,
   visitedDriveFolderIds,
+  forceReupload = false,
 }: RecursiveSyncParams): Promise<void> {
   const currentSlug = slugify(folderName);
   const currentPath = parentPath ? `${parentPath}/${currentSlug}` : currentSlug;
@@ -496,6 +516,7 @@ async function syncFolderRecursive({
     }
 
     const isUpToDate =
+      !forceReupload &&
       existingPhoto &&
       isContentUnchanged &&
       existingPhoto.r2_key === r2Key &&
@@ -508,7 +529,7 @@ async function syncFolderRecursive({
     }
 
     // Si el contenido binario no cambió pero cambió de nombre o de carpeta (álbum), actualizar solo en BD sin re-subir a R2
-    if (isContentUnchanged && existingPhoto && existingPhoto.r2_key === r2Key) {
+    if (!forceReupload && isContentUnchanged && existingPhoto && existingPhoto.r2_key === r2Key) {
       await supabase.from('photos').update({
         album_id: album.id,
         name: img.name,
@@ -637,6 +658,7 @@ async function syncFolderRecursive({
       existingPhotosMap,
       visitedDriveFileIds,
       visitedDriveFolderIds,
+      forceReupload,
     });
   }
 }
