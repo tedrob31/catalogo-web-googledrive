@@ -427,7 +427,7 @@ async function syncFolderRecursive({
   do {
     const res: any = await drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,
-      fields: 'nextPageToken, files(id, name, mimeType, size, modifiedTime)',
+      fields: 'nextPageToken, files(id, name, mimeType, size, modifiedTime, md5Checksum, version)',
       pageSize: 1000,
       pageToken: pageToken,
       supportsAllDrives: true,
@@ -442,6 +442,17 @@ async function syncFolderRecursive({
 
   const subfolders = allFiles.filter((f) => f.mimeType === 'application/vnd.google-apps.folder');
   const imageFiles = allFiles.filter((f) => f.mimeType?.startsWith('image/'));
+
+  // Ordenar carpetas de forma natural por nombre (ej. 1 ABRIGOS, 2 CARTERAS, 3 Moda mujer, 4 Moda hombre)
+  // para que coincida exactamente con la vista del explorador de Google Drive y no dependa de modifiedTime
+  subfolders.sort((a, b) =>
+    (a.name || '').localeCompare(b.name || '', 'es', { numeric: true, sensitivity: 'base' })
+  );
+
+  // Ordenar fotos de forma natural por nombre (ej. CLQ101, CLQ102, etc.)
+  imageFiles.sort((a, b) =>
+    (a.name || '').localeCompare(b.name || '', 'es', { numeric: true, sensitivity: 'base' })
+  );
 
   // 3. Procesar imágenes directas a Cloudflare R2 sin Sharp con verificación instantánea en RAM
   let photoIndex = 0;
@@ -461,21 +472,32 @@ async function syncFolderRecursive({
     const isCover = parentPath === '_covers' || parentPath.startsWith('_covers/');
     const folderType = isCover ? 'portadas' : 'catalogo';
 
-    // Clave inmutable canónica en R2 por tenant_id
-    const r2Key = `tenants/${tenantId}/${folderType}/${cleanFileName ? cleanFileName + '-' : ''}${img.id}.${ext}`;
+    // Hash de contenido de Google Drive (md5Checksum cambia con cualquier edición de pixel en Drive)
+    const contentHash = (img as any).md5Checksum
+      ? (img as any).md5Checksum.slice(0, 12)
+      : (img.modifiedTime ? new Date(img.modifiedTime).getTime().toString() : 'v1');
+
+    // Clave inmutable versionada por hash en R2:
+    // Si la foto se edita en Drive, el hash cambia -> nueva clave R2 -> nueva URL de Imgproxy -> caché de CDN/navegador actualizado de inmediato!
+    const r2Key = `tenants/${tenantId}/${folderType}/${cleanFileName ? cleanFileName + '-' : ''}${img.id}-${contentHash}.${ext}`;
 
     const existingPhoto = existingPhotosMap.get(img.id);
 
-    // Comparar timestamps de manera robusta usando epoch milisegundos (evita diferencias de string / timezone en Postgres)
-    const existingTime = existingPhoto?.drive_modified_time
-      ? new Date(existingPhoto.drive_modified_time).getTime()
-      : 0;
-    const driveTime = img.modifiedTime ? new Date(img.modifiedTime).getTime() : 0;
-    const isModified = Math.abs(existingTime - driveTime) > 1000;
+    // Comparar contenido: primero por md5Checksum de Drive; si no viene, por timestamp en milisegundos
+    let isContentUnchanged = false;
+    if ((img as any).md5Checksum && existingPhoto?.md5_checksum) {
+      isContentUnchanged = existingPhoto.md5_checksum === (img as any).md5Checksum;
+    } else {
+      const existingTime = existingPhoto?.drive_modified_time
+        ? new Date(existingPhoto.drive_modified_time).getTime()
+        : 0;
+      const driveTime = img.modifiedTime ? new Date(img.modifiedTime).getTime() : 0;
+      isContentUnchanged = Math.abs(existingTime - driveTime) <= 1000;
+    }
 
     const isUpToDate =
       existingPhoto &&
-      !isModified &&
+      isContentUnchanged &&
       existingPhoto.r2_key === r2Key &&
       existingPhoto.album_id === album.id &&
       existingPhoto.name === img.name;
@@ -485,8 +507,8 @@ async function syncFolderRecursive({
       continue;
     }
 
-    // Si la foto no cambió en binario pero cambió de nombre o de carpeta (álbum), actualizar solo en BD sin re-subir a R2
-    if (!isModified && existingPhoto && existingPhoto.r2_key === r2Key) {
+    // Si el contenido binario no cambió pero cambió de nombre o de carpeta (álbum), actualizar solo en BD sin re-subir a R2
+    if (isContentUnchanged && existingPhoto && existingPhoto.r2_key === r2Key) {
       await supabase.from('photos').update({
         album_id: album.id,
         name: img.name,
@@ -511,8 +533,22 @@ async function syncFolderRecursive({
 
       const buffer = Buffer.from(driveRes.data as ArrayBuffer);
 
-      // Subir directo a Cloudflare R2
+      // Subir directo a Cloudflare R2 con la nueva clave versionada
       await uploadBufferToR2(r2Key, buffer, img.mimeType || 'image/jpeg');
+
+      // Eliminar la versión anterior en R2 si la clave cambió (para no dejar basura huérfana en R2)
+      if (existingPhoto?.r2_key && existingPhoto.r2_key !== r2Key) {
+        await deleteObjectFromR2(existingPhoto.r2_key).catch((e) =>
+          console.warn(`Error eliminando versión previa en R2 (${existingPhoto.r2_key}):`, e)
+        );
+
+        // Si la foto modificada era la portada de algún álbum, actualizar la referencia en albums
+        await supabase
+          .from('albums')
+          .update({ cover_photo_r2_key: r2Key, updated_at: new Date().toISOString() })
+          .eq('tenant_id', tenantId)
+          .eq('cover_photo_r2_key', existingPhoto.r2_key);
+      }
 
       // Guardar en la tabla photos de Supabase
       if (existingPhoto) {
@@ -520,6 +556,7 @@ async function syncFolderRecursive({
           album_id: album.id,
           name: img.name,
           r2_key: r2Key,
+          md5_checksum: (img as any).md5Checksum || null,
           mime_type: img.mimeType || 'image/jpeg',
           size_bytes: buffer.length,
           drive_modified_time: img.modifiedTime,
@@ -531,6 +568,7 @@ async function syncFolderRecursive({
           album_id: album.id,
           name: img.name,
           r2_key: r2Key,
+          md5_checksum: (img as any).md5Checksum || null,
           mime_type: img.mimeType || 'image/jpeg',
           size_bytes: buffer.length,
           drive_modified_time: img.modifiedTime,
@@ -542,6 +580,7 @@ async function syncFolderRecursive({
           drive_file_id: img.id,
           name: img.name,
           r2_key: r2Key,
+          md5_checksum: (img as any).md5Checksum || null,
           mime_type: img.mimeType || 'image/jpeg',
           size_bytes: buffer.length,
           drive_modified_time: img.modifiedTime,

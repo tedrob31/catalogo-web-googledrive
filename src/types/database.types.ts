@@ -128,6 +128,7 @@ export type Database = {
           drive_modified_time: string | null
           height: number | null
           id: string
+          md5_checksum: string | null
           mime_type: string
           name: string
           order_index: number
@@ -143,6 +144,7 @@ export type Database = {
           drive_modified_time?: string | null
           height?: number | null
           id?: string
+          md5_checksum?: string | null
           mime_type?: string
           name: string
           order_index?: number
@@ -158,6 +160,7 @@ export type Database = {
           drive_modified_time?: string | null
           height?: number | null
           id?: string
+          md5_checksum?: string | null
           mime_type?: string
           name?: string
           order_index?: number

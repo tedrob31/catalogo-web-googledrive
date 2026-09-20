@@ -18,6 +18,7 @@ export interface Album {
     coverId?: string;
     photos: PhotoItem[];
     subAlbums: Album[];
+    order_index?: number;
 }
 
 export interface CacheStructure {

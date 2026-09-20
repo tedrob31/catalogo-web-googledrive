@@ -122,6 +122,7 @@ export async function loadTenantCatalog(
       name: a.name,
       photos: photosByAlbum.get(a.id) || [],
       subAlbums: [],
+      order_index: a.order_index ?? 0,
     });
 
     if (a.cover_photo_r2_key) {
@@ -167,6 +168,13 @@ export async function loadTenantCatalog(
       rootAlbum.subAlbums.push(albumObj);
     }
   }
+
+  // Ordenar subálbumes explícitamente por order_index (manteniendo exactamente el orden de Google Drive)
+  const sortAlbumsRecursively = (alb: Album) => {
+    alb.subAlbums.sort((x, y) => (x.order_index ?? 0) - (y.order_index ?? 0));
+    alb.subAlbums.forEach(sortAlbumsRecursively);
+  };
+  sortAlbumsRecursively(rootAlbum);
 
   const cacheStructure: CacheStructure = {
     root: rootAlbum,
