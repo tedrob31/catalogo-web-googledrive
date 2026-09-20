@@ -92,16 +92,17 @@ export async function loadTenantCatalog(
     .order('order_index', { ascending: true })
     .order('name', { ascending: true });
 
-  // 4. Mapear fotos por álbum
+  // 4. Mapear fotos por álbum (URL unificada para grilla y lightbox = apertura instantánea a 0ms)
   const photosByAlbum = new Map<string, PhotoItem[]>();
   for (const p of dbPhotos || []) {
+    const photoUrl = ImgproxyProfiles.catalog(p.r2_key);
     const item: PhotoItem = {
       id: p.id,
       name: p.name,
-      thumbnailLink: ImgproxyProfiles.catalog(p.r2_key),
-      fullLink: ImgproxyProfiles.lightbox(p.r2_key),
-      width: p.width || 800,
-      height: p.height || 800,
+      thumbnailLink: photoUrl,
+      fullLink: photoUrl, // Misma URL: lightbox abre de inmediato sin animación de carga
+      width: p.width || 1080,
+      height: p.height || 1080,
       modifiedTime: p.drive_modified_time || undefined,
     };
 

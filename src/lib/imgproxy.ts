@@ -96,10 +96,10 @@ export const ImgproxyProfiles = {
       format: 'webp',
     }),
 
-  // Imagen estándar para el catálogo responsive
+  // Imagen estándar de alta definición optimizada para catálogo responsive y lightbox unificado (Retina crisp, WebP q80)
   catalog: (r2Key: string) =>
     generateSignedImgproxyUrl(r2Key, {
-      width: 800,
+      width: 1080,
       height: 0,
       resizingType: 'auto',
       quality: 80,

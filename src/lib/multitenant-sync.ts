@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getDriveClientForTenant } from '@/lib/google-auth';
-import { uploadBufferToR2, checkObjectExistsInR2 } from '@/lib/r2';
+import { uploadBufferToR2, checkObjectExistsInR2, deleteObjectFromR2 } from '@/lib/r2';
 import { slugify } from '@/lib/utils';
 import { drive_v3 } from 'googleapis';
 import { revalidatePath } from 'next/cache';
@@ -106,6 +106,26 @@ export async function runTenantSync(
   };
 
   try {
+    // 3.1 Pre-cargar en memoria (RAM) todos los álbumes y fotos del tenant en 2 consultas únicas
+    // Esto elimina las 150+ consultas HTTP secuenciales a Supabase que causaban lentitud extrema
+    const [{ data: initialDbAlbums }, { data: initialDbPhotos }] = await Promise.all([
+      supabase.from('albums').select('*').eq('tenant_id', tenantId),
+      supabase.from('photos').select('*').eq('tenant_id', tenantId),
+    ]);
+
+    const existingAlbumsMap = new Map<string, any>();
+    (initialDbAlbums || []).forEach((a) => {
+      existingAlbumsMap.set(a.drive_folder_id, a);
+    });
+
+    const existingPhotosMap = new Map<string, any>();
+    (initialDbPhotos || []).forEach((p) => {
+      existingPhotosMap.set(p.drive_file_id, p);
+    });
+
+    const visitedDriveFileIds = new Set<string>();
+    const visitedDriveFolderIds = new Set<string>();
+
     // 4. Recorrer árbol de carpetas a partir de catalog_folder_id
     const tenantSubdomain = tenant.subdomain || tenantId;
 
@@ -123,6 +143,10 @@ export async function runTenantSync(
       maxPhotos: maxAllowedPhotos,
       maxBytes: maxAllowedStorageBytes,
       progress,
+      existingAlbumsMap,
+      existingPhotosMap,
+      visitedDriveFileIds,
+      visitedDriveFolderIds,
     });
 
     // 4.1 Sincronizar carpeta de portadas si está configurada
@@ -141,8 +165,58 @@ export async function runTenantSync(
         maxPhotos: 500,
         maxBytes: maxAllowedStorageBytes,
         progress,
+        existingAlbumsMap,
+        existingPhotosMap,
+        visitedDriveFileIds,
+        visitedDriveFolderIds,
       });
     }
+
+    // 4.2 Sincronización espejo de eliminaciones (Borrar en Supabase y R2 lo que fue eliminado en Google Drive)
+    let deletedPhotosCount = 0;
+    const deletedPhotoIds: string[] = [];
+    const photosToDeleteR2Keys: string[] = [];
+
+    existingPhotosMap.forEach((p, driveFileId) => {
+      if (!visitedDriveFileIds.has(driveFileId)) {
+        deletedPhotoIds.push(p.id);
+        photosToDeleteR2Keys.push(p.r2_key);
+      }
+    });
+
+    if (deletedPhotoIds.length > 0) {
+      console.log(`[Sync Tenant ${tenantId}] Detectadas ${deletedPhotoIds.length} fotos eliminadas en Drive. Limpiando espejo...`);
+      for (let i = 0; i < deletedPhotoIds.length; i += 100) {
+        const batch = deletedPhotoIds.slice(i, i + 100);
+        await supabase.from('photos').delete().in('id', batch);
+      }
+      for (const r2Key of photosToDeleteR2Keys) {
+        await deleteObjectFromR2(r2Key).catch((e) =>
+          console.warn(`Error eliminando de R2 (${r2Key}):`, e)
+        );
+      }
+      deletedPhotosCount = deletedPhotoIds.length;
+    }
+
+    // Detectar álbumes eliminados en Drive
+    const deletedAlbumIds: string[] = [];
+    existingAlbumsMap.forEach((a, driveFolderId) => {
+      if (!visitedDriveFolderIds.has(driveFolderId)) {
+        deletedAlbumIds.push(a.id);
+      }
+    });
+
+    if (deletedAlbumIds.length > 0) {
+      console.log(`[Sync Tenant ${tenantId}] Detectados ${deletedAlbumIds.length} álbumes eliminados en Drive. Limpiando espejo...`);
+      for (let i = 0; i < deletedAlbumIds.length; i += 50) {
+        const batch = deletedAlbumIds.slice(i, i + 50);
+        await supabase.from('albums').delete().in('id', batch);
+      }
+    }
+
+    // Métricas exactas en tiempo real
+    progress.photosCount = visitedDriveFileIds.size;
+    progress.albumsCount = visitedDriveFolderIds.size;
 
     // 5. Actualizar métricas acumuladas del tenant y marcar log como completado
     await supabase
@@ -204,9 +278,9 @@ export async function runTenantSync(
 
     // Purga inteligente en Cloudflare para el subdominio del tenant
     if (tenant.subdomain) {
-      if (progress.newUploaded === 0) {
-        console.log('[Sync] Sin cambios en fotos; caché CDN conservado intacto.');
-      } else if (progress.newUploaded <= 5 && progress.modifiedAlbumPaths && progress.modifiedAlbumPaths.length <= 3) {
+      if (progress.newUploaded === 0 && deletedPhotosCount === 0 && deletedAlbumIds.length === 0) {
+        console.log('[Sync] Sin cambios en fotos ni álbumes; espejo idéntico, caché CDN conservado intacto.');
+      } else if (progress.newUploaded <= 5 && deletedPhotosCount === 0 && progress.modifiedAlbumPaths && progress.modifiedAlbumPaths.length <= 3) {
         // Pocos cambios: purgar selectivamente solo las URLs de álbumes afectados y la home
         const affectedUrls = [
           '/',
@@ -219,7 +293,7 @@ export async function runTenantSync(
           threshold: 5,
         });
       } else {
-        // Muchos cambios (> 5 fotos o varios álbumes): purga total del subdominio por Hostname
+        // Muchos cambios (> 5 fotos o eliminaciones estructurales): purga total del subdominio por Hostname
         await purgeCloudflareCache({
           subdomain: tenant.subdomain,
           purgeAll: true,
@@ -258,6 +332,10 @@ interface RecursiveSyncParams {
   maxPhotos: number;
   maxBytes: number;
   progress: SyncProgress;
+  existingAlbumsMap: Map<string, any>;
+  existingPhotosMap: Map<string, any>;
+  visitedDriveFileIds: Set<string>;
+  visitedDriveFolderIds: Set<string>;
 }
 
 async function syncFolderRecursive({
@@ -274,29 +352,48 @@ async function syncFolderRecursive({
   maxPhotos,
   maxBytes,
   progress,
+  existingAlbumsMap,
+  existingPhotosMap,
+  visitedDriveFileIds,
+  visitedDriveFolderIds,
 }: RecursiveSyncParams): Promise<void> {
   const currentSlug = slugify(folderName);
   const currentPath = parentPath ? `${parentPath}/${currentSlug}` : currentSlug;
 
-  // 1. Guardar / actualizar álbum en Supabase buscando por folderId
-  const { data: existingAlbum } = await supabase
-    .from('albums')
-    .select('id')
-    .eq('tenant_id', tenantId)
-    .eq('drive_folder_id', folderId)
-    .maybeSingle();
+  // Registrar carpeta visitada en el rastreador del espejo
+  visitedDriveFolderIds.add(folderId);
 
+  // 1. Guardar / actualizar álbum en Supabase verificando en memoria
+  const existingAlbum = existingAlbumsMap.get(folderId);
   let albumId = existingAlbum?.id;
 
-  if (albumId) {
-    await supabase.from('albums').update({
-      name: folderName,
-      slug: currentSlug,
-      parent_id: parentId,
-      path: currentPath,
-      order_index: orderIndex,
-      updated_at: new Date().toISOString(),
-    }).eq('id', albumId);
+  if (existingAlbum) {
+    const hasChanged =
+      existingAlbum.name !== folderName ||
+      existingAlbum.slug !== currentSlug ||
+      existingAlbum.parent_id !== parentId ||
+      existingAlbum.path !== currentPath ||
+      existingAlbum.order_index !== orderIndex;
+
+    if (hasChanged) {
+      await supabase.from('albums').update({
+        name: folderName,
+        slug: currentSlug,
+        parent_id: parentId,
+        path: currentPath,
+        order_index: orderIndex,
+        updated_at: new Date().toISOString(),
+      }).eq('id', albumId);
+
+      existingAlbumsMap.set(folderId, {
+        ...existingAlbum,
+        name: folderName,
+        slug: currentSlug,
+        parent_id: parentId,
+        path: currentPath,
+        order_index: orderIndex,
+      });
+    }
   } else {
     const { data: newAlbum, error: albumError } = await supabase
       .from('albums')
@@ -318,32 +415,42 @@ async function syncFolderRecursive({
       return;
     }
     albumId = newAlbum.id;
+    existingAlbumsMap.set(folderId, newAlbum);
   }
 
   const album = { id: albumId };
 
-  progress.albumsCount++;
+  // 2. Listar contenidos de esta carpeta en Google Drive con soporte para paginación completa (>100 archivos)
+  let allFiles: drive_v3.Schema$File[] = [];
+  let pageToken: string | undefined = undefined;
 
-  // 2. Listar contenidos de esta carpeta en Google Drive
-  const res = await drive.files.list({
-    q: `'${folderId}' in parents and trashed = false`,
-    fields: 'files(id, name, mimeType, size, modifiedTime)',
-    pageSize: 100,
-    supportsAllDrives: true,
-    includeItemsFromAllDrives: true,
-  });
+  do {
+    const res: any = await drive.files.list({
+      q: `'${folderId}' in parents and trashed = false`,
+      fields: 'nextPageToken, files(id, name, mimeType, size, modifiedTime)',
+      pageSize: 1000,
+      pageToken: pageToken,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
 
-  const files = res.data.files || [];
-  const subfolders = files.filter(f => f.mimeType === 'application/vnd.google-apps.folder');
-  const imageFiles = files.filter(f => f.mimeType?.startsWith('image/'));
+    if (res.data.files && res.data.files.length > 0) {
+      allFiles.push(...res.data.files);
+    }
+    pageToken = res.data.nextPageToken;
+  } while (pageToken);
 
-  // 3. Procesar imágenes directas a Cloudflare R2 sin Sharp
+  const subfolders = allFiles.filter((f) => f.mimeType === 'application/vnd.google-apps.folder');
+  const imageFiles = allFiles.filter((f) => f.mimeType?.startsWith('image/'));
+
+  // 3. Procesar imágenes directas a Cloudflare R2 sin Sharp con verificación instantánea en RAM
   let photoIndex = 0;
   for (const img of imageFiles) {
     if (!img.id || !img.name) continue;
+    visitedDriveFileIds.add(img.id);
 
     // Verificar límite de fotos del plan
-    if (progress.photosCount >= maxPhotos) {
+    if (visitedDriveFileIds.size > maxPhotos) {
       console.warn(`[Sync Tenant ${tenantId}] Límite de fotos del plan alcanzado (${maxPhotos}).`);
       break;
     }
@@ -354,26 +461,44 @@ async function syncFolderRecursive({
     const isCover = parentPath === '_covers' || parentPath.startsWith('_covers/');
     const folderType = isCover ? 'portadas' : 'catalogo';
 
-    // Ruta inmutable por ID único del Tenant: ej. tenants/f8fe9291-.../catalogo/polo-y-short-hombre-1OYFFR25.jpg
-    // Garantiza que si el usuario cambia el nombre comercial o subdominio, los archivos en R2 siguen siendo 100% válidos
+    // Clave inmutable canónica en R2 por tenant_id
     const r2Key = `tenants/${tenantId}/${folderType}/${cleanFileName ? cleanFileName + '-' : ''}${img.id}.${ext}`;
 
-    // Verificar si ya existe en la base de datos con la misma fecha de modificación Y la misma clave canónica en R2
-    const { data: existingPhoto } = await supabase
-      .from('photos')
-      .select('id, drive_modified_time, r2_key')
-      .eq('tenant_id', tenantId)
-      .eq('drive_file_id', img.id)
-      .single();
+    const existingPhoto = existingPhotosMap.get(img.id);
+
+    // Comparar timestamps de manera robusta usando epoch milisegundos (evita diferencias de string / timezone en Postgres)
+    const existingTime = existingPhoto?.drive_modified_time
+      ? new Date(existingPhoto.drive_modified_time).getTime()
+      : 0;
+    const driveTime = img.modifiedTime ? new Date(img.modifiedTime).getTime() : 0;
+    const isModified = Math.abs(existingTime - driveTime) > 1000;
 
     const isUpToDate =
       existingPhoto &&
-      existingPhoto.drive_modified_time === img.modifiedTime &&
-      existingPhoto.r2_key === r2Key;
+      !isModified &&
+      existingPhoto.r2_key === r2Key &&
+      existingPhoto.album_id === album.id &&
+      existingPhoto.name === img.name;
 
     if (isUpToDate) {
       progress.skipped++;
-      progress.photosCount++;
+      continue;
+    }
+
+    // Si la foto no cambió en binario pero cambió de nombre o de carpeta (álbum), actualizar solo en BD sin re-subir a R2
+    if (!isModified && existingPhoto && existingPhoto.r2_key === r2Key) {
+      await supabase.from('photos').update({
+        album_id: album.id,
+        name: img.name,
+        order_index: photoIndex++,
+      }).eq('id', existingPhoto.id);
+
+      existingPhotosMap.set(img.id, {
+        ...existingPhoto,
+        album_id: album.id,
+        name: img.name,
+      });
+      progress.skipped++;
       continue;
     }
 
@@ -400,8 +525,18 @@ async function syncFolderRecursive({
           drive_modified_time: img.modifiedTime,
           order_index: photoIndex++,
         }).eq('id', existingPhoto.id);
+
+        existingPhotosMap.set(img.id, {
+          ...existingPhoto,
+          album_id: album.id,
+          name: img.name,
+          r2_key: r2Key,
+          mime_type: img.mimeType || 'image/jpeg',
+          size_bytes: buffer.length,
+          drive_modified_time: img.modifiedTime,
+        });
       } else {
-        await supabase.from('photos').insert({
+        const { data: insertedPhoto } = await supabase.from('photos').insert({
           tenant_id: tenantId,
           album_id: album.id,
           drive_file_id: img.id,
@@ -411,24 +546,27 @@ async function syncFolderRecursive({
           size_bytes: buffer.length,
           drive_modified_time: img.modifiedTime,
           order_index: photoIndex++,
-        });
+        }).select('*').single();
+
+        if (insertedPhoto) {
+          existingPhotosMap.set(img.id, insertedPhoto);
+        }
       }
 
       progress.newUploaded++;
-      progress.photosCount++;
       progress.bytesUploaded += buffer.length;
       if (progress.modifiedAlbumPaths && !progress.modifiedAlbumPaths.includes(currentPath)) {
         progress.modifiedAlbumPaths.push(currentPath);
       }
 
       // Reportar progreso incremental en tiempo real en Supabase para el polling
-      if (logId && progress.photosCount % 5 === 0) {
+      if (logId && progress.newUploaded % 5 === 0) {
         await supabase
           .from('sync_logs')
           .update({
-            total_photos: progress.photosCount,
+            total_photos: visitedDriveFileIds.size,
             items_processed: progress.newUploaded,
-            total_albums: progress.albumsCount,
+            total_albums: visitedDriveFolderIds.size,
           })
           .eq('id', logId);
       }
@@ -456,6 +594,10 @@ async function syncFolderRecursive({
       maxPhotos,
       maxBytes,
       progress,
+      existingAlbumsMap,
+      existingPhotosMap,
+      visitedDriveFileIds,
+      visitedDriveFolderIds,
     });
   }
 }
