@@ -493,9 +493,8 @@ async function syncFolderRecursive({
     const folderType = isCover ? 'portadas' : 'catalogo';
 
     // Hash de contenido de Google Drive (md5Checksum cambia con cualquier edición de pixel en Drive)
-    const contentHash = (img as any).md5Checksum
-      ? (img as any).md5Checksum.slice(0, 12)
-      : (img.modifiedTime ? new Date(img.modifiedTime).getTime().toString() : 'v1');
+    const rawHash = (img as any).md5Checksum || (img.modifiedTime ? new Date(img.modifiedTime).getTime().toString() : 'v1');
+    const contentHash = (img as any).md5Checksum ? (img as any).md5Checksum.slice(0, 12) : rawHash;
 
     // Clave inmutable versionada por hash en R2:
     // Si la foto se edita en Drive, el hash cambia -> nueva clave R2 -> nueva URL de Imgproxy -> caché de CDN/navegador actualizado de inmediato!
@@ -577,7 +576,7 @@ async function syncFolderRecursive({
           album_id: album.id,
           name: img.name,
           r2_key: r2Key,
-          md5_checksum: (img as any).md5Checksum || null,
+          md5_checksum: rawHash,
           mime_type: img.mimeType || 'image/jpeg',
           size_bytes: buffer.length,
           drive_modified_time: img.modifiedTime,
@@ -589,7 +588,7 @@ async function syncFolderRecursive({
           album_id: album.id,
           name: img.name,
           r2_key: r2Key,
-          md5_checksum: (img as any).md5Checksum || null,
+          md5_checksum: rawHash,
           mime_type: img.mimeType || 'image/jpeg',
           size_bytes: buffer.length,
           drive_modified_time: img.modifiedTime,
@@ -601,7 +600,7 @@ async function syncFolderRecursive({
           drive_file_id: img.id,
           name: img.name,
           r2_key: r2Key,
-          md5_checksum: (img as any).md5Checksum || null,
+          md5_checksum: rawHash,
           mime_type: img.mimeType || 'image/jpeg',
           size_bytes: buffer.length,
           drive_modified_time: img.modifiedTime,
