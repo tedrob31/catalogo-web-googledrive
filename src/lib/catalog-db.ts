@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ImgproxyProfiles } from '@/lib/imgproxy';
 import { CacheStructure, Album, PhotoItem, findAlbumBySlugPath } from '@/lib/types';
@@ -18,14 +19,56 @@ export interface TenantCatalogPayload {
   storefront?: StorefrontConfig;
 }
 
+interface CachedTenantBase {
+  tenant: {
+    id: string;
+    name: string;
+    subdomain: string;
+    custom_domain: string | null;
+  };
+  cacheStructure: CacheStructure;
+  config: AppConfig;
+  storefront?: StorefrontConfig;
+  mainCatalogAlbum?: any;
+  cachedAt: number;
+}
+
+// Caché en memoria RAM de alta velocidad en el servidor (TTL de 10 minutos con invalidación instantánea en sync)
+const memoryCatalogCache = new Map<string, CachedTenantBase>();
+const CACHE_TTL_MS = 10 * 60 * 1000;
+
 /**
- * Carga la estructura completa de catálogo para un tenant desde Supabase
- * Genera URLs firmadas de Imgproxy para cada foto y portada.
+ * Invalida inmediatamente el catálogo en la memoria RAM del servidor.
+ * Se invoca automáticamente al finalizar una sincronización o al guardar cambios de diseño/portada.
  */
-export async function loadTenantCatalog(
-  subdomain: string,
-  slugs: string[] = []
-): Promise<TenantCatalogPayload | null> {
+export function invalidateTenantCatalogCache(tenantIdOrSubdomain?: string) {
+  if (!tenantIdOrSubdomain) {
+    memoryCatalogCache.clear();
+    console.log('[Catalog Cache] Memoria caché de todos los tenants invalidada.');
+    return;
+  }
+  for (const [key, entry] of memoryCatalogCache.entries()) {
+    if (
+      key === tenantIdOrSubdomain ||
+      entry.tenant.id === tenantIdOrSubdomain ||
+      entry.tenant.subdomain === tenantIdOrSubdomain
+    ) {
+      memoryCatalogCache.delete(key);
+      console.log(`[Catalog Cache] Memoria caché invalidada para tenant: ${tenantIdOrSubdomain}`);
+    }
+  }
+}
+
+/**
+ * Obtiene la estructura completa del catálogo del tenant desde la memoria RAM del servidor
+ * o la construye desde Supabase si es la primera carga.
+ */
+async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBase | null> {
+  const cached = memoryCatalogCache.get(subdomain);
+  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
+    return cached;
+  }
+
   const supabase = createAdminClient();
 
   // 1. Obtener tenant activo por subdominio o custom_domain
@@ -150,7 +193,6 @@ export async function loadTenantCatalog(
   };
 
   for (const a of catalogAlbums) {
-    // Si este álbum es el contenedor principal (ej. "CATALOGO"), no lo mostramos como tarjeta
     if (mainCatalogAlbum && a.id === mainCatalogAlbum.id) {
       continue;
     }
@@ -159,10 +201,8 @@ export async function loadTenantCatalog(
     if (!albumObj) continue;
 
     if (mainCatalogAlbum && a.parent_id === mainCatalogAlbum.id) {
-      // Es una carpeta de primer nivel dentro de CATALOGO -> va directamente a la raíz del catálogo público
       rootAlbum.subAlbums.push(albumObj);
     } else if (a.parent_id && albumMap.has(a.parent_id)) {
-      // Es una subcarpeta anidada (ej. Blusas dentro de Moda mujer)
       albumMap.get(a.parent_id)!.subAlbums.push(albumObj);
     } else if (!mainCatalogAlbum && a.parent_id === null) {
       rootAlbum.subAlbums.push(albumObj);
@@ -187,15 +227,15 @@ export async function loadTenantCatalog(
     rootFolderId: '',
     gridColumns: rawSettings.grid_columns || 5,
     mobileGridColumns: rawSettings.mobile_grid_columns || 2,
-    siteTitle: rawConfig?.title || tenant.name,
-    siteDescription: rawConfig?.subtitle || '',
-    whatsappNumber: rawConfig?.whatsapp || '',
-    logoUrl: rawConfig?.logo_url || '',
-    favicon: rawConfig?.favicon_url || '',
-    folderCovers: { ...folderCovers, ...(rawSettings.folder_covers || {}) },
-    theme: (rawConfig?.theme as any) || 'light',
     primaryColor: rawConfig?.primary_color || '#111827',
     secondaryColor: rawSettings.secondary_color || '#ffffff',
+    siteTitle: rawConfig?.title || tenant.name,
+    siteDescription: rawConfig?.subtitle || undefined,
+    logoUrl: rawConfig?.logo_url || undefined,
+    favicon: rawConfig?.favicon_url || '',
+    whatsappNumber: rawConfig?.whatsapp || undefined,
+    theme: (rawConfig?.theme as any) || 'light',
+    folderCovers,
     textColor: rawSettings.text_color || undefined,
     backgroundImage: rawSettings.background_image || undefined,
     seasonalEffect: rawSettings.seasonal_effect || 'none',
@@ -209,35 +249,65 @@ export async function loadTenantCatalog(
     forceGlobalOgImage: rawSettings.force_global_og_image || false,
   };
 
-  // 6. Resolver ruta inicial según los slugs de la URL
-  let resolvedSlugs = [...slugs];
-  // Si la URL venía con el prefijo /catalogo (ej. /catalogo/0-abrigos o /catalogo), lo normalizamos
-  if (
-    resolvedSlugs.length > 0 &&
-    mainCatalogAlbum &&
-    (resolvedSlugs[0] === slugify(mainCatalogAlbum.name) || resolvedSlugs[0] === mainCatalogAlbum.slug)
-  ) {
-    resolvedSlugs.shift();
-  }
-
-  let initialPath = [rootAlbum];
-  if (resolvedSlugs.length > 0) {
-    const foundPath = findAlbumBySlugPath(rootAlbum, resolvedSlugs);
-    if (foundPath) {
-      initialPath = foundPath;
-    }
-  }
-
-  return {
+  const result: CachedTenantBase = {
     tenant: {
       id: tenant.id,
       name: tenant.name,
       subdomain: tenant.subdomain,
       custom_domain: tenant.custom_domain,
     },
-    data: cacheStructure,
+    cacheStructure,
     config,
-    initialPath,
+    mainCatalogAlbum,
     storefront: rawSettings.storefront || undefined,
+    cachedAt: Date.now(),
   };
+
+  // Guardar en la caché en memoria bajo el subdominio y el ID del tenant
+  memoryCatalogCache.set(subdomain, result);
+  if (tenant.subdomain) memoryCatalogCache.set(tenant.subdomain, result);
+  if (tenant.id) memoryCatalogCache.set(tenant.id, result);
+
+  return result;
 }
+
+/**
+ * Carga la estructura completa de catálogo para un tenant.
+ * - Envuelto en React.cache() para evitar doble ejecución entre generateMetadata y TenantCatalogPage en la misma petición.
+ * - Usa memoria RAM del servidor para responder en ~10ms.
+ */
+export const loadTenantCatalog = cache(async (
+  subdomain: string,
+  slugs: string[] = []
+): Promise<TenantCatalogPayload | null> => {
+  const base = await loadTenantCatalogBase(subdomain);
+  if (!base) {
+    return null;
+  }
+
+  // 6. Resolver ruta inicial según los slugs de la URL en la memoria RAM (0ms)
+  let resolvedSlugs = [...slugs];
+  if (
+    resolvedSlugs.length > 0 &&
+    base.mainCatalogAlbum &&
+    (resolvedSlugs[0] === slugify(base.mainCatalogAlbum.name) || resolvedSlugs[0] === base.mainCatalogAlbum.slug)
+  ) {
+    resolvedSlugs.shift();
+  }
+
+  let initialPath = [base.cacheStructure.root];
+  if (resolvedSlugs.length > 0) {
+    const foundPath = findAlbumBySlugPath(base.cacheStructure.root, resolvedSlugs);
+    if (foundPath) {
+      initialPath = foundPath;
+    }
+  }
+
+  return {
+    tenant: base.tenant,
+    data: base.cacheStructure,
+    config: base.config,
+    initialPath,
+    storefront: base.storefront,
+  };
+});

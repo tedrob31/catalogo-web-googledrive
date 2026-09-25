@@ -13,7 +13,7 @@ export default function PhotoCard({ photo, priority = false, onClick }: PhotoCar
 
     return (
         <div
-            className="relative group cursor-pointer overflow-hidden rounded-lg bg-gray-100"
+            className="relative group cursor-pointer overflow-hidden rounded-lg bg-gray-100 dark:bg-zinc-900"
             style={{ aspectRatio: '4/5' }}
             onClick={onClick}
         >

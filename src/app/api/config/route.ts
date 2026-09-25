@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { purgeCloudflareCache } from '@/lib/cloudflare';
+import { invalidateTenantCatalogCache } from '@/lib/catalog-db';
 
 // GET: Obtener la configuración visual y de marca del tenant actual
 export async function GET(request: NextRequest) {
@@ -193,7 +194,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // Revalidar caché ISR de Next.js
+    // Revalidar caché en memoria RAM e ISR de Next.js
+    invalidateTenantCatalogCache(tenantId);
     revalidatePath('/', 'layout');
 
     // Purgar selectivamente la home y el endpoint de configuración del storefront en Cloudflare

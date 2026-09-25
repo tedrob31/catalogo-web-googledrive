@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
+import { invalidateTenantCatalogCache } from '@/lib/catalog-db';
 
 // GET: Obtener los bloques de Storefront del tenant actual
 export async function GET(request: NextRequest) {
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
+    invalidateTenantCatalogCache(tenantId);
     revalidatePath('/', 'layout');
 
     return NextResponse.json({ success: true, message: 'Storefront guardado en Supabase' });

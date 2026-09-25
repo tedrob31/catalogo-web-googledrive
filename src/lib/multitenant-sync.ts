@@ -5,6 +5,7 @@ import { slugify } from '@/lib/utils';
 import { drive_v3 } from 'googleapis';
 import { revalidatePath } from 'next/cache';
 import { purgeCloudflareCache } from '@/lib/cloudflare';
+import { invalidateTenantCatalogCache } from '@/lib/catalog-db';
 
 export interface SyncProgress {
   tenantId: string;
@@ -287,8 +288,9 @@ export async function runTenantSync(
         .eq('id', logId);
     }
 
-    // Revalidación ISR en Next.js
+    // Revalidación ISR en Next.js y memoria RAM
     try {
+      invalidateTenantCatalogCache(tenantId);
       revalidatePath('/', 'layout');
     } catch (e) {
       // Ignorar si se ejecuta fuera de contexto de request
