@@ -115,10 +115,15 @@ Ubicación: [src/lib/multitenant-sync.ts](file:///c:/Users/teddy/Documents/PROYE
      4. Al cambiar la clave R2, se genera una nueva URL en Imgproxy, evitando que Cloudflare CDN o el navegador sirvan la versión anterior en caché.
 6. **Sincronización Espejo de Bajas (Eliminaciones)**:
    Al concluir el recorrido en Google Drive, cualquier foto o álbum registrado en Supabase cuyo ID no haya sido visitado en Drive es considerado eliminado y se borra de Supabase y de Cloudflare R2 en lotes eficientes.
-7. **Purga Selectiva de CDN en Cloudflare**:
-   - 0 cambios: Caché intacto (0 purgas).
-   - <= 5 cambios: Purga selectiva solo de las URLs de los álbumes modificados y la home.
-   - Muchos cambios o eliminaciones: Purga total del subdominio por Hostname.
+7. **Purga Quirúrgica de CDN en Cloudflare (Soporte Oficial en Planes Free)**:
+   - **Confirmación Oficial**: Cloudflare habilitó para **todos los planes (incluyendo Free)** las modalidades avanzadas de purga: por **Hostname** (`hosts: [...]`), por **URL** (`files: [...]`), por **Tag** (`tags: [...]`) y por **Prefix** (`prefixes: [...]`).
+   - **Límites de la API en Free**: Hasta 100 elementos por petición; rate limit de 5 solicitudes de purga por minuto (con bucket de ráfaga de 25 peticiones).
+   - **Comportamiento en C4talogo**:
+     - *0 cambios detectados*: No se gasta ninguna solicitud de purga (0 llamadas a la API).
+     - *1 a 5 álbumes modificados*: Purga quirúrgica por URL (`files: [urls]`), afectando solo las rutas del catálogo modificadas y la raíz.
+     - *Más de 5 cambios o eliminaciones masivas*: Purga completa por Hostname (`{ hosts: ["subdominio.c4talogo.com"] }`), aislando el tenant al 100% sin invalidar la caché de otras tiendas ni del dominio raíz.
+     - *Resiliencia*: Si la API de Cloudflare rechaza el Hostname o falla por permisos de Token, el sistema aplica un fallback automático con `purge_everything: true`.
+   - **Estrategia HTML Zero-Retention**: Las páginas HTML de catálogos dinámicos se sirven sin `s-maxage` en Edge (`max-age=0, must-revalidate`), respondiendo directamente desde la memoria RAM del servidor Next.js (`memoryCatalogCache`, ~10-20ms). Esto garantiza que cualquier cambio tras la sincronización se refleje de inmediato en la primera recarga del navegador del usuario.
 
 ---
 

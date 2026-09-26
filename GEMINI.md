@@ -50,3 +50,10 @@ Antes de modificar cualquier funcionalidad o proponer cambios, consulta los docu
   * `app.c4talogo.com` -> `/superadmin`
   * `[subdominio].c4talogo.com` -> `/t/[subdomain]`
   * `c4talogo.com` -> `/`, `/login`, `/dashboard`, `/privacy`, `/terms`
+
+### 7. Estrategia de Purga en Cloudflare (Soporte de Hostname en Planes Free)
+* Cloudflare habilitó oficialmente la **purga por Hostname** (`hosts: [tenantHost]`), por **URL** (`files: [...]`) y por **Prefix** para **todos los planes (incluyendo Free)**.
+* Por lo tanto, al sincronizar un catálogo o cambiar configuraciones, se purga el subdominio completo del inquilino (`{ hosts: [`${tenant.subdomain}.${baseDomain}`] }`) de forma totalmente aislada sin afectar a otros tenants ni a la zona global.
+* Rate limit de la API en plan Free: 5 solicitudes de purga por minuto (bucket de 25).
+* Las páginas HTML de catálogos dinámicos nunca deben enviar `s-maxage` alto en Edge; se sirven con `max-age=0, must-revalidate` desde la memoria RAM de Next.js (~10ms) para garantizar actualizaciones instantáneas al sincronizar.
+
