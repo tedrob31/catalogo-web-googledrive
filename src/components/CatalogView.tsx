@@ -288,7 +288,7 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
                                             <PhotoCard
                                                 key={photo.id}
                                                 photo={photo}
-                                                priority={idx < 10}
+                                                priority={idx < 2}
                                                 onClick={() => openLightbox(idx)}
                                             />
                                         ))}

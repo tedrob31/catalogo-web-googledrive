@@ -97,8 +97,10 @@ function applyCacheHeaders(response: NextResponse, request: NextRequest) {
     response.headers.set('Cache-Control', 'no-store, no-cache, max-age=0, must-revalidate, proxy-revalidate');
   } else {
     // El HTML dinámico se sirve en ~10ms desde la RAM de Next.js.
-    // Obligamos a que el navegador y Cloudflare no retengan HTML antiguo en su Edge, permitiendo ver cambios al instante (0s).
-    response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+    // Obligamos a que el navegador y Cloudflare NO retengan HTML antiguo en memoria ni disco, forzando a recargar siempre la versión actual a 0ms.
+    response.headers.set('Cache-Control', 'no-store, no-cache, max-age=0, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
   }
 }
 
