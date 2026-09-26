@@ -51,9 +51,12 @@ Antes de modificar cualquier funcionalidad o proponer cambios, consulta los docu
   * `[subdominio].c4talogo.com` -> `/t/[subdomain]`
   * `c4talogo.com` -> `/`, `/login`, `/dashboard`, `/privacy`, `/terms`
 
-### 7. Estrategia de Purga en Cloudflare (Soporte de Hostname en Planes Free)
+### 7. Estrategia de Purga en Cloudflare (Cola en Memoria, Batching y Planes Free)
 * Cloudflare habilitó oficialmente la **purga por Hostname** (`hosts: [tenantHost]`), por **URL** (`files: [...]`) y por **Prefix** para **todos los planes (incluyendo Free)**.
-* Por lo tanto, al sincronizar un catálogo o cambiar configuraciones, se purga el subdominio completo del inquilino (`{ hosts: [`${tenant.subdomain}.${baseDomain}`] }`) de forma totalmente aislada sin afectar a otros tenants ni a la zona global.
+* **Cola con Batching Automático ([src/lib/cloudflare.ts](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/src/lib/cloudflare.ts))**:
+  * Unifica llamadas concurrentes mediante una ventana de debounce de 1500ms. Si múltiples usuarios sincronizan a la vez, se agrupan hasta 100 subdominios en **una sola petición** a Cloudflare, reduciendo drásticamente el consumo de cuota API.
+  * Si Cloudflare responde `429 Too Many Requests`, la cola lee la cabecera `Retry-After`, pausa y reintenta de forma automática con retroceso exponencial.
+  * Dispone de un `safetyTimeout` (8s) para nunca colgar la sincronización del usuario en el dashboard.
 * Rate limit de la API en plan Free: 5 solicitudes de purga por minuto (bucket de 25).
 * Las páginas HTML de catálogos dinámicos nunca deben enviar `s-maxage` alto en Edge; se sirven con `max-age=0, must-revalidate` desde la memoria RAM de Next.js (~10ms) para garantizar actualizaciones instantáneas al sincronizar.
 

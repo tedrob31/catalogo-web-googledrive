@@ -115,14 +115,15 @@ Ubicación: [src/lib/multitenant-sync.ts](file:///c:/Users/teddy/Documents/PROYE
      4. Al cambiar la clave R2, se genera una nueva URL en Imgproxy, evitando que Cloudflare CDN o el navegador sirvan la versión anterior en caché.
 6. **Sincronización Espejo de Bajas (Eliminaciones)**:
    Al concluir el recorrido en Google Drive, cualquier foto o álbum registrado en Supabase cuyo ID no haya sido visitado en Drive es considerado eliminado y se borra de Supabase y de Cloudflare R2 en lotes eficientes.
-7. **Purga Quirúrgica de CDN en Cloudflare (Soporte Oficial en Planes Free)**:
+7. **Purga Quirúrgica de CDN en Cloudflare (Soporte Oficial en Planes Free y Cola Inteligente)**:
    - **Confirmación Oficial**: Cloudflare habilitó para **todos los planes (incluyendo Free)** las modalidades avanzadas de purga: por **Hostname** (`hosts: [...]`), por **URL** (`files: [...]`), por **Tag** (`tags: [...]`) y por **Prefix** (`prefixes: [...]`).
    - **Límites de la API en Free**: Hasta 100 elementos por petición; rate limit de 5 solicitudes de purga por minuto (con bucket de ráfaga de 25 peticiones).
-   - **Comportamiento en C4talogo**:
-     - *0 cambios detectados*: No se gasta ninguna solicitud de purga (0 llamadas a la API).
-     - *1 a 5 álbumes modificados*: Purga quirúrgica por URL (`files: [urls]`), afectando solo las rutas del catálogo modificadas y la raíz.
-     - *Más de 5 cambios o eliminaciones masivas*: Purga completa por Hostname (`{ hosts: ["subdominio.c4talogo.com"] }`), aislando el tenant al 100% sin invalidar la caché de otras tiendas ni del dominio raíz.
-     - *Resiliencia*: Si la API de Cloudflare rechaza el Hostname o falla por permisos de Token, el sistema aplica un fallback automático con `purge_everything: true`.
+   - **Cola en Memoria con Batching Automático (`src/lib/cloudflare.ts`)**:
+     - *Debounce de 1500ms*: Si múltiples usuarios sincronizan o guardan configuraciones al mismo tiempo, el sistema acumula los subdominios y rutas pendientes durante 1.5s y los despacha agrupados en **una sola petición HTTP** (`hosts: [sub1, sub2, ...]`), ahorrando drásticamente cuota de la API.
+     - *Deduplicación Inteligente*: Si un tenant va a purgar su subdominio completo por Hostname, se eliminan automáticamente sus URLs individuales de la lista de `files`, evitando llamadas redundantes.
+     - *Manejo de Rate Limit (HTTP 429)*: Si Cloudflare devuelve 429, el worker en memoria lee la cabecera `Retry-After`, pausa la ejecución y reintenta automáticamente con retroceso exponencial (hasta 2 reintentos).
+     - *Safety Timeout (8s)*: Cada llamada a `purgeCloudflareCache` tiene un temporizador de seguridad de 8s para garantizar que la respuesta al usuario en el dashboard o panel nunca se quede congelada.
+     - *Resiliencia*: Si la API de Cloudflare rechaza el Hostname por configuración o permisos, aplica un fallback automático con `purge_everything: true`.
    - **Estrategia HTML Zero-Retention**: Las páginas HTML de catálogos dinámicos se sirven sin `s-maxage` en Edge (`max-age=0, must-revalidate`), respondiendo directamente desde la memoria RAM del servidor Next.js (`memoryCatalogCache`, ~10-20ms). Esto garantiza que cualquier cambio tras la sincronización se refleje de inmediato en la primera recarga del navegador del usuario.
 
 ---
