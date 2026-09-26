@@ -487,27 +487,38 @@ async function syncFolderRecursive({
     const isCover = parentPath === '_covers' || parentPath.startsWith('_covers/');
     const folderType = isCover ? 'portadas' : 'catalogo';
 
-    // Hash de contenido de Google Drive (md5Checksum cambia con cualquier edición de pixel en Drive)
-    const rawHash = (img as any).md5Checksum || (img.modifiedTime ? new Date(img.modifiedTime).getTime().toString() : 'v1');
-    const contentHash = (img as any).md5Checksum ? (img as any).md5Checksum.slice(0, 12) : rawHash;
+    const existingPhoto = existingPhotosMap.get(img.id);
+
+    // Detección multi-variable instantánea de cambios en Google Drive:
+    // Google Drive actualiza modifiedTime y size de inmediato (en 0s), pero tarda 2 a 4 minutos en recalcular md5Checksum.
+    // Al verificar md5, timestamp y tamaño en bytes al mismo tiempo, detectamos la edición al instante sin esperar a Google.
+    const existingTime = existingPhoto?.drive_modified_time
+      ? new Date(existingPhoto.drive_modified_time).getTime()
+      : 0;
+    const driveTime = img.modifiedTime ? new Date(img.modifiedTime).getTime() : 0;
+    const timeChanged = existingTime > 0 && driveTime > 0 && Math.abs(existingTime - driveTime) > 1000;
+
+    const sizeChanged = img.size && existingPhoto?.size_bytes
+      ? Number(img.size) !== existingPhoto.size_bytes
+      : false;
+
+    const md5Changed = (img as any).md5Checksum && existingPhoto?.md5_checksum
+      ? existingPhoto.md5_checksum !== (img as any).md5Checksum
+      : false;
+
+    // Si cualquiera de las 3 señales cambió -> la foto fue editada en Google Drive
+    const isContentModified = md5Changed || timeChanged || sizeChanged;
+    const isContentUnchanged = !isContentModified;
+
+    // Hash de contenido: si el MD5 de Drive es nuevo, usarlo. Si Drive aún no lo recalcula pero cambió la hora o tamaño, usar el nuevo timestamp
+    const rawHash = (md5Changed && (img as any).md5Checksum)
+      ? (img as any).md5Checksum
+      : (driveTime ? driveTime.toString() : ((img as any).md5Checksum || 'v1'));
+    const contentHash = (rawHash.length > 12) ? rawHash.slice(0, 12) : rawHash;
 
     // Clave inmutable versionada por hash en R2:
     // Si la foto se edita en Drive, el hash cambia -> nueva clave R2 -> nueva URL de Imgproxy -> caché de CDN/navegador actualizado de inmediato!
     const r2Key = `tenants/${tenantId}/${folderType}/${cleanFileName ? cleanFileName + '-' : ''}${img.id}-${contentHash}.${ext}`;
-
-    const existingPhoto = existingPhotosMap.get(img.id);
-
-    // Comparar contenido: primero por md5Checksum de Drive; si no viene, por timestamp en milisegundos
-    let isContentUnchanged = false;
-    if ((img as any).md5Checksum && existingPhoto?.md5_checksum) {
-      isContentUnchanged = existingPhoto.md5_checksum === (img as any).md5Checksum;
-    } else {
-      const existingTime = existingPhoto?.drive_modified_time
-        ? new Date(existingPhoto.drive_modified_time).getTime()
-        : 0;
-      const driveTime = img.modifiedTime ? new Date(img.modifiedTime).getTime() : 0;
-      isContentUnchanged = Math.abs(existingTime - driveTime) <= 1000;
-    }
 
     const isUpToDate =
       !forceReupload &&
