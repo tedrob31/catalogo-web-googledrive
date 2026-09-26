@@ -40,7 +40,31 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
         }
     }, [initialPath]);
 
-    const currentAlbum = activePath[activePath.length - 1];
+    // Refrescar automáticamente con el servidor cuando el usuario vuelve a enfocar la pestaña de la tienda
+    useEffect(() => {
+        const onVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                router.refresh();
+            }
+        };
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        window.addEventListener('focus', onVisibilityChange);
+        return () => {
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            window.removeEventListener('focus', onVisibilityChange);
+        };
+    }, [router]);
+
+    // Mantener sincronizado el álbum actual siempre con los datos frescos de rootAlbum (props)
+    const currentAlbum = useMemo(() => {
+        if (!rootAlbum) return null;
+        const currentTargetId = activePath[activePath.length - 1]?.id;
+        if (!currentTargetId || currentTargetId === rootAlbum.id) {
+            return rootAlbum;
+        }
+        const freshPath = findPathToAlbum(rootAlbum, currentTargetId);
+        return freshPath ? freshPath[freshPath.length - 1] : rootAlbum;
+    }, [rootAlbum, activePath]);
 
     // Search Logic
     const searchResults = useMemo(() => {
@@ -135,6 +159,9 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
         const newUrl = constructUrl(newPath);
         window.history.pushState({ path: newPath.map(a => a.id) }, '', newUrl);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // 3. Refrescar silenciosamente en background para sincronizar si hubo cambios en el servidor
+        router.refresh();
     };
 
     const handleBack = () => {
@@ -144,6 +171,7 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
             const newUrl = constructUrl(newPath);
             window.history.pushState({ path: newPath.map(a => a.id) }, '', newUrl);
             window.scrollTo({ top: 0, behavior: 'smooth' });
+            router.refresh();
         }
     };
 
@@ -153,6 +181,7 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
         const newUrl = constructUrl(newPath);
         window.history.pushState({ path: newPath.map(a => a.id) }, '', newUrl);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        router.refresh();
     };
 
     // Lightbox handlers

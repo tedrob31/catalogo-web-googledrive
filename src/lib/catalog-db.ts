@@ -33,9 +33,9 @@ interface CachedTenantBase {
   cachedAt: number;
 }
 
-// Caché en memoria RAM de alta velocidad en el servidor (TTL de 10 minutos con invalidación instantánea en sync)
+// Caché en memoria RAM de ultra corta duración (TTL de 5 segundos para amortiguar ráfagas concurrentes)
 const memoryCatalogCache = new Map<string, CachedTenantBase>();
-const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_TTL_MS = 5 * 1000;
 
 /**
  * Invalida inmediatamente el catálogo en la memoria RAM del servidor.
