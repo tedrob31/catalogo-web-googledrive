@@ -42,8 +42,12 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
 
     // Refrescar automáticamente con el servidor cuando el usuario vuelve a enfocar la pestaña de la tienda
     useEffect(() => {
+        let lastRefreshTime = 0;
         const onVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
+            const now = Date.now();
+            // Throttle de 3 segundos para evitar que focus y visibilitychange disparen duplicados al mismo tiempo
+            if (document.visibilityState === 'visible' && now - lastRefreshTime > 3000) {
+                lastRefreshTime = now;
                 router.refresh();
             }
         };
