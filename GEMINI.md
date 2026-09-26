@@ -60,3 +60,13 @@ Antes de modificar cualquier funcionalidad o proponer cambios, consulta los docu
 * Rate limit de la API en plan Free: 5 solicitudes de purga por minuto (bucket de 25).
 * Las páginas HTML de catálogos dinámicos nunca deben enviar `s-maxage` alto en Edge; se sirven con `max-age=0, must-revalidate` desde la memoria RAM de Next.js (~10ms) para garantizar actualizaciones instantáneas al sincronizar.
 
+### 8. Navegación en Cliente (0ms) y Revalidación Asíncrona (RSC + In-Memory Amortizer)
+* **Navegación Instantánea en Cliente**: En [src/components/CatalogView.tsx](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/src/components/CatalogView.tsx), el estado de navegación (`activePath`) y el árbol visual se resuelven en memoria local con `useMemo` y `findPathToAlbum`, logrando cambios de carpeta y botones atrás/adelante en 0ms sin pantallas de carga ni bloqueos de red.
+* **Revalidación Asíncrona de Fondo (`router.refresh()`)**: Al navegar o al re-enfocar la pestaña del catálogo, se dispara un `router.refresh()` en background. Transfiere micro-cargas útiles de React Server Components (~4.7-5.3 KB de texto), permitiendo que si una foto fue editada o eliminada en Drive/R2, React concilie el Virtual DOM quirúrgicamente sin recargar la página completa ni provocar parpadeo visual.
+* **Throttle de Eventos del Navegador**: El listener de `visibilitychange` y `focus` implementa un limitador estricto de **3 segundos** para prevenir ráfagas de consultas duplicadas al alternar pestañas o hacer Alt+Tab.
+* **Amortiguador de RAM de Ultra-Corta Duración ([src/lib/catalog-db.ts](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/src/lib/catalog-db.ts))**:
+  * La estructura del catálogo del tenant se almacena en `memoryCatalogCache` (Map en Node.js RAM) con un TTL de 5 segundos (`CACHE_TTL_MS = 5000`).
+  * Cada catálogo de 1,000 fotos consume únicamente ~400-500 KB de RAM (solo metadatos JSON; las fotos binarias residen en R2/Cloudflare CDN).
+  * Protege a Supabase contra ráfagas concurrentes (máximo 1 lectura cada 5s por tienda).
+  * Se invalida inmediatamente al finalizar una sincronización o modificar diseño/portada mediante `invalidateTenantCatalogCache(tenantId)`.
+

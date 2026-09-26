@@ -160,3 +160,23 @@ Consulte el DDL completo en [supabase/AUDIT_SCHEMA.sql](file:///c:/Users/teddy/D
 6. `albums`: Estructura jerárquica de carpetas (`parent_id`, `path`, `order_index`, `cover_photo_r2_key`).
 7. `photos`: Metadatos de imágenes (`r2_key`, `md5_checksum`, `drive_file_id`, `drive_modified_time`).
 8. `sync_logs`: Historial y estado en tiempo real de los procesos de sincronización para el polling del dashboard.
+
+---
+
+## 7. Estrategia de Memoria RAM, Rendimiento y Dimensionamiento de Infraestructura
+
+### Huella de Memoria por Tienda (Tenant Footprint en RAM):
+* En [src/lib/catalog-db.ts](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/src/lib/catalog-db.ts), la memoria RAM de Node.js solo almacena **metadatos livianos** (árbol JSON de IDs, nombres, URLs firmadas de Imgproxy y configuraciones de diseño).
+* Los bytes binarios de las imágenes (JPG/WebP) **nunca tocan la memoria RAM de Next.js**: se almacenan en Cloudflare R2 y se despachan directamente por Cloudflare CDN e Imgproxy.
+* **Métricas de consumo**:
+  * 1 catálogo típico (1,000 fotos + 30 álbumes): **~450 KB - 500 KB** en RAM.
+  * 100 tiendas activas simultáneas en RAM: **~50 MB**.
+  * 500 tiendas activas simultáneas en RAM: **~250 MB**.
+  * 1,000 tiendas activas simultáneas en RAM: **~500 MB**.
+
+### Dimensionamiento del Stack (Docker Compose & VPS):
+* **Asignación en `docker-compose.yml`**: `cpus: 4.0`, `memory: 4096M` (4 GB).
+* **Consumo real de Node.js Standalone**: ~150 MB (base) + ~50 MB (100 tiendas) = **~200 MB a 400 MB**.
+* La aplicación consume entre el **5% y el 10%** del límite asignado en Docker Compose, ofreciendo una holgura superior al 90% para absorber picos extremos de tráfico sin riesgo de *Out-Of-Memory* (OOM).
+* **Ancho de banda**: Las peticiones de navegación y reconciliación RSC (`?_rsc=...`) pesan únicamente ~5 KB. El tráfico pesado multimedia es absorbido por la red CDN global de Cloudflare.
+
