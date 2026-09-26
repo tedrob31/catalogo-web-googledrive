@@ -75,6 +75,22 @@ export async function purgeCloudflareCache(optionsOrSubdomain?: string | Cloudfl
     const data = await res.json();
     if (!data.success) {
       console.warn(`[Cloudflare Purge] Advertencia al purgar caché:`, data.errors);
+      // Fallback: Si falló porque "hosts" requiere plan Enterprise, reintentar con purge_everything (soportado en plan Free)
+      const isEnterpriseError = data.errors?.some((e: any) =>
+        e.code === 1000 ||
+        String(e.message || '').toLowerCase().includes('enterprise')
+      );
+      if (isEnterpriseError) {
+        console.log('[Cloudflare Purge] Fallback a purga de zona completa (purge_everything: true)...');
+        await fetch(`https://api.cloudflare.com/client/v4/zones/${cfZoneId}/purge_cache`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${cfToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ purge_everything: true }),
+        });
+      }
     } else {
       console.log(`[Cloudflare Purge] Caché purgada exitosamente.`);
     }

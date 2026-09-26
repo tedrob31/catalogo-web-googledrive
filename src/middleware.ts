@@ -96,8 +96,9 @@ function applyCacheHeaders(response: NextResponse, request: NextRequest) {
     // Evita congelamientos al dar atrás/adelante en el navegador
     response.headers.set('Cache-Control', 'no-store, no-cache, max-age=0, must-revalidate, proxy-revalidate');
   } else {
-    // Permite a Cloudflare cachear en el Edge (1 día) pero obliga al navegador a validar en cada F5
-    response.headers.set('Cache-Control', 'public, max-age=0, s-maxage=86400, must-revalidate');
+    // El HTML dinámico se sirve en ~10ms desde la RAM de Next.js.
+    // Obligamos a que el navegador y Cloudflare no retengan HTML antiguo en su Edge, permitiendo ver cambios al instante (0s).
+    response.headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
   }
 }
 

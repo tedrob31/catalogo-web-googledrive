@@ -616,8 +616,10 @@ async function syncFolderRecursive({
 
       progress.newUploaded++;
       progress.bytesUploaded += buffer.length;
-      if (progress.modifiedAlbumPaths && !progress.modifiedAlbumPaths.includes(currentPath)) {
-        progress.modifiedAlbumPaths.push(currentPath);
+      // Ruta pública relativa del álbum para purga exacta en Cloudflare (ej: "jeans" o "moda/blusas")
+      const publicRelativePath = parentPath === '' ? '' : (parentPath.includes('/') ? `${parentPath.split('/').slice(1).join('/')}/${currentSlug}` : currentSlug);
+      if (publicRelativePath && progress.modifiedAlbumPaths && !progress.modifiedAlbumPaths.includes(publicRelativePath)) {
+        progress.modifiedAlbumPaths.push(publicRelativePath);
       }
 
       // Reportar progreso incremental en tiempo real en Supabase para el polling

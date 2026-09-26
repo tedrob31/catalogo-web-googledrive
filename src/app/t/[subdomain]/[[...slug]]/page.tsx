@@ -2,7 +2,8 @@ import { Metadata } from 'next';
 import { loadTenantCatalog } from '@/lib/catalog-db';
 import CatalogView from '@/components/CatalogView';
 
-export const revalidate = 60; // ISR en Cloudflare Edge / Next.js
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 type Props = {
   params: Promise<{
