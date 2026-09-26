@@ -198,12 +198,11 @@ export async function POST(request: NextRequest) {
     invalidateTenantCatalogCache(tenantId);
     revalidatePath('/', 'layout');
 
-    // Purgar selectivamente la home y el endpoint de configuración del storefront en Cloudflare
+    // Purgar el subdominio del inquilino por Hostname en Cloudflare para reflejar cambios de diseño
     if (activeSubdomain) {
       await purgeCloudflareCache({
         subdomain: activeSubdomain,
-        urls: ['/', `/api/storefront?subdomain=${activeSubdomain}`],
-        threshold: 5,
+        purgeAll: true,
       });
     }
 

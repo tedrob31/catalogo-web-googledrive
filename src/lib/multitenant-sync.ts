@@ -291,6 +291,9 @@ export async function runTenantSync(
     // Revalidación ISR en Next.js y memoria RAM
     try {
       invalidateTenantCatalogCache(tenantId);
+      if (tenant.subdomain) {
+        invalidateTenantCatalogCache(tenant.subdomain);
+      }
       revalidatePath('/', 'layout');
     } catch (e) {
       // Ignorar si se ejecuta fuera de contexto de request
@@ -300,20 +303,10 @@ export async function runTenantSync(
     if (tenant.subdomain) {
       if (progress.newUploaded === 0 && deletedPhotosCount === 0 && deletedAlbumIds.length === 0) {
         console.log('[Sync] Sin cambios en fotos ni álbumes; espejo idéntico, caché CDN conservado intacto.');
-      } else if (progress.newUploaded <= 5 && deletedPhotosCount === 0 && progress.modifiedAlbumPaths && progress.modifiedAlbumPaths.length <= 3) {
-        // Pocos cambios: purgar selectivamente solo las URLs de álbumes afectados y la home
-        const affectedUrls = [
-          '/',
-          `/api/storefront?subdomain=${tenant.subdomain}`,
-          ...progress.modifiedAlbumPaths.map((p) => `/${p}`),
-        ];
-        await purgeCloudflareCache({
-          subdomain: tenant.subdomain,
-          urls: affectedUrls,
-          threshold: 5,
-        });
       } else {
-        // Muchos cambios (> 5 fotos o eliminaciones estructurales): purga total del subdominio por Hostname
+        // Al haber cualquier cambio (foto subida, editada o eliminada), purgar el subdominio completo del inquilino por Hostname.
+        // La purga por Hostname limpia 100% de las rutas (/album, /album/, RSC, etc.) de forma aislada sin afectar a otras tiendas.
+        // Además, gracias a la cola con batching en cloudflare.ts, múltiples tiendas concurrentes se agrupan en 1 sola llamada API.
         await purgeCloudflareCache({
           subdomain: tenant.subdomain,
           purgeAll: true,

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
 import { invalidateTenantCatalogCache } from '@/lib/catalog-db';
+import { purgeCloudflareCache } from '@/lib/cloudflare';
 
 // GET: Obtener los bloques de Storefront del tenant actual
 export async function GET(request: NextRequest) {
@@ -89,6 +90,14 @@ export async function POST(request: NextRequest) {
 
     invalidateTenantCatalogCache(tenantId);
     revalidatePath('/', 'layout');
+
+    const activeSubdomain = (membership.tenants as any)?.subdomain;
+    if (activeSubdomain) {
+      await purgeCloudflareCache({
+        subdomain: activeSubdomain,
+        purgeAll: true,
+      });
+    }
 
     return NextResponse.json({ success: true, message: 'Storefront guardado en Supabase' });
   } catch (error: any) {

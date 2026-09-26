@@ -54,6 +54,8 @@ export function invalidateTenantCatalogCache(tenantIdOrSubdomain?: string) {
       entry.tenant.subdomain === tenantIdOrSubdomain
     ) {
       memoryCatalogCache.delete(key);
+      if (entry.tenant.id) memoryCatalogCache.delete(entry.tenant.id);
+      if (entry.tenant.subdomain) memoryCatalogCache.delete(entry.tenant.subdomain);
       console.log(`[Catalog Cache] Memoria caché invalidada para tenant: ${tenantIdOrSubdomain}`);
     }
   }
