@@ -94,19 +94,19 @@ export async function runTenantSync(
       .eq('id', logId);
   }
 
-  const drive = await getDriveClientForTenant(tenantId);
-
-  const progress: SyncProgress = {
-    tenantId,
-    albumsCount: 0,
-    photosCount: 0,
-    newUploaded: 0,
-    skipped: 0,
-    bytesUploaded: 0,
-    modifiedAlbumPaths: [],
-  };
-
   try {
+    const drive = await getDriveClientForTenant(tenantId);
+
+    const progress: SyncProgress = {
+      tenantId,
+      albumsCount: 0,
+      photosCount: 0,
+      newUploaded: 0,
+      skipped: 0,
+      bytesUploaded: 0,
+      modifiedAlbumPaths: [],
+    };
+
     // 3.1 Pre-cargar en memoria (RAM) todos los álbumes y fotos del tenant en 2 consultas únicas
     // Esto elimina las 150+ consultas HTTP secuenciales a Supabase que causaban lentitud extrema
     const [{ data: initialDbAlbums }, { data: initialDbPhotos }] = await Promise.all([
@@ -317,12 +317,42 @@ export async function runTenantSync(
     return progress;
   } catch (error: any) {
     console.error(`[Sync Tenant ${tenantId}] Error fatal:`, error);
+    const rawError = String(error?.message || error || '');
+    const isAuthExpired =
+      rawError.includes('invalid_grant') ||
+      rawError.includes('Token has been expired') ||
+      rawError.includes('revoked') ||
+      rawError.includes('falta el refresh_token') ||
+      rawError.includes('invalid_token') ||
+      error?.code === 401 ||
+      (error?.code === 400 && rawError.includes('token'));
+
+    const userFriendlyMessage = isAuthExpired
+      ? 'AUTH_EXPIRED: Tu sesión con Google Drive ha expirado. Por favor reconecta tu cuenta.'
+      : (error.message || 'Error desconocido durante sync');
+
+    if (isAuthExpired) {
+      try {
+        await supabase
+          .from('google_integrations')
+          .update({
+            refresh_token: null,
+            access_token: null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('tenant_id', tenantId);
+        console.warn(`[Sync Tenant ${tenantId}] Token de Google Drive expirado. Se anuló el token para requerir reconexión.`);
+      } catch (e) {
+        console.error('[Sync] Error actualizando estado de conexión:', e);
+      }
+    }
+
     if (logId) {
       await supabase
         .from('sync_logs')
         .update({
           status: 'failed',
-          error_message: error.message || 'Error desconocido durante sync',
+          error_message: userFriendlyMessage,
           completed_at: new Date().toISOString(),
         })
         .eq('id', logId);

@@ -10,6 +10,7 @@ import {
   FaShareAlt,
   FaStore,
   FaSync,
+  FaCheckCircle,
 } from 'react-icons/fa';
 
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
@@ -20,6 +21,7 @@ import EffectsTab from '@/components/dashboard/EffectsTab';
 import BrandingTab from '@/components/dashboard/BrandingTab';
 import HistoryTab from '@/components/dashboard/HistoryTab';
 import CoverSelectorModal from '@/components/dashboard/CoverSelectorModal';
+import AccountSecurityModal from '@/components/dashboard/AccountSecurityModal';
 import StorefrontBuilder from '@/components/admin/StorefrontBuilder';
 
 export const dynamic = 'force-dynamic';
@@ -48,6 +50,8 @@ export default function TenantDashboard() {
   const [savingFolders, setSavingFolders] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncLiveStatus, setSyncLiveStatus] = useState<any>(null);
+  const [authExpiredModalOpen, setAuthExpiredModalOpen] = useState(false);
+  const [securityModalOpen, setSecurityModalOpen] = useState(false);
 
   // Álbumes e Imágenes para el gestor de portadas
   const [albums, setAlbums] = useState<AlbumItem[]>([]);
@@ -283,9 +287,24 @@ export default function TenantDashboard() {
       const data = await res.json();
       if (data.folders) {
         setFolders(data.folders);
+      } else if (data.error) {
+        const errMsg = String(data.error);
+        if (
+          errMsg.includes('invalid_grant') ||
+          errMsg.includes('expired') ||
+          errMsg.includes('revoked') ||
+          errMsg.includes('AUTH_EXPIRED')
+        ) {
+          setAuthExpiredModalOpen(true);
+        } else {
+          alert(`Error al buscar carpetas: ${errMsg}`);
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      if (err?.message?.includes('invalid_grant')) {
+        setAuthExpiredModalOpen(true);
+      }
     } finally {
       setSearchingFolders(false);
     }
@@ -339,7 +358,20 @@ export default function TenantDashboard() {
             clearInterval(interval);
             setSyncing(false);
             setSyncLiveStatus(null);
-            alert(`Error en sincronización: ${data.log.error_message || 'Desconocido'}`);
+
+            const errMsg = String(data.log.error_message || '');
+            const isAuthExpired =
+              errMsg.includes('invalid_grant') ||
+              errMsg.includes('AUTH_EXPIRED') ||
+              errMsg.includes('expired') ||
+              errMsg.includes('revoked') ||
+              errMsg.includes('Token has been expired');
+
+            if (isAuthExpired) {
+              setAuthExpiredModalOpen(true);
+            } else {
+              alert(`Error en sincronización: ${errMsg || 'Desconocido'}`);
+            }
             loadDashboardData();
           }
         }
@@ -358,11 +390,27 @@ export default function TenantDashboard() {
       if (data.success && data.logId) {
         pollSync(data.logId);
       } else {
-        alert(data.error || data.message || 'Error al iniciar sincronización');
+        const errMsg = String(data.error || data.message || '');
+        const isAuthExpired =
+          errMsg.includes('invalid_grant') ||
+          errMsg.includes('AUTH_EXPIRED') ||
+          errMsg.includes('expired') ||
+          errMsg.includes('revoked');
+
+        if (isAuthExpired) {
+          setAuthExpiredModalOpen(true);
+        } else {
+          alert(errMsg || 'Error al iniciar sincronización');
+        }
         setSyncing(false);
       }
     } catch (err: any) {
-      alert(err.message || 'Error durante la sincronización');
+      const errMsg = String(err?.message || '');
+      if (errMsg.includes('invalid_grant') || errMsg.includes('AUTH_EXPIRED') || errMsg.includes('expired')) {
+        setAuthExpiredModalOpen(true);
+      } else {
+        alert(errMsg || 'Error durante la sincronización');
+      }
       setSyncing(false);
     }
   }
@@ -557,6 +605,7 @@ export default function TenantDashboard() {
         plan={plan}
         baseDomain={baseDomain}
         onSignOut={handleSignOut}
+        onOpenSecurityModal={() => setSecurityModalOpen(true)}
       />
 
       {/* Main Container */}
@@ -719,6 +768,52 @@ export default function TenantDashboard() {
         title={coverModal.title}
         availableCovers={availableCovers}
         detailedPhotos={detailedPhotos}
+      />
+
+      {/* 6. Modal Amigable de Sesión Expirada (7 días en Beta) */}
+      {authExpiredModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-amber-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-4 text-xl">
+              <FaGoogle />
+            </div>
+            <h3 className="text-base font-bold text-white mb-2">
+              Tu sesión de Google Drive necesita renovarse
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed mb-4">
+              Por políticas de seguridad de Google en fase de prueba (Beta), la vinculación caduca cada <strong>7 días</strong>.
+            </p>
+            <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-xs text-slate-400 mb-6">
+              <p className="flex items-center gap-1.5 text-emerald-400 font-semibold mb-1">
+                <FaCheckCircle className="text-xs" />
+                <span>Tu catálogo público sigue funcionando</span>
+              </p>
+              Tus clientes pueden seguir viendo tus productos con normalidad. Solo necesitas reconectar para sincronizar nuevos cambios de Google Drive.
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <a
+                href="/api/auth/google"
+                className="flex-1 py-2.5 px-4 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-semibold text-xs rounded-xl text-center shadow-lg transition flex items-center justify-center gap-2"
+              >
+                <FaGoogle />
+                <span>Reconectar Google Drive</span>
+              </a>
+              <button
+                onClick={() => setAuthExpiredModalOpen(false)}
+                className="py-2.5 px-4 bg-white/10 hover:bg-white/20 text-slate-300 text-xs rounded-xl font-medium transition cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. Modal de Seguridad y Asignación de Contraseña */}
+      <AccountSecurityModal
+        isOpen={securityModalOpen}
+        onClose={() => setSecurityModalOpen(false)}
+        userEmail={user?.email || ''}
       />
     </div>
   );

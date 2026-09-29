@@ -1,12 +1,13 @@
 'use client';
 
-import { FaCrown, FaExternalLinkAlt, FaSignOutAlt } from 'react-icons/fa';
+import { FaCrown, FaExternalLinkAlt, FaSignOutAlt, FaKey } from 'react-icons/fa';
 
 interface DashboardHeaderProps {
   tenant: any;
   plan: any;
   baseDomain: string;
   onSignOut: () => void;
+  onOpenSecurityModal: () => void;
 }
 
 export default function DashboardHeader({
@@ -14,6 +15,7 @@ export default function DashboardHeader({
   plan,
   baseDomain,
   onSignOut,
+  onOpenSecurityModal,
 }: DashboardHeaderProps) {
   const storefrontUrl = tenant ? `https://${tenant.subdomain}.${baseDomain}` : '#';
 
@@ -44,7 +46,16 @@ export default function DashboardHeader({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            onClick={onOpenSecurityModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-300 hover:text-white rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition cursor-pointer font-medium"
+            title="Asignar o cambiar contraseña de acceso"
+          >
+            <FaKey className="text-amber-400 text-[11px]" />
+            <span className="hidden sm:inline">Contraseña</span>
+          </button>
+
           <button
             onClick={onSignOut}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition cursor-pointer"

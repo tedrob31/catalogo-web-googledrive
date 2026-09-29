@@ -54,17 +54,29 @@ export default function DashboardMetrics({
         <div className="text-sm font-semibold text-white truncate">
           {integration?.google_email || 'No vinculada'}
         </div>
-        <div className="text-xs text-slate-500 mt-2 flex items-center gap-1">
-          {integration?.is_connected ? (
-            <>
-              <FaCheckCircle className="text-emerald-400 text-xs" />
-              <span className="text-emerald-400 font-medium">Conectado y Autorizado</span>
-            </>
-          ) : (
-            <>
-              <FaExclamationCircle className="text-amber-400 text-xs" />
-              <span>Requiere autorización</span>
-            </>
+        <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            {integration?.is_connected ? (
+              <>
+                <FaCheckCircle className="text-emerald-400 text-xs" />
+                <span className="text-emerald-400 font-medium">Conectado y Autorizado</span>
+              </>
+            ) : (
+              <>
+                <FaExclamationCircle className="text-amber-400 text-xs" />
+                <span className="text-amber-400 font-medium">
+                  {integration?.google_email ? 'Sesión expirada (7 días)' : 'Requiere autorización'}
+                </span>
+              </>
+            )}
+          </div>
+          {!integration?.is_connected && integration?.google_email && (
+            <a
+              href="/api/auth/google"
+              className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded font-semibold text-[11px] transition"
+            >
+              Reconectar
+            </a>
           )}
         </div>
       </div>
