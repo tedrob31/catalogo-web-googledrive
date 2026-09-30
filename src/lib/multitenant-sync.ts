@@ -227,6 +227,14 @@ export async function runTenantSync(
 
     if (deletedAlbumIds.length > 0) {
       console.log(`[Sync Tenant ${tenantId}] Detectados ${deletedAlbumIds.length} álbumes eliminados en Drive. Limpiando espejo...`);
+      for (const aId of deletedAlbumIds) {
+        const alb = Array.from(existingAlbumsMap.values()).find((x: any) => x.id === aId);
+        if (alb?.cover_photo_r2_key) {
+          await deleteObjectFromR2(alb.cover_photo_r2_key).catch((e) =>
+            console.warn(`Error eliminando portada huérfana de R2 (${alb.cover_photo_r2_key}):`, e)
+          );
+        }
+      }
       for (let i = 0; i < deletedAlbumIds.length; i += 50) {
         const batch = deletedAlbumIds.slice(i, i + 50);
         await supabase.from('albums').delete().in('id', batch);
@@ -237,12 +245,23 @@ export async function runTenantSync(
     progress.photosCount = visitedDriveFileIds.size;
     progress.albumsCount = visitedDriveFolderIds.size;
 
-    // 5. Actualizar métricas acumuladas del tenant y marcar log como completado
+    // 5. Calcular almacenamiento exacto real de las fotos vigentes del tenant
+    const { data: storageRows } = await supabase
+      .from('photos')
+      .select('size_bytes')
+      .eq('tenant_id', tenantId);
+
+    const actualStorageBytes = (storageRows || []).reduce(
+      (sum, p: any) => sum + Number(p.size_bytes || 0),
+      0
+    );
+
+    // Actualizar métricas del tenant y marcar log como completado
     await supabase
       .from('tenants')
       .update({
         current_photos_count: progress.photosCount,
-        current_storage_bytes: (tenant.current_storage_bytes || 0) + progress.bytesUploaded,
+        current_storage_bytes: actualStorageBytes,
         updated_at: new Date().toISOString(),
       })
       .eq('id', tenantId);

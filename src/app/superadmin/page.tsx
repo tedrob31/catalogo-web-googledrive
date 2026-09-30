@@ -14,6 +14,8 @@ import {
   FaSignOutAlt,
   FaCrown,
   FaLock,
+  FaEdit,
+  FaSave,
 } from 'react-icons/fa';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +30,21 @@ export default function SuperAdminDashboard() {
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [tenants, setTenants] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [planForm, setPlanForm] = useState<{
+    id: string;
+    name: string;
+    max_photos: number;
+    max_storage_mb: number;
+    price_monthly: number;
+  }>({
+    id: '',
+    name: '',
+    max_photos: 500,
+    max_storage_mb: 1024,
+    price_monthly: 0,
+  });
+  const [savingPlan, setSavingPlan] = useState(false);
   const [globalStats, setGlobalStats] = useState({
     totalTenants: 0,
     activeTenants: 0,
@@ -135,6 +152,44 @@ export default function SuperAdminDashboard() {
       alert('Error cambiando plan: ' + error.message);
     } else {
       checkAccessAndLoad();
+    }
+  }
+
+  function startEditPlan(plan: any) {
+    setEditingPlanId(plan.id);
+    setPlanForm({
+      id: plan.id,
+      name: plan.name,
+      max_photos: plan.max_photos,
+      max_storage_mb: plan.max_storage_mb,
+      price_monthly: Number(plan.price_monthly),
+    });
+  }
+
+  async function handleSavePlan(planId: string) {
+    setSavingPlan(true);
+    try {
+      const { error } = await supabase
+        .from('subscription_plans')
+        .update({
+          name: planForm.name,
+          max_photos: Number(planForm.max_photos),
+          max_storage_mb: Number(planForm.max_storage_mb),
+          price_monthly: Number(planForm.price_monthly),
+        })
+        .eq('id', planId);
+
+      if (error) {
+        alert('Error actualizando plan: ' + error.message);
+      } else {
+        alert('¡Plan actualizado correctamente!');
+        setEditingPlanId(null);
+        checkAccessAndLoad();
+      }
+    } catch (err: any) {
+      alert(err?.message || 'Error al guardar plan');
+    } finally {
+      setSavingPlan(false);
     }
   }
 
@@ -260,9 +315,190 @@ export default function SuperAdminDashboard() {
               <FaCrown className="text-yellow-400" />
             </div>
             <div className="text-3xl font-black text-white">{plans.length}</div>
-            <span className="text-xs text-slate-500 font-medium mt-1 block">
-              Gratuito, Pro, Enterprise
+            <span className="text-xs text-slate-500 font-medium mt-1 block truncate">
+              {plans.map((p) => p.name).join(', ') || 'Básico, Pro, Premium'}
             </span>
+          </div>
+        </div>
+
+        {/* Plans Management Section */}
+        <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <FaCrown className="text-amber-400 text-sm" />
+                <span>Gestión de Planes de Suscripción</span>
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Configura los nombres, límites de fotos, almacenamiento y precios de cada plan. Los cambios aplican de inmediato en toda la plataforma.
+              </p>
+            </div>
+            <span className="text-xs px-2.5 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-300 rounded-lg font-mono">
+              {plans.length} Planes Activos
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {plans.map((p) => {
+              const isEditing = editingPlanId === p.id;
+              return (
+                <div
+                  key={p.id}
+                  className={`rounded-xl border p-5 transition flex flex-col justify-between ${
+                    isEditing
+                      ? 'bg-slate-800/90 border-amber-500/50 shadow-lg shadow-amber-500/5'
+                      : 'bg-slate-900/60 border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-mono uppercase tracking-wider text-slate-400">
+                        Slug: <strong className="text-white">{p.slug}</strong>
+                      </span>
+                      <span
+                        className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                          p.slug === 'free'
+                            ? 'bg-blue-500/20 text-blue-400'
+                            : p.slug === 'pro'
+                            ? 'bg-amber-500/20 text-amber-400'
+                            : 'bg-rose-500/20 text-rose-400'
+                        }`}
+                      >
+                        {p.name}
+                      </span>
+                    </div>
+
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1 font-medium">
+                            Nombre del Plan:
+                          </label>
+                          <input
+                            type="text"
+                            value={planForm.name}
+                            onChange={(e) =>
+                              setPlanForm((prev) => ({ ...prev, name: e.target.value }))
+                            }
+                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1 font-medium">
+                            Límite de Fotos:
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={planForm.max_photos}
+                            onChange={(e) =>
+                              setPlanForm((prev) => ({
+                                ...prev,
+                                max_photos: Number(e.target.value),
+                              }))
+                            }
+                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1 font-medium">
+                            Límite Almacenamiento (MB):
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={planForm.max_storage_mb}
+                            onChange={(e) =>
+                              setPlanForm((prev) => ({
+                                ...prev,
+                                max_storage_mb: Number(e.target.value),
+                              }))
+                            }
+                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] text-slate-400 mb-1 font-medium">
+                            Precio Mensual ($):
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min={0}
+                            value={planForm.price_monthly}
+                            onChange={(e) =>
+                              setPlanForm((prev) => ({
+                                ...prev,
+                                price_monthly: Number(e.target.value),
+                              }))
+                            }
+                            className="w-full bg-slate-800 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 my-2 text-xs">
+                        <div className="text-xl font-extrabold text-white">
+                          {p.name}
+                        </div>
+                        <div className="flex justify-between py-1 border-b border-white/5 text-slate-300">
+                          <span>Límite de Fotos:</span>
+                          <strong className="text-white font-mono">{p.max_photos} fotos</strong>
+                        </div>
+                        <div className="flex justify-between py-1 border-b border-white/5 text-slate-300">
+                          <span>Almacenamiento:</span>
+                          <strong className="text-white font-mono">
+                            {p.max_storage_mb >= 1024
+                              ? `${(p.max_storage_mb / 1024).toFixed(1)} GB`
+                              : `${p.max_storage_mb} MB`}
+                          </strong>
+                        </div>
+                        <div className="flex justify-between py-1 text-slate-300">
+                          <span>Precio Mensual:</span>
+                          <strong className="text-emerald-400 font-mono">
+                            {Number(p.price_monthly) === 0
+                              ? 'Gratis ($0.00)'
+                              : `$${Number(p.price_monthly).toFixed(2)}`}
+                          </strong>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-4 mt-2 border-t border-white/10 flex gap-2">
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={() => handleSavePlan(p.id)}
+                          disabled={savingPlan}
+                          className="flex-1 py-1.5 px-3 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 shadow"
+                        >
+                          <FaSave />
+                          <span>{savingPlan ? 'Guardando...' : 'Guardar'}</span>
+                        </button>
+                        <button
+                          onClick={() => setEditingPlanId(null)}
+                          className="py-1.5 px-3 bg-white/10 hover:bg-white/20 text-slate-300 rounded-lg text-xs transition cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => startEditPlan(p)}
+                        className="w-full py-1.5 px-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <FaEdit className="text-amber-400 text-[10px]" />
+                        <span>Editar Configuración</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 

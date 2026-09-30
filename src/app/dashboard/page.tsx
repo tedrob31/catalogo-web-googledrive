@@ -315,6 +315,21 @@ export default function TenantDashboard() {
       alert('Por favor selecciona la carpeta principal de tu catálogo.');
       return;
     }
+
+    const previousFolderId = integration?.catalog_folder_id;
+    const isFolderChanged = previousFolderId && previousFolderId !== selectedCatalogFolder.id;
+
+    if (isFolderChanged) {
+      const confirmed = window.confirm(
+        `⚠️ ATENCIÓN: Estás cambiando la carpeta principal de tu catálogo:\n\n` +
+        `• Carpeta anterior: "${integration?.catalog_folder_name || 'Anterior'}"\n` +
+        `• Nueva carpeta: "${selectedCatalogFolder.name}"\n\n` +
+        `Al guardar y sincronizar, todas las fotos y álbumes de la carpeta anterior se eliminarán automáticamente de la tienda, de Supabase y de Cloudflare R2 para dar paso a la nueva estructura.\n\n` +
+        `¿Deseas guardar este cambio y sincronizar de inmediato?`
+      );
+      if (!confirmed) return;
+    }
+
     setSavingFolders(true);
     try {
       const res = await fetch('/api/drive/folders', {
@@ -329,8 +344,14 @@ export default function TenantDashboard() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Carpetas configuradas correctamente en Supabase.');
-        loadDashboardData();
+        if (isFolderChanged) {
+          alert('¡Carpetas actualizadas! Sincronizando catálogo para descargar la nueva estructura y limpiar fotos anteriores...');
+          await loadDashboardData();
+          handleSyncNow();
+        } else {
+          alert('Carpetas configuradas correctamente.');
+          loadDashboardData();
+        }
       } else {
         alert(data.error || 'Error al guardar carpetas');
       }
