@@ -4,18 +4,16 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FaGoogle, FaEnvelope, FaLock, FaArrowRight } from 'react-icons/fa';
+import { FaGoogle, FaEnvelope, FaLock, FaArrowRight, FaShieldAlt } from 'react-icons/fa';
 
 export const dynamic = 'force-dynamic';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [isAppSubdomain, setIsAppSubdomain] = useState(false);
 
   const router = useRouter();
   const supabase = createClient();
@@ -37,28 +35,22 @@ export default function LoginPage() {
 
     try {
       const destination = getRedirectTarget();
-      if (isRegister) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}${destination}`,
-          },
-        });
-        if (error) throw error;
-        setMessage('¡Cuenta creada con éxito! Revisa tu correo o inicia sesión.');
-        setIsRegister(false);
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        router.push(destination);
-        router.refresh();
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Credenciales incorrectas o correo no registrado en la fase de pruebas.');
+        }
+        throw error;
       }
+
+      router.push(destination);
+      router.refresh();
     } catch (err: any) {
-      setError(err.message || 'Ocurrió un error al procesar la solicitud');
+      setError(err.message || 'Ocurrió un error al iniciar sesión');
     } finally {
       setLoading(false);
     }
@@ -88,17 +80,19 @@ export default function LoginPage() {
             <span className="text-2xl font-black text-white">C4</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {isRegister ? 'Crear tu Catálogo SaaS' : 'Bienvenido a c4talogo.com'}
+            Acceso a tu Catálogo
           </h1>
-          <p className="text-sm text-gray-400 mt-2">
-            {isRegister
-              ? 'Registra tu tienda y conecta tus carpetas de Google Drive en minutos'
-              : 'Accede al panel de control de tu catálogo o administración'}
+          <p className="text-xs text-gray-400 mt-2">
+            Ingresa a tu panel con tus credenciales asignadas o cuenta Google
           </p>
+          <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-400 font-medium">
+            <FaShieldAlt className="text-[10px]" />
+            <span>Fase de prueba privada por invitación</span>
+          </div>
         </div>
 
         {error && (
-          <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium">
+          <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium leading-relaxed">
             {error}
           </div>
         )}
@@ -112,7 +106,7 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white text-gray-900 hover:bg-gray-100 font-semibold text-sm transition-all shadow-md active:scale-[0.98] mb-6"
+          className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white text-gray-900 hover:bg-gray-100 font-semibold text-sm transition-all shadow-md active:scale-[0.98] mb-6 cursor-pointer"
         >
           <FaGoogle className="text-red-500 text-lg" />
           <span>Continuar con Google</span>
@@ -164,28 +158,14 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-semibold text-sm transition-all shadow-lg shadow-rose-500/25 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none mt-2"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-semibold text-sm transition-all shadow-lg shadow-rose-500/25 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none mt-2 cursor-pointer"
           >
-            <span>{loading ? 'Cargando...' : isRegister ? 'Registrar Mi Tienda' : 'Iniciar Sesión'}</span>
+            <span>{loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}</span>
             <FaArrowRight className="text-xs" />
           </button>
         </form>
 
         <div className="text-center mt-6">
-          <button
-            type="button"
-            onClick={() => {
-              setIsRegister(!isRegister);
-              setError(null);
-              setMessage(null);
-            }}
-            className="text-xs text-gray-400 hover:text-white transition"
-          >
-            {isRegister
-              ? '¿Ya tienes una cuenta registrada? Inicia Sesión'
-              : '¿No tienes una cuenta aún? Crea tu catálogo gratis'}
-          </button>
-
           <p className="text-[11px] text-gray-500 mt-4 leading-relaxed">
             Al continuar, aceptas nuestros{' '}
             <Link href="/terms" className="text-gray-400 underline hover:text-amber-400">

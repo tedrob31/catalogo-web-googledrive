@@ -1,4 +1,11 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
+} from '@aws-sdk/client-s3';
 
 // Obtener nombre del bucket de R2
 export function getR2BucketName(): string {
@@ -107,3 +114,48 @@ export async function deleteObjectFromR2(key: string): Promise<void> {
     console.error(`Error eliminando de R2 (${key}):`, error);
   }
 }
+
+/**
+ * Elimina todos los objetos de un inquilino en Cloudflare R2 recursivamente (limpieza total de fotos y portadas)
+ */
+export async function deleteTenantPrefixFromR2(tenantId: string): Promise<number> {
+  const client = getR2Client();
+  const bucket = getR2BucketName();
+  const prefix = `tenants/${tenantId}/`;
+  let deletedCount = 0;
+  let continuationToken: string | undefined = undefined;
+
+  try {
+    do {
+      const listRes: any = await client.send(
+        new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
+        })
+      );
+
+      const objects: any[] = listRes.Contents || [];
+      if (objects.length > 0) {
+        const deleteParams = {
+          Bucket: bucket,
+          Delete: {
+            Objects: objects.map((obj: any) => ({ Key: obj.Key! })),
+            Quiet: true,
+          },
+        };
+        await client.send(new DeleteObjectsCommand(deleteParams));
+        deletedCount += objects.length;
+      }
+
+      continuationToken = listRes.NextContinuationToken;
+    } while (continuationToken);
+
+    console.log(`[R2 Cleanup] Se eliminaron ${deletedCount} objetos del tenant ${tenantId} en R2`);
+    return deletedCount;
+  } catch (error) {
+    console.error(`[R2 Cleanup Error] Error eliminando prefijo ${prefix} en R2:`, error);
+    return deletedCount;
+  }
+}
+
