@@ -127,11 +127,32 @@ export default function TenantDashboard() {
     setUser(user);
 
     // 1. Cargar membresía y tenant
-    const { data: membership } = await supabase
+    let { data: membership } = await supabase
       .from('tenant_users')
       .select('role, tenant_id, tenants (*, subscription_plans (*))')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
+
+    if (!membership || !membership.tenants) {
+      // Intentar auto-aprovisionamiento si el usuario está en la lista blanca o si la beta está abierta
+      try {
+        const provRes = await fetch('/api/tenant/auto-provision', {
+          method: 'POST',
+        });
+        if (provRes.ok) {
+          const provData = await provRes.json();
+          if (provData.authorized && provData.tenant) {
+            membership = {
+              role: 'owner',
+              tenant_id: provData.tenant.id,
+              tenants: provData.tenant,
+            };
+          }
+        }
+      } catch (provErr) {
+        console.error('Error auto-aprovisionando tienda:', provErr);
+      }
+    }
 
     if (!membership || !membership.tenants) {
       setLoading(false);

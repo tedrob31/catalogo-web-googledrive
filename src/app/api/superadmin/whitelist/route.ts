@@ -51,16 +51,30 @@ export async function GET() {
   // 3. Obtener correos con tiendas activas para saber si ya crearon tienda
   const { data: activeOwners } = await adminSupabase
     .from('tenant_users')
-    .select('tenant_id, tenants (name, subdomain, status)')
+    .select('user_id, tenant_id, role, tenants (id, name, subdomain, status)')
     .eq('role', 'owner');
 
-  const { data: allUsers } = await adminSupabase.auth.admin.listUsers();
-  const userMap = new Map((allUsers?.users || []).map((u) => [u.id, u.email?.toLowerCase()]));
+  const { data: googleIntegrations } = await adminSupabase
+    .from('google_integrations')
+    .select('tenant_id, google_email');
+
+  const { data: allUsers } = await adminSupabase.auth.admin.listUsers({ perPage: 1000 });
+  const userMap = new Map((allUsers?.users || []).map((u) => [u.id, u.email?.toLowerCase().trim()]));
 
   const activeEmailSet = new Set<string>();
+
   for (const row of activeOwners || []) {
-    const email = userMap.get((row as any).user_id);
-    if (email) activeEmailSet.add(email);
+    const t = (row as any).tenants;
+    if (t && t.status === 'active') {
+      const email = userMap.get((row as any).user_id);
+      if (email) activeEmailSet.add(email);
+    }
+  }
+
+  for (const gi of googleIntegrations || []) {
+    if (gi.google_email) {
+      activeEmailSet.add(gi.google_email.toLowerCase().trim());
+    }
   }
 
   const items = (whitelistRows || []).map((w: any) => ({
