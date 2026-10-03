@@ -26,6 +26,10 @@ import {
   FaKey,
   FaCheckCircle,
   FaExclamationTriangle,
+  FaEnvelope,
+  FaUserShield,
+  FaToggleOn,
+  FaToggleOff,
 } from 'react-icons/fa';
 
 export const dynamic = 'force-dynamic';
@@ -45,6 +49,13 @@ export default function SuperAdminDashboard() {
   const [activeLanding, setActiveLanding] = useState<'minimal' | 'classic'>('minimal');
   const [savingLanding, setSavingLanding] = useState(false);
   const [landingNotice, setLandingNotice] = useState<string | null>(null);
+
+  // Whitelist / Fase Beta
+  const [whitelist, setWhitelist] = useState<any[]>([]);
+  const [closedBetaEnabled, setClosedBetaEnabled] = useState(true);
+  const [newWhitelistEmail, setNewWhitelistEmail] = useState('');
+  const [addingWhitelist, setAddingWhitelist] = useState(false);
+  const [whitelistNotice, setWhitelistNotice] = useState<string | null>(null);
 
   // Edición de Planes
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
@@ -104,6 +115,7 @@ export default function SuperAdminDashboard() {
   useEffect(() => {
     checkAccessAndLoad();
     loadSystemSettings();
+    loadWhitelist();
   }, []);
 
   async function loadSystemSettings() {
@@ -117,6 +129,83 @@ export default function SuperAdminDashboard() {
       }
     } catch (err) {
       console.error('Error cargando configuración:', err);
+    }
+  }
+
+  async function loadWhitelist() {
+    try {
+      const res = await fetch('/api/superadmin/whitelist');
+      if (res.ok) {
+        const data = await res.json();
+        setWhitelist(data.whitelist || []);
+        if (typeof data.closed_beta_enabled === 'boolean') {
+          setClosedBetaEnabled(data.closed_beta_enabled);
+        }
+      }
+    } catch (e) {
+      console.error('Error cargando whitelist:', e);
+    }
+  }
+
+  async function handleToggleClosedBeta() {
+    const nextState = !closedBetaEnabled;
+    try {
+      const res = await fetch('/api/superadmin/whitelist', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ closed_beta_enabled: nextState }),
+      });
+      if (res.ok) {
+        setClosedBetaEnabled(nextState);
+        setWhitelistNotice(
+          nextState
+            ? '✓ Modo Prueba Cerrada Activado: Solo correos autorizados pueden acceder.'
+            : '✓ Modo Abierto Activado: Cualquier usuario puede registrarse.'
+        );
+        setTimeout(() => setWhitelistNotice(null), 4000);
+      }
+    } catch (e) {
+      alert('Error cambiando modo beta');
+    }
+  }
+
+  async function handleAddWhitelistEmail(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newWhitelistEmail.trim()) return;
+    setAddingWhitelist(true);
+    try {
+      const res = await fetch('/api/superadmin/whitelist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newWhitelistEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al agregar correo');
+
+      setNewWhitelistEmail('');
+      setWhitelistNotice(`✓ Correo ${data.email} autorizado exitosamente`);
+      setTimeout(() => setWhitelistNotice(null), 3000);
+      loadWhitelist();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setAddingWhitelist(false);
+    }
+  }
+
+  async function handleRemoveWhitelistEmail(email: string) {
+    if (!confirm(`¿Deseas revocar el acceso a ${email}? Si no tiene tienda activa, ya no podrá ingresar.`)) {
+      return;
+    }
+    try {
+      const res = await fetch(`/api/superadmin/whitelist?email=${encodeURIComponent(email)}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        loadWhitelist();
+      }
+    } catch (e) {
+      alert('Error eliminando de la lista');
     }
   }
 
@@ -150,37 +239,38 @@ export default function SuperAdminDashboard() {
     setIsSuperAdmin(true);
     setAccessDenied(false);
 
-    // Cargar todos los inquilinos
-    const { data: dbTenants } = await supabase
-      .from('tenants')
-      .select(`
-        *,
-        subscription_plans (*)
-      `)
-      .order('created_at', { ascending: false });
+    // 2. Cargar inquilinos enriquecidos con su correo desde la API
+    try {
+      const res = await fetch('/api/superadmin/tenants');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.tenants) {
+          setTenants(data.tenants);
 
-    // Cargar planes
+          const dbTenants = data.tenants;
+          const totalTenants = dbTenants.length;
+          const activeTenants = dbTenants.filter((t: any) => t.status === 'active').length;
+          const totalPhotos = dbTenants.reduce((acc: number, t: any) => acc + (t.current_photos_count || 0), 0);
+          const totalBytes = dbTenants.reduce((acc: number, t: any) => acc + Number(t.current_storage_bytes || 0), 0);
+          const totalStorageMB = Math.round(totalBytes / (1024 * 1024));
+
+          setGlobalStats({
+            totalTenants,
+            activeTenants,
+            totalPhotos,
+            totalStorageMB,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Error cargando tenants:', err);
+    }
+
+    // 3. Cargar planes
     const { data: dbPlans } = await supabase
       .from('subscription_plans')
       .select('*')
       .order('price_monthly', { ascending: true });
-
-    if (dbTenants) {
-      setTenants(dbTenants);
-
-      const totalTenants = dbTenants.length;
-      const activeTenants = dbTenants.filter((t) => t.status === 'active').length;
-      const totalPhotos = dbTenants.reduce((acc, t) => acc + (t.current_photos_count || 0), 0);
-      const totalBytes = dbTenants.reduce((acc, t) => acc + Number(t.current_storage_bytes || 0), 0);
-      const totalStorageMB = Math.round(totalBytes / (1024 * 1024));
-
-      setGlobalStats({
-        totalTenants,
-        activeTenants,
-        totalPhotos,
-        totalStorageMB,
-      });
-    }
 
     if (dbPlans) {
       setPlans(dbPlans);
@@ -320,6 +410,7 @@ export default function SuperAdminDashboard() {
 
       setCreatedSuccessData(data);
       checkAccessAndLoad();
+      loadWhitelist();
     } catch (err: any) {
       setCreateError(err.message || 'Error al procesar el alta');
     } finally {
@@ -330,7 +421,8 @@ export default function SuperAdminDashboard() {
   function copyCredentialsToClipboard() {
     if (!createdSuccessData?.credentials) return;
     const cred = createdSuccessData.credentials;
-    const text = `🎉 ¡Tu tienda en c4talogo.com ha sido dada de alta!\n\n` +
+    const text =
+      `🎉 ¡Tu tienda en c4talogo.com ha sido dada de alta!\n\n` +
       `🌐 Catálogo Web: https://${cred.subdomain}.${baseDomain}\n` +
       `⚙️ Panel de Administración: ${cred.loginUrl}\n` +
       `✉️ Correo de acceso: ${cred.email}\n` +
@@ -373,6 +465,7 @@ export default function SuperAdminDashboard() {
         error: null,
       });
       checkAccessAndLoad();
+      loadWhitelist();
     } catch (err: any) {
       setDeleteModal((prev) => ({ ...prev, deleting: false, error: err.message }));
     }
@@ -450,7 +543,7 @@ export default function SuperAdminDashboard() {
                 await supabase.auth.signOut();
                 router.push('/login');
               }}
-              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5"
+              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 cursor-pointer"
             >
               <FaSignOutAlt className="text-xs" />
               <span>Cerrar Sesión</span>
@@ -519,7 +612,7 @@ export default function SuperAdminDashboard() {
             </div>
 
             {landingNotice && (
-              <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg animate-fade-in">
+              <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
                 {landingNotice}
               </span>
             )}
@@ -590,7 +683,120 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
 
-        {/* 2. Subscription Plans Management */}
+        {/* 2. Lista Blanca de Acceso (Fase Beta Cerrada) */}
+        <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <FaUserShield className="text-rose-400 text-base" />
+                <h2 className="text-base font-bold text-white">Lista Blanca de Acceso (Whitelist — Fase Beta)</h2>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Controla exactamente qué correos tienen permiso de entrar o crear tiendas durante la prueba cerrada.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleToggleClosedBeta}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition border cursor-pointer ${
+                  closedBetaEnabled
+                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                    : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                }`}
+              >
+                {closedBetaEnabled ? <FaToggleOn className="text-base" /> : <FaToggleOff className="text-base" />}
+                <span>{closedBetaEnabled ? 'Modo Beta Cerrada: ACTIVO' : 'Acceso Público: ABIERTO'}</span>
+              </button>
+            </div>
+          </div>
+
+          {whitelistNotice && (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl font-medium">
+              {whitelistNotice}
+            </div>
+          )}
+
+          {/* Formulario para agregar correo */}
+          <form onSubmit={handleAddWhitelistEmail} className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <FaEnvelope className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs" />
+              <input
+                type="email"
+                required
+                value={newWhitelistEmail}
+                onChange={(e) => setNewWhitelistEmail(e.target.value)}
+                placeholder="autorizar.nuevo.usuario@gmail.com"
+                className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-white/10 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 font-mono"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={addingWhitelist}
+              className="px-5 py-2 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-xl text-xs font-bold transition shadow disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <FaPlus className="text-[10px]" />
+              <span>{addingWhitelist ? 'Autorizando...' : 'Autorizar Correo'}</span>
+            </button>
+          </form>
+
+          {/* Tabla de correos en whitelist */}
+          <div className="overflow-x-auto border border-white/5 rounded-xl">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-950/60 text-slate-400 border-b border-white/5 font-medium">
+                <tr>
+                  <th className="py-2.5 px-4">Correo Autorizado</th>
+                  <th className="py-2.5 px-4">Estado de Tienda</th>
+                  <th className="py-2.5 px-4">Fecha Autorización</th>
+                  <th className="py-2.5 px-4 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {whitelist.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-4 text-center text-slate-500 text-xs">
+                      No hay correos en la lista blanca aún.
+                    </td>
+                  </tr>
+                ) : (
+                  whitelist.map((w) => (
+                    <tr key={w.email} className="hover:bg-white/[0.02] transition text-slate-300">
+                      <td className="py-2.5 px-4 font-mono font-medium text-white flex items-center gap-2">
+                        <FaEnvelope className="text-slate-500 text-[10px]" />
+                        <span>{w.email}</span>
+                      </td>
+                      <td className="py-2.5 px-4">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            w.has_active_store
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}
+                        >
+                          {w.has_active_store ? 'Tienda Activa' : 'Pendiente / Sin Tienda'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-4 text-slate-500 font-mono text-[11px]">
+                        {new Date(w.created_at).toLocaleDateString('es-PE')}
+                      </td>
+                      <td className="py-2.5 px-4 text-right">
+                        <button
+                          onClick={() => handleRemoveWhitelistEmail(w.email)}
+                          className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-[11px] transition cursor-pointer"
+                          title="Revocar autorización"
+                        >
+                          Revocar
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 3. Subscription Plans Management */}
         <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -745,7 +951,7 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
 
-        {/* 3. Tenants Table & Management */}
+        {/* 4. Tenants Table & Management */}
         <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
@@ -778,7 +984,7 @@ export default function SuperAdminDashboard() {
               <table className="w-full text-left text-xs">
                 <thead className="text-slate-400 border-b border-white/10 font-medium">
                   <tr>
-                    <th className="pb-3">Tienda / Subdominio</th>
+                    <th className="pb-3">Tienda / Subdominio / Correo</th>
                     <th className="pb-3">Estado</th>
                     <th className="pb-3">Plan Asignado</th>
                     <th className="pb-3">Fotos</th>
@@ -803,6 +1009,10 @@ export default function SuperAdminDashboard() {
                           </span>
                           <FaExternalLinkAlt className="text-[9px]" />
                         </a>
+                        <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-1 font-mono">
+                          <FaEnvelope className="text-slate-500 text-[10px]" />
+                          <span>{t.owner_email || t.google_email || 'Sin correo asociado'}</span>
+                        </div>
                       </td>
 
                       <td className="py-3">
@@ -899,7 +1109,7 @@ export default function SuperAdminDashboard() {
               </div>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
-                className="text-slate-400 hover:text-white text-lg font-mono"
+                className="text-slate-400 hover:text-white text-lg font-mono cursor-pointer"
               >
                 ✕
               </button>
@@ -960,7 +1170,7 @@ export default function SuperAdminDashboard() {
                       setIsCreateModalOpen(false);
                       setCreatedSuccessData(null);
                     }}
-                    className="px-5 py-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white rounded-xl text-xs font-semibold"
+                    className="px-5 py-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white rounded-xl text-xs font-semibold cursor-pointer"
                   >
                     Cerrar
                   </button>
@@ -1135,7 +1345,7 @@ export default function SuperAdminDashboard() {
               <ul className="list-disc list-inside space-y-1 text-slate-400 text-[11px]">
                 <li>Se borrarán todas las fotos del bucket de Cloudflare R2.</li>
                 <li>Se eliminarán álbumes, fotos y configuraciones de Supabase.</li>
-                <li>Se revocará el subdominio y el acceso del inquilino.</li>
+                <li>Se revocará el subdominio y se quitará de la lista blanca de acceso.</li>
               </ul>
             </div>
 

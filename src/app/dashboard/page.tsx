@@ -11,6 +11,7 @@ import {
   FaStore,
   FaSync,
   FaCheckCircle,
+  FaLock,
 } from 'react-icons/fa';
 
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
@@ -614,6 +615,30 @@ export default function TenantDashboard() {
           <FaSync className="animate-spin text-4xl text-amber-500" />
           <p className="text-slate-400 font-medium">Cargando panel de inquilino...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Si el usuario no tiene ninguna tienda asignada (no autorizado en fase beta)
+  if (!tenant) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-4 text-2xl shadow-lg shadow-amber-500/10">
+          <FaLock />
+        </div>
+        <h1 className="text-2xl font-black mb-2 tracking-tight">Acceso No Autorizado</h1>
+        <p className="text-slate-400 max-w-md text-sm mb-4 leading-relaxed">
+          Has iniciado sesión como <span className="text-white font-semibold">{user?.email}</span>, pero esta cuenta no tiene una tienda autorizada ni se encuentra en la lista de acceso de la fase de pruebas de <strong className="text-amber-400">c4talogo.com</strong>.
+        </p>
+        <p className="text-slate-500 max-w-sm text-xs mb-6">
+          Si eres cliente o dueño de una tienda y deseas activar tu catálogo, solicita tu alta con el administrador de la plataforma.
+        </p>
+        <button
+          onClick={handleSignOut}
+          className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-rose-500/20 cursor-pointer"
+        >
+          Cerrar Sesión
+        </button>
       </div>
     );
   }

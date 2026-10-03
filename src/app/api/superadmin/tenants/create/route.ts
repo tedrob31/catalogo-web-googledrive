@@ -137,6 +137,11 @@ export async function POST(req: NextRequest) {
       google_email: cleanEmail,
     });
 
+    // 7. Asegurar que el email quede en la lista blanca de la fase de pruebas
+    await adminSupabase.from('platform_whitelist' as any).upsert({
+      email: cleanEmail,
+    });
+
     return NextResponse.json({
       success: true,
       tenant: newTenant,
