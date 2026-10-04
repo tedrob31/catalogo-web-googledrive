@@ -43,7 +43,7 @@ services:
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
 
       # Performance de Alta Concurrencia (VPS 6 Cores / 12GB RAM)
-      - NODE_OPTIONS='--max-old-space-size=3584'
+      - NODE_OPTIONS='--max-old-space-size=6144'
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
       interval: 30s
@@ -59,7 +59,7 @@ services:
       resources:
         limits:
           cpus: "4.0"
-          memory: 4096M
+          memory: 7168M
       labels:
         - traefik.enable=true
         - traefik.docker.network=r4tlabsnet

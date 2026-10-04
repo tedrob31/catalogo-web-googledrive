@@ -81,6 +81,7 @@ export default async function TenantCatalogPage({ params }: Props) {
       config={payload.config}
       initialPath={payload.initialPath}
       storefront={payload.storefront}
+      tenantId={payload.tenant.id}
     />
   );
 }

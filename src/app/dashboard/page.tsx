@@ -12,6 +12,7 @@ import {
   FaSync,
   FaCheckCircle,
   FaLock,
+  FaChartLine,
 } from 'react-icons/fa';
 
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
@@ -24,6 +25,7 @@ import HistoryTab from '@/components/dashboard/HistoryTab';
 import CoverSelectorModal from '@/components/dashboard/CoverSelectorModal';
 import AccountSecurityModal from '@/components/dashboard/AccountSecurityModal';
 import StorefrontBuilder from '@/components/admin/StorefrontBuilder';
+import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +41,7 @@ export default function TenantDashboard() {
 
   // Pestaña activa
   const [activeTab, setActiveTab] = useState<
-    'drive' | 'design' | 'effects' | 'branding' | 'storefront' | 'history'
+    'drive' | 'design' | 'effects' | 'branding' | 'storefront' | 'analytics' | 'history'
   >('drive');
 
   // Estado de Drive y Carpetas
@@ -745,6 +747,17 @@ export default function TenantDashboard() {
             <span>Creador Storefront</span>
           </button>
           <button
+            onClick={() => setActiveTab('analytics')}
+            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${
+              activeTab === 'analytics'
+                ? 'border-amber-500 text-amber-400 font-semibold'
+                : 'border-transparent text-slate-400 hover:text-white'
+            }`}
+          >
+            <FaChartLine />
+            <span>Métricas y Visitas</span>
+          </button>
+          <button
             onClick={() => setActiveTab('history')}
             className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${
               activeTab === 'history'
@@ -823,6 +836,8 @@ export default function TenantDashboard() {
             />
           </div>
         )}
+
+        {activeTab === 'analytics' && <AnalyticsDashboard />}
 
         {activeTab === 'history' && <HistoryTab logs={logs} />}
       </main>

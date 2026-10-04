@@ -12,6 +12,7 @@ import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import { useRouter } from 'next/navigation';
 
 import { FiSearch, FiArrowLeft, FiGrid, FiHome } from 'react-icons/fi';
+import { FaWhatsapp } from 'react-icons/fa';
 import { StorefrontConfig } from '@/lib/storefront';
 import StorefrontView from './storefront/StorefrontView';
 import SeasonalEffects from './SeasonalEffects';
@@ -22,9 +23,10 @@ interface CatalogViewProps {
     config: AppConfig;
     initialPath?: Album[];
     storefront?: StorefrontConfig;
+    tenantId?: string;
 }
 
-export default function CatalogView({ data, config, initialPath, storefront }: CatalogViewProps) {
+export default function CatalogView({ data, config, initialPath, storefront, tenantId }: CatalogViewProps) {
     const rootAlbum = data?.root;
     const router = useRouter();
 
@@ -77,6 +79,45 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
         const freshPath = findPathToAlbum(rootAlbum, currentTargetId);
         return freshPath ? freshPath[freshPath.length - 1] : rootAlbum;
     }, [rootAlbum, activePath]);
+
+    // Enviar evento de métrica no bloqueante (visitas o clics WhatsApp)
+    const trackEvent = useCallback(
+        (pathStr: string, title: string, eventType: 'view' | 'whatsapp' = 'view') => {
+            if (!tenantId) return;
+            try {
+                const payload = JSON.stringify({
+                    tenant_id: tenantId,
+                    path: pathStr || '/',
+                    title: title || 'Catálogo Principal',
+                    event_type: eventType,
+                });
+
+                if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+                    const blob = new Blob([payload], { type: 'application/json' });
+                    navigator.sendBeacon('/api/analytics/track/', blob);
+                } else {
+                    fetch('/api/analytics/track/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: payload,
+                        keepalive: true,
+                    }).catch(() => {});
+                }
+            } catch (e) {
+                // Silencioso para garantizar que no interrumpa al usuario
+            }
+        },
+        [tenantId]
+    );
+
+    // Registrar vista al ingresar o navegar entre álbumes
+    useEffect(() => {
+        if (!rootAlbum) return;
+        const current = activePath[activePath.length - 1] || rootAlbum;
+        const segments = activePath.slice(1).map(a => slugify(a.name));
+        const pathStr = segments.length > 0 ? '/' + segments.join('/') : '/';
+        trackEvent(pathStr, current.name, 'view');
+    }, [activePath, rootAlbum, trackEvent]);
 
     // Search Logic
     const searchResults = useMemo(() => {
@@ -360,6 +401,27 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
                 zoom={{ maxZoomPixelRatio: 3 }}
                 controller={{ closeOnBackdropClick: true }}
             />
+
+            {/* Botón flotante de WhatsApp con tracking de pedidos */}
+            {config.whatsappNumber && (
+                <a
+                    href={`https://wa.me/${config.whatsappNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                        `Hola, estoy viendo su catálogo en línea (${currentAlbum?.name || 'Catálogo Principal'}). Quisiera consultar sobre sus productos.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                        const segments = activePath.slice(1).map(a => slugify(a.name));
+                        const pathStr = segments.length > 0 ? '/' + segments.join('/') : '/';
+                        trackEvent(pathStr, currentAlbum?.name || 'Catálogo Principal', 'whatsapp');
+                    }}
+                    className="fixed bottom-6 right-6 z-40 bg-[#25D366] hover:bg-[#20ba59] text-white p-3.5 sm:p-4 rounded-full shadow-2xl transition transform hover:scale-110 active:scale-95 flex items-center justify-center text-2xl sm:text-3xl"
+                    title="Hacer pedido por WhatsApp"
+                    aria-label="Contactar por WhatsApp"
+                >
+                    <FaWhatsapp />
+                </a>
+            )}
         </div>
     );
 }

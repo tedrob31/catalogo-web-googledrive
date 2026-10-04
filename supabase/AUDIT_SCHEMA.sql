@@ -407,3 +407,63 @@ CREATE POLICY "Tenant members manage own photos"
 CREATE POLICY "Tenant members manage own sync logs"
   ON public.sync_logs FOR ALL
   USING (private.has_tenant_access(tenant_id));
+
+-- 5.9 tenant_page_metrics (Analíticas Agregadas de 30 Días)
+CREATE TABLE IF NOT EXISTS public.tenant_page_metrics (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+    date DATE NOT NULL,
+    path TEXT NOT NULL DEFAULT '/',
+    title TEXT NOT NULL DEFAULT 'Catálogo Principal',
+    views_count INT NOT NULL DEFAULT 1,
+    whatsapp_clicks INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT unique_tenant_date_path UNIQUE (tenant_id, date, path)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tenant_page_metrics_lookup 
+    ON public.tenant_page_metrics(tenant_id, date DESC);
+
+ALTER TABLE public.tenant_page_metrics ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "tenant_owners_view_metrics"
+    ON public.tenant_page_metrics
+    FOR SELECT
+    TO authenticated
+    USING (private.has_tenant_access(tenant_id));
+
+CREATE POLICY "service_role_manage_metrics"
+    ON public.tenant_page_metrics
+    FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+CREATE OR REPLACE FUNCTION public.increment_page_metric(
+    p_tenant_id UUID,
+    p_date DATE,
+    p_path TEXT,
+    p_title TEXT,
+    p_views INT,
+    p_whatsapp INT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    INSERT INTO public.tenant_page_metrics (
+        tenant_id, date, path, title, views_count, whatsapp_clicks, updated_at
+    )
+    VALUES (
+        p_tenant_id, p_date, p_path, p_title, p_views, p_whatsapp, now()
+    )
+    ON CONFLICT (tenant_id, date, path)
+    DO UPDATE SET
+        views_count = tenant_page_metrics.views_count + EXCLUDED.views_count,
+        whatsapp_clicks = tenant_page_metrics.whatsapp_clicks + EXCLUDED.whatsapp_clicks,
+        title = CASE WHEN EXCLUDED.title <> 'Catálogo' AND EXCLUDED.title <> 'Catálogo Principal' THEN EXCLUDED.title ELSE tenant_page_metrics.title END,
+        updated_at = now();
+END;
+$$;
