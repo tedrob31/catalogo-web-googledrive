@@ -67,15 +67,9 @@ export default async function TenantCatalogPage({ params }: Props) {
           !
         </div>
         <h1 className="text-2xl font-extrabold mb-2">Catálogo No Encontrado</h1>
-        <p className="text-gray-600 max-w-md mb-6">
+        <p className="text-gray-600 max-w-md">
           El catálogo con el subdominio <strong className="text-black">"{subdomain}"</strong> no existe o se encuentra temporalmente inactivo.
         </p>
-        <a
-          href="https://c4talogo.com"
-          className="px-5 py-2.5 bg-black text-white text-sm font-semibold rounded-lg hover:bg-gray-800 transition"
-        >
-          Crear mi propio catálogo en c4talogo.com
-        </a>
       </div>
     );
   }
