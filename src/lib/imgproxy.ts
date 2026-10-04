@@ -102,7 +102,7 @@ export const ImgproxyProfiles = {
       width: 1080,
       height: 0,
       resizingType: 'auto',
-      quality: 80,
+      quality: 85,
       format: 'webp',
     }),
 

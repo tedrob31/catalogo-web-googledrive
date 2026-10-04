@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { CacheStructure, Album, PhotoItem, findPathToAlbum, findAlbumBySlugPath } from '@/lib/types';
 import { AppConfig } from '@/lib/config';
 import { slugify } from '@/lib/utils';
@@ -40,15 +40,23 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
         }
     }, [initialPath]);
 
+    // Refrescar silenciosamente en segundo plano con limitador (mínimo 15 segundos entre peticiones)
+    // Esto garantiza que cientos de usuarios simultáneos navegando carpetas o alternando pestañas
+    // no saturen el ancho de banda ni el servidor, mientras se mantiene el catálogo siempre actualizado.
+    const lastBackgroundRefreshRef = useRef<number>(0);
+    const triggerBackgroundRefresh = useCallback((minIntervalMs = 15000) => {
+        const now = Date.now();
+        if (now - lastBackgroundRefreshRef.current > minIntervalMs) {
+            lastBackgroundRefreshRef.current = now;
+            router.refresh();
+        }
+    }, [router]);
+
     // Refrescar automáticamente con el servidor cuando el usuario vuelve a enfocar la pestaña de la tienda
     useEffect(() => {
-        let lastRefreshTime = 0;
         const onVisibilityChange = () => {
-            const now = Date.now();
-            // Throttle de 3 segundos para evitar que focus y visibilitychange disparen duplicados al mismo tiempo
-            if (document.visibilityState === 'visible' && now - lastRefreshTime > 3000) {
-                lastRefreshTime = now;
-                router.refresh();
+            if (document.visibilityState === 'visible') {
+                triggerBackgroundRefresh(15000);
             }
         };
         document.addEventListener('visibilitychange', onVisibilityChange);
@@ -57,7 +65,7 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
             document.removeEventListener('visibilitychange', onVisibilityChange);
             window.removeEventListener('focus', onVisibilityChange);
         };
-    }, [router]);
+    }, [triggerBackgroundRefresh]);
 
     // Mantener sincronizado el álbum actual siempre con los datos frescos de rootAlbum (props)
     const currentAlbum = useMemo(() => {
@@ -164,8 +172,8 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
         window.history.pushState({ path: newPath.map(a => a.id) }, '', newUrl);
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
-        // 3. Refrescar silenciosamente en background para sincronizar si hubo cambios en el servidor
-        router.refresh();
+        // 3. Refrescar silenciosamente en background solo si ha pasado suficiente tiempo (throttle)
+        triggerBackgroundRefresh();
     };
 
     const handleBack = () => {
@@ -175,7 +183,7 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
             const newUrl = constructUrl(newPath);
             window.history.pushState({ path: newPath.map(a => a.id) }, '', newUrl);
             window.scrollTo({ top: 0, behavior: 'smooth' });
-            router.refresh();
+            triggerBackgroundRefresh();
         }
     };
 
@@ -185,7 +193,7 @@ export default function CatalogView({ data, config, initialPath, storefront }: C
         const newUrl = constructUrl(newPath);
         window.history.pushState({ path: newPath.map(a => a.id) }, '', newUrl);
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        router.refresh();
+        triggerBackgroundRefresh();
     };
 
     // Lightbox handlers

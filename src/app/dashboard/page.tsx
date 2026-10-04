@@ -387,7 +387,7 @@ export default function TenantDashboard() {
   function pollSync(logId: string) {
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`/api/sync?logId=${logId}`);
+        const res = await fetch(`/api/sync/?logId=${logId}`);
         const data = await res.json();
         if (data.success && data.log) {
           setSyncLiveStatus(data.log);
@@ -421,14 +421,14 @@ export default function TenantDashboard() {
       } catch (e) {
         console.error('Error en polling de sincronización:', e);
       }
-    }, 2500);
+    }, 3000);
   }
 
   async function handleSyncNow() {
     setSyncing(true);
     setSyncLiveStatus(null);
     try {
-      const res = await fetch('/api/sync', { method: 'POST' });
+      const res = await fetch('/api/sync/', { method: 'POST' });
       const data = await res.json();
       if (data.success && data.logId) {
         pollSync(data.logId);
