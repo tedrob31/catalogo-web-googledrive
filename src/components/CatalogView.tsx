@@ -388,15 +388,33 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                 )}
             </main>
 
-            {/* Lightbox Overlay */}
+            {/* Lightbox Overlay con carga progresiva (apertura instantánea con miniatura y sustitución a HD) */}
             <Lightbox
                 open={lightboxPhotoIndex >= 0}
                 close={() => setLightboxPhotoIndex(-1)}
                 index={lightboxPhotoIndex}
-                slides={visiblePhotos.map(p => ({
-                    src: p.fullLink || '',
-                    alt: p.name,
-                }))}
+                slides={visiblePhotos.map(p => {
+                    const w = p.width || 1080;
+                    const h = p.height || 1080;
+                    return {
+                        src: p.fullLink || p.thumbnailLink || '',
+                        alt: p.name,
+                        width: w,
+                        height: h,
+                        srcSet: [
+                            {
+                                src: p.thumbnailLink || '',
+                                width: 500,
+                                height: Math.round((500 * h) / w),
+                            },
+                            {
+                                src: p.fullLink || p.thumbnailLink || '',
+                                width: 1080,
+                                height: h,
+                            },
+                        ],
+                    };
+                })}
                 plugins={[Zoom]}
                 zoom={{ maxZoomPixelRatio: 3 }}
                 controller={{ closeOnBackdropClick: true }}

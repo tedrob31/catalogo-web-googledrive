@@ -96,7 +96,17 @@ export const ImgproxyProfiles = {
       format: 'webp',
     }),
 
-  // Imagen estándar de alta definición optimizada para catálogo responsive y lightbox unificado (Retina crisp, WebP q80)
+  // Miniatura optimizada para tarjetas de cuadrícula de catálogo (500px, WebP q80, peso pluma ~15-25 KB)
+  grid: (r2Key: string) =>
+    generateSignedImgproxyUrl(r2Key, {
+      width: 500,
+      height: 0,
+      resizingType: 'auto',
+      quality: 80,
+      format: 'webp',
+    }),
+
+  // Imagen estándar de alta definición optimizada para catálogo responsive y lightbox unificado (Retina crisp, WebP q85)
   catalog: (r2Key: string) =>
     generateSignedImgproxyUrl(r2Key, {
       width: 1080,

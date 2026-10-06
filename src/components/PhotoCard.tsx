@@ -11,11 +11,21 @@ interface PhotoCardProps {
 export default function PhotoCard({ photo, priority = false, onClick }: PhotoCardProps) {
     const [isLoading, setIsLoading] = useState(!priority);
 
+    // Precarga inteligente de alta resolución al pasar el cursor o posar el dedo
+    const prefetchFullImage = () => {
+        if (photo.fullLink && typeof window !== 'undefined') {
+            const img = new window.Image();
+            img.src = photo.fullLink;
+        }
+    };
+
     return (
         <div
             className="relative group cursor-pointer overflow-hidden rounded-lg bg-gray-100 dark:bg-zinc-900"
             style={{ aspectRatio: '4/5' }}
             onClick={onClick}
+            onMouseEnter={prefetchFullImage}
+            onTouchStart={prefetchFullImage}
         >
             <Image
                 src={photo.thumbnailLink || ''}

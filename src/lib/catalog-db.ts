@@ -137,15 +137,14 @@ async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBas
     .order('order_index', { ascending: true })
     .order('name', { ascending: true });
 
-  // 4. Mapear fotos por álbum (URL unificada para grilla y lightbox = apertura instantánea a 0ms)
+  // 4. Mapear fotos por álbum: miniatura liviana (500px ~15KB) para grilla rápida + HD (1080px) para lightbox
   const photosByAlbum = new Map<string, PhotoItem[]>();
   for (const p of dbPhotos || []) {
-    const photoUrl = ImgproxyProfiles.catalog(p.r2_key);
     const item: PhotoItem = {
       id: p.id,
       name: p.name,
-      thumbnailLink: photoUrl,
-      fullLink: photoUrl, // Misma URL: lightbox abre de inmediato sin animación de carga
+      thumbnailLink: ImgproxyProfiles.grid(p.r2_key),
+      fullLink: ImgproxyProfiles.catalog(p.r2_key),
       width: p.width || 1080,
       height: p.height || 1080,
       modifiedTime: p.drive_modified_time || undefined,
