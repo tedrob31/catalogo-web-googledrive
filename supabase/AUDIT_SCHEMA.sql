@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS public.tenants (
     name TEXT NOT NULL,
     subdomain TEXT UNIQUE NOT NULL,
     custom_domain TEXT UNIQUE,
+    custom_domain_enabled BOOLEAN NOT NULL DEFAULT false,
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'trial')),
     current_photos_count INT NOT NULL DEFAULT 0,
     current_storage_bytes BIGINT NOT NULL DEFAULT 0,

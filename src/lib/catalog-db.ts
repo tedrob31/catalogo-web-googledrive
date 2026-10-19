@@ -25,6 +25,7 @@ interface CachedTenantBase {
     name: string;
     subdomain: string;
     custom_domain: string | null;
+    custom_domain_enabled?: boolean;
   };
   cacheStructure: CacheStructure;
   config: AppConfig;
@@ -81,6 +82,7 @@ async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBas
       name,
       subdomain,
       custom_domain,
+      custom_domain_enabled,
       status,
       tenant_configs (
         title,
@@ -99,6 +101,16 @@ async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBas
     .single();
 
   if (tenantErr || !tenant) {
+    return null;
+  }
+
+  // Si la petición accedió vía custom_domain pero la tienda no tiene la función habilitada por Superadmin
+  if (
+    tenant.custom_domain &&
+    tenant.custom_domain.toLowerCase() === subdomain.toLowerCase() &&
+    !tenant.custom_domain_enabled
+  ) {
+    console.warn(`[Catalog DB] Dominio personalizado ${subdomain} no está habilitado para ${tenant.name}`);
     return null;
   }
 
@@ -256,6 +268,7 @@ async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBas
       name: tenant.name,
       subdomain: tenant.subdomain,
       custom_domain: tenant.custom_domain,
+      custom_domain_enabled: tenant.custom_domain_enabled,
     },
     cacheStructure,
     config,

@@ -91,6 +91,8 @@ export default function TenantDashboard() {
     seasonal_duration: 0,
     click_effect: 'none',
     folder_covers: {} as Record<string, string>,
+    custom_domain: '',
+    custom_domain_enabled: false,
   });
 
   // Copia de respaldo guardada en Supabase para detección de cambios
@@ -201,6 +203,8 @@ export default function TenantDashboard() {
         seasonal_duration: Number(rawSettings.seasonal_duration) || 0,
         click_effect: rawSettings.click_effect || 'none',
         folder_covers: loadedCovers,
+        custom_domain: t.custom_domain || '',
+        custom_domain_enabled: Boolean(t.custom_domain_enabled),
       });
     }
 

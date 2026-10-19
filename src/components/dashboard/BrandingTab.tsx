@@ -1,6 +1,41 @@
 'use client';
 
-import { FaShareAlt, FaImages } from 'react-icons/fa';
+import { FaShareAlt, FaImages, FaGlobe, FaKey, FaLock, FaCheckCircle, FaExternalLinkAlt } from 'react-icons/fa';
+
+function isApexDomain(domain: string): boolean {
+  const clean = domain.trim().toLowerCase();
+  const parts = clean.split('.');
+  if (parts.length <= 2) return true;
+  if (
+    parts.length === 3 &&
+    (clean.endsWith('.com.pe') ||
+      clean.endsWith('.org.pe') ||
+      clean.endsWith('.co.uk') ||
+      clean.endsWith('.com.mx') ||
+      clean.endsWith('.com.ar'))
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function extractSubdomainHost(domain: string): string {
+  const clean = domain.trim().toLowerCase();
+  const parts = clean.split('.');
+  if (parts.length > 2) {
+    if (
+      parts.length === 3 &&
+      (clean.endsWith('.com.pe') ||
+        clean.endsWith('.org.pe') ||
+        clean.endsWith('.co.uk') ||
+        clean.endsWith('.com.mx'))
+    ) {
+      return '@';
+    }
+    return parts[0];
+  }
+  return '@';
+}
 
 interface BrandingTabProps {
   configForm: any;
@@ -66,6 +101,123 @@ export default function BrandingTab({
             </div>
           </div>
         </div>
+
+        {/* Sección de Dominio Personalizado */}
+        {configForm.custom_domain_enabled ? (
+          <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-slate-900/60 to-purple-500/10 border border-amber-500/30 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <FaGlobe className="text-amber-400 text-sm" />
+                <h3 className="text-sm font-bold text-white">Dominio Web Personalizado (VIP)</h3>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 w-fit">
+                HABILITADO POR SUPERADMIN
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Puedes conectar tu propio dominio (ej: <span className="font-mono text-amber-300 font-semibold">tiendajuan.com</span>) o un subdominio de tu marca (ej: <span className="font-mono text-amber-300 font-semibold">remate.tiendajuan.com</span> o <span className="font-mono text-amber-300 font-semibold">catalogo.tiendajuan.com</span>).
+            </p>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-200 mb-1">
+                Escribe tu dominio o subdominio:
+              </label>
+              <input
+                type="text"
+                placeholder="ej: remate.tiendajuan.com o tiendajuan.com"
+                value={configForm.custom_domain || ''}
+                onChange={(e) =>
+                  setConfigForm((prev: any) => ({
+                    ...prev,
+                    custom_domain: e.target.value.toLowerCase().trim(),
+                  }))
+                }
+                className="w-full bg-slate-950 border border-amber-500/40 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono placeholder:text-slate-600 focus:outline-none focus:border-amber-400"
+              />
+              <span className="text-[11px] text-slate-400 mt-1 block">
+                No incluyas <code>https://</code> ni barras al final. Recuerda hacer clic en &quot;Guardar Cambios&quot; abajo para aplicar.
+              </span>
+            </div>
+
+            {/* Asistente interactivo de configuración DNS */}
+            {configForm.custom_domain && configForm.custom_domain.trim() !== '' && (
+              <div className="p-4 bg-slate-950/80 border border-white/10 rounded-xl space-y-3">
+                <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                  <FaKey className="text-[11px]" />
+                  <span>Configuración requerida en tu proveedor de DNS (GoDaddy, Cloudflare, etc.):</span>
+                </div>
+
+                {isApexDomain(configForm.custom_domain) ? (
+                  // Caso Dominio Principal
+                  <div className="space-y-2 text-xs">
+                    <p className="text-[11px] text-slate-300">
+                      Detectamos que ingresaste un <strong>dominio principal</strong> (<span className="font-mono text-white">{configForm.custom_domain}</span>). Elige una de estas opciones en tu DNS:
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left font-mono text-[11px] border border-white/10 rounded-lg overflow-hidden">
+                        <thead className="bg-white/5 text-slate-400 border-b border-white/10">
+                          <tr>
+                            <th className="p-2">Tipo de Registro</th>
+                            <th className="p-2">Nombre / Host</th>
+                            <th className="p-2">Valor / Destino</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 text-slate-200">
+                          <tr>
+                            <td className="p-2 text-amber-400 font-bold">CNAME (Flattening) / ALIAS</td>
+                            <td className="p-2">@ (o en blanco)</td>
+                            <td className="p-2 font-bold text-white">{baseDomain}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  // Caso Subdominio
+                  <div className="space-y-2 text-xs">
+                    <p className="text-[11px] text-slate-300">
+                      Detectamos que ingresaste un <strong>subdominio</strong> (<span className="font-mono text-white">{configForm.custom_domain}</span>). Agrega este registro CNAME:
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left font-mono text-[11px] border border-white/10 rounded-lg overflow-hidden">
+                        <thead className="bg-white/5 text-slate-400 border-b border-white/10">
+                          <tr>
+                            <th className="p-2">Tipo de Registro</th>
+                            <th className="p-2">Nombre / Host</th>
+                            <th className="p-2">Valor / Destino</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 text-slate-200">
+                          <tr>
+                            <td className="p-2 text-amber-400 font-bold">CNAME</td>
+                            <td className="p-2 font-bold text-white">
+                              {extractSubdomainHost(configForm.custom_domain)}
+                            </td>
+                            <td className="p-2 font-bold text-white">{baseDomain}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>Las imágenes de tu catálogo se continuarán sirviendo de forma ultrarrápida desde nuestro CDN.</span>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-start gap-3">
+            <FaLock className="text-slate-500 text-sm mt-0.5 shrink-0" />
+            <div className="text-xs text-slate-400">
+              <span className="font-bold text-slate-300 block mb-0.5">¿Deseas usar tu propio dominio web (ej. tiendajuan.com o catalogo.tiendajuan.com)?</span>
+              Esta característica exclusiva está disponible para tiendas VIP. Solicita su activación a nuestro equipo de soporte para configurar tu dirección web propia.
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>

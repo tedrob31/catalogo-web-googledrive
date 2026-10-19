@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     const { data: membership } = await supabase
       .from('tenant_users')
-      .select('tenant_id, tenants ( name, subdomain )')
+      .select('tenant_id, tenants ( name, subdomain, custom_domain, custom_domain_enabled )')
       .eq('user_id', user.id)
       .single();
 
@@ -60,6 +60,8 @@ export async function GET(request: NextRequest) {
       folderCovers: rawSettings.folder_covers || {},
       ogImage: rawSettings.og_image || '',
       forceGlobalOgImage: Boolean(rawSettings.force_global_og_image),
+      custom_domain: (membership.tenants as any)?.custom_domain || '',
+      custom_domain_enabled: Boolean((membership.tenants as any)?.custom_domain_enabled),
     };
 
     return NextResponse.json(fullConfig);
@@ -80,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     const { data: membership } = await supabase
       .from('tenant_users')
-      .select('tenant_id, role, tenants ( name, subdomain )')
+      .select('tenant_id, role, tenants ( name, subdomain, custom_domain, custom_domain_enabled )')
       .eq('user_id', user.id)
       .single();
 
@@ -90,7 +92,12 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const tenantId = membership.tenant_id;
-    const tenantInfo = membership.tenants as { name: string; subdomain: string } | null;
+    const tenantInfo = membership.tenants as {
+      name: string;
+      subdomain: string;
+      custom_domain: string | null;
+      custom_domain_enabled: boolean;
+    } | null;
 
     // 1. Obtener settings actuales para no sobreescribir bloques de storefront u otras propiedades
     const adminClient = createAdminClient();
@@ -138,14 +145,82 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (body.name !== undefined || activeSubdomain !== tenantInfo?.subdomain) {
+    // 2.1 Procesar Custom Domain (si está habilitado para este tenant)
+    let updatedCustomDomain: string | null | undefined = undefined;
+    if (body.custom_domain !== undefined) {
+      const isEnabled = Boolean(tenantInfo?.custom_domain_enabled);
+      const rawDomain = String(body.custom_domain || '').trim();
+
+      if (rawDomain !== '') {
+        if (!isEnabled) {
+          return NextResponse.json(
+            { error: 'Tu tienda aún no tiene habilitada la función de Dominio Personalizado. Contacta al soporte para activarla.' },
+            { status: 403 }
+          );
+        }
+
+        // Sanitizar
+        let cleanDomain = rawDomain.toLowerCase().replace(/^https?:\/\//i, '').split('/')[0].split(':')[0].replace(/[^a-z0-9.-]/g, '');
+        if (!cleanDomain.includes('.') || cleanDomain.length < 4) {
+          return NextResponse.json(
+            { error: 'El dominio ingresado no es válido (ej: tiendajuan.com o catalogo.tiendajuan.com)' },
+            { status: 400 }
+          );
+        }
+
+        const baseDomain = (process.env.NEXT_PUBLIC_BASE_DOMAIN || 'c4talogo.com').toLowerCase();
+        if (cleanDomain === baseDomain || cleanDomain.endsWith(`.${baseDomain}`)) {
+          return NextResponse.json(
+            { error: `No puedes ingresar ${baseDomain} como dominio propio.` },
+            { status: 400 }
+          );
+        }
+
+        // Validar unicidad
+        const { data: existingDomainTenant } = await adminClient
+          .from('tenants')
+          .select('id, name')
+          .eq('custom_domain', cleanDomain)
+          .neq('id', tenantId)
+          .maybeSingle();
+
+        if (existingDomainTenant) {
+          return NextResponse.json(
+            { error: `El dominio "${cleanDomain}" ya está registrado en otra tienda.` },
+            { status: 400 }
+          );
+        }
+
+        updatedCustomDomain = cleanDomain;
+      } else {
+        // Permitir borrar el dominio si el usuario lo vacía
+        updatedCustomDomain = null;
+      }
+    }
+
+    const tenantUpdateData: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    let needsTenantUpdate = false;
+
+    if (body.name !== undefined && body.name !== tenantInfo?.name) {
+      tenantUpdateData.name = body.name;
+      needsTenantUpdate = true;
+    }
+    if (activeSubdomain !== tenantInfo?.subdomain) {
+      tenantUpdateData.subdomain = activeSubdomain;
+      needsTenantUpdate = true;
+    }
+    if (updatedCustomDomain !== undefined && updatedCustomDomain !== tenantInfo?.custom_domain) {
+      tenantUpdateData.custom_domain = updatedCustomDomain;
+      needsTenantUpdate = true;
+    }
+
+    if (needsTenantUpdate) {
       const { error: tUpdateErr } = await adminClient
         .from('tenants')
-        .update({
-          name: body.name !== undefined ? body.name : tenantInfo?.name,
-          subdomain: activeSubdomain,
-          updated_at: new Date().toISOString(),
-        })
+        .update(tenantUpdateData as any)
         .eq('id', tenantId);
 
       if (tUpdateErr) {

@@ -343,6 +343,69 @@ export default function SuperAdminDashboard() {
     }
   }
 
+  async function handleToggleCustomDomain(tenant: any) {
+    const nextState = !tenant.custom_domain_enabled;
+    const confirmMsg = nextState
+      ? `¿Habilitar la opción de Dominio Personalizado para la tienda "${tenant.name}"?`
+      : `¿Deshabilitar Dominio Personalizado para "${tenant.name}"?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    try {
+      const res = await fetch('/api/superadmin/tenants/custom-domain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_id: tenant.id,
+          custom_domain_enabled: nextState,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        alert('Error: ' + (data.error || 'No se pudo actualizar'));
+        return;
+      }
+
+      checkAccessAndLoad();
+    } catch (err: any) {
+      alert('Error de conexión: ' + (err?.message || err));
+    }
+  }
+
+  async function handleEditCustomDomain(tenant: any) {
+    const current = tenant.custom_domain || '';
+    const input = prompt(
+      `Ingresa el dominio personalizado para "${tenant.name}" (ej: tiendajuan.com o catalogo.tiendajuan.com).\nDeja en blanco para eliminar el dominio:`,
+      current
+    );
+
+    if (input === null) return; // cancelado
+
+    try {
+      const res = await fetch('/api/superadmin/tenants/custom-domain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tenant_id: tenant.id,
+          custom_domain: input.trim(),
+          custom_domain_enabled: true,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert('Error: ' + (data.error || 'No se pudo guardar el dominio'));
+        return;
+      }
+
+      alert('Dominio personalizado actualizado con éxito.');
+      checkAccessAndLoad();
+    } catch (err: any) {
+      alert('Error de conexión: ' + (err?.message || err));
+    }
+  }
+
   function startEditPlan(plan: any) {
     setEditingPlanId(plan.id);
     setPlanForm({
@@ -985,6 +1048,7 @@ export default function SuperAdminDashboard() {
                 <thead className="text-slate-400 border-b border-white/10 font-medium">
                   <tr>
                     <th className="pb-3">Tienda / Subdominio / Correo</th>
+                    <th className="pb-3">Dominio Propio (VIP)</th>
                     <th className="pb-3">Estado</th>
                     <th className="pb-3">Plan Asignado</th>
                     <th className="pb-3">Fotos</th>
@@ -1012,6 +1076,51 @@ export default function SuperAdminDashboard() {
                         <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-1 font-mono">
                           <FaEnvelope className="text-slate-500 text-[10px]" />
                           <span>{t.owner_email || t.google_email || 'Sin correo asociado'}</span>
+                        </div>
+                      </td>
+
+                      <td className="py-3">
+                        <div className="flex flex-col gap-1.5">
+                          <button
+                            onClick={() => handleToggleCustomDomain(t)}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition w-fit cursor-pointer ${
+                              t.custom_domain_enabled
+                                ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
+                                : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
+                            }`}
+                            title="Haz clic para activar o desactivar la función de Dominio Propio para este inquilino"
+                          >
+                            <FaGlobe className={t.custom_domain_enabled ? 'text-amber-400' : 'text-slate-500'} />
+                            <span>{t.custom_domain_enabled ? 'Habilitado' : 'Deshabilitado'}</span>
+                          </button>
+
+                          {t.custom_domain ? (
+                            <div className="flex items-center gap-1.5">
+                              <a
+                                href={`https://${t.custom_domain}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[11px] font-mono text-emerald-400 hover:underline flex items-center gap-1"
+                              >
+                                <span>{t.custom_domain}</span>
+                                <FaExternalLinkAlt className="text-[8px]" />
+                              </a>
+                              <button
+                                onClick={() => handleEditCustomDomain(t)}
+                                title="Editar o borrar dominio"
+                                className="text-slate-500 hover:text-amber-300 p-0.5 cursor-pointer"
+                              >
+                                <FaEdit className="text-[10px]" />
+                              </button>
+                            </div>
+                          ) : t.custom_domain_enabled ? (
+                            <button
+                              onClick={() => handleEditCustomDomain(t)}
+                              className="text-[10px] text-amber-400/80 hover:text-amber-300 underline cursor-pointer text-left"
+                            >
+                              + Asignar dominio manual
+                            </button>
+                          ) : null}
                         </div>
                       </td>
 

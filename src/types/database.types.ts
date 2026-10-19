@@ -438,6 +438,7 @@ export type Database = {
           current_photos_count: number
           current_storage_bytes: number
           custom_domain: string | null
+          custom_domain_enabled: boolean
           id: string
           name: string
           plan_id: string | null
@@ -451,6 +452,7 @@ export type Database = {
           current_photos_count?: number
           current_storage_bytes?: number
           custom_domain?: string | null
+          custom_domain_enabled?: boolean
           id?: string
           name: string
           plan_id?: string | null
@@ -464,6 +466,7 @@ export type Database = {
           current_photos_count?: number
           current_storage_bytes?: number
           custom_domain?: string | null
+          custom_domain_enabled?: boolean
           id?: string
           name?: string
           plan_id?: string | null
