@@ -17,7 +17,8 @@ Antes de modificar cualquier funcionalidad o proponer cambios, consulta los docu
 ### 1. Cero Sharp en el Servidor (Sharp-Free Architecture)
 * **PROHIBIDO** importar o instalar `sharp` para procesar imágenes dentro de Next.js.
 * El pipeline es estrictamente:
-  `Google Drive -> Buffer de Memoria en RAM -> Cloudflare R2 -> Imgproxy (On-Demand)`.
+  `Google Drive -> Buffer de Memoria en RAM -> Cloudflare R2 -> Cloudflare Image Resizing (On-Demand at Edge)`.
+* Cero consumo de CPU en el VPS para compresión de imágenes; Cloudflare procesa y sirve AVIF/WebP al vuelo.
 
 ### 2. Claves de R2 Relativas y Versionadas por Hash
 * Las claves en Cloudflare R2 siguen el patrón inmutable canónico:
@@ -26,10 +27,13 @@ Antes de modificar cualquier funcionalidad o proponer cambios, consulta los docu
 * Si una foto se edita en Drive, el hash cambia, se sube la nueva versión y se elimina la anterior de R2 (`deleteObjectFromR2`).
 * En Supabase solo se almacenan **claves relativas**, nunca URLs absolutas.
 
-### 3. Seguridad de Imgproxy (HMAC-SHA256)
-* Todas las URLs de Imgproxy deben generarse en el backend (Server Components, Server Actions o API Handlers) mediante `generateSignedImgproxyUrl`.
-* **Nunca** exponer `IMGPROXY_KEY` ni `IMGPROXY_SALT` en el frontend.
-* Para lograr apertura instantánea en el Lightbox (0ms sin spinner), la tarjeta de la grilla (`thumbnailLink`) y el Lightbox (`fullLink`) deben compartir la misma URL de `ImgproxyProfiles.catalog(r2_key)` (`1080px` WebP, calidad 80).
+### 3. Entrega de Imágenes con Cloudflare Image Resizing
+* Las imágenes se sirven directamente a través de Cloudflare Image Resizing sobre el dominio del bucket R2 (`https://cdn.c4talogo.com/cdn-cgi/image/...`) mediante [src/lib/cloudflare-images.ts](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/src/lib/cloudflare-images.ts).
+* Perfiles estandarizados:
+  * `grid`: 800px ancho, WebP/AVIF auto, calidad 85 (~15–30 kB).
+  * `cover`: 600x600px cuadrado con smart-crop (`gravity=auto`, `fit=cover`).
+  * `catalog` / `lightbox`: 1600px ancho HD.
+* Para lograr apertura instantánea en el Lightbox (0ms sin spinner), se utiliza carga progresiva vía `srcSet` y precarga al interactuar (`onMouseEnter`/`onTouchStart`).
 
 ### 4. Sincronización Incremental Espejo & Self-Healing
 * En [src/lib/multitenant-sync.ts](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/src/lib/multitenant-sync.ts):

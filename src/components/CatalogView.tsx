@@ -404,12 +404,12 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                         srcSet: [
                             {
                                 src: p.thumbnailLink || '',
-                                width: 500,
-                                height: Math.round((500 * h) / w),
+                                width: 800,
+                                height: Math.round((800 * h) / w),
                             },
                             {
                                 src: p.fullLink || p.thumbnailLink || '',
-                                width: 1080,
+                                width: 1600,
                                 height: h,
                             },
                         ],

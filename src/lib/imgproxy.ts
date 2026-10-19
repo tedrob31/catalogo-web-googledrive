@@ -81,59 +81,13 @@ export function generateSignedImgproxyUrl(
   return `${imgproxyUrl}/${signature}${processingPath}`;
 }
 
+import { CloudflareImageProfiles, buildCloudflareImageUrl } from './cloudflare-images';
+
 /**
- * Perfiles optimizados predefinidos
+ * Perfiles optimizados servidos directamente por Cloudflare Image Resizing en cdn.c4talogo.com.
+ * Mantenemos la interfaz ImgproxyProfiles para compatibilidad 100% transparente en todo el proyecto.
  */
-export const ImgproxyProfiles = {
-  // Miniatura para navegación rápida y cuadrícula
-  thumbnail: (r2Key: string) =>
-    generateSignedImgproxyUrl(r2Key, {
-      width: 300,
-      height: 300,
-      resizingType: 'fill',
-      gravity: 'sm',
-      quality: 75,
-      format: 'webp',
-    }),
+export const ImgproxyProfiles = CloudflareImageProfiles;
+export const ImageProfiles = CloudflareImageProfiles;
+export { buildCloudflareImageUrl };
 
-  // Miniatura optimizada para tarjetas de cuadrícula de catálogo (500px, WebP q80, peso pluma ~15-25 KB)
-  grid: (r2Key: string) =>
-    generateSignedImgproxyUrl(r2Key, {
-      width: 500,
-      height: 0,
-      resizingType: 'auto',
-      quality: 80,
-      format: 'webp',
-    }),
-
-  // Imagen estándar de alta definición optimizada para catálogo responsive y lightbox unificado (Retina crisp, WebP q85)
-  catalog: (r2Key: string) =>
-    generateSignedImgproxyUrl(r2Key, {
-      width: 1080,
-      height: 0,
-      resizingType: 'auto',
-      quality: 85,
-      format: 'webp',
-    }),
-
-  // Portada cuadrada para álbumes
-  cover: (r2Key: string) =>
-    generateSignedImgproxyUrl(r2Key, {
-      width: 500,
-      height: 500,
-      resizingType: 'fill',
-      gravity: 'sm',
-      quality: 80,
-      format: 'webp',
-    }),
-
-  // Vista ampliada en lightbox de alta resolución
-  lightbox: (r2Key: string) =>
-    generateSignedImgproxyUrl(r2Key, {
-      width: 1920,
-      height: 0,
-      resizingType: 'auto',
-      quality: 85,
-      format: 'webp',
-    }),
-};
