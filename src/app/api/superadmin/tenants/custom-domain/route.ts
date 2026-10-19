@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { invalidateTenantCatalogCache } from '@/lib/catalog-db';
+import {
+  registerCustomHostnameInCloudflare,
+  removeCustomHostnameFromCloudflare,
+} from '@/lib/cloudflare';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,13 +91,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Obtener estado actual antes de actualizar
+    const { data: currentTenant } = await adminSupabase
+      .from('tenants')
+      .select('custom_domain')
+      .eq('id', tenant_id)
+      .maybeSingle();
+
     const updatePayload: Record<string, any> = {
       updated_at: new Date().toISOString(),
     };
 
     if (custom_domain_enabled !== undefined) {
       updatePayload.custom_domain_enabled = Boolean(custom_domain_enabled);
-      // Si se deshabilita, opcionalmente se puede mantener el dominio guardado o conservarlo
     }
 
     if (custom_domain !== undefined) {
@@ -113,6 +123,24 @@ export async function POST(req: NextRequest) {
 
     // Invalidar caché en RAM del catálogo para que tome el nuevo host de inmediato
     invalidateTenantCatalogCache(tenant_id);
+
+    // Sincronizar automáticamente con Cloudflare for SaaS (Custom Hostnames)
+    if (custom_domain !== undefined) {
+      if (cleanDomain) {
+        if (currentTenant?.custom_domain && currentTenant.custom_domain !== cleanDomain) {
+          removeCustomHostnameFromCloudflare(currentTenant.custom_domain).catch((e) =>
+            console.error('[Cloudflare for SaaS Superadmin] Error desvinculando host anterior:', e)
+          );
+        }
+        registerCustomHostnameInCloudflare(cleanDomain).catch((e) =>
+          console.error('[Cloudflare for SaaS Superadmin] Error registrando host:', e)
+        );
+      } else if (currentTenant?.custom_domain) {
+        removeCustomHostnameFromCloudflare(currentTenant.custom_domain).catch((e) =>
+          console.error('[Cloudflare for SaaS Superadmin] Error desvinculando host:', e)
+        );
+      }
+    }
 
     return NextResponse.json({
       success: true,

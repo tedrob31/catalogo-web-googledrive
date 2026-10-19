@@ -267,3 +267,102 @@ export async function purgeCloudflareCache(optionsOrSubdomain?: string | Cloudfl
     }
   });
 }
+
+/**
+ * Registra automáticamente un dominio o subdominio propio en Cloudflare for SaaS (Custom Hostnames)
+ */
+export async function registerCustomHostnameInCloudflare(
+  hostname: string
+): Promise<{ success: boolean; error?: string; status?: string }> {
+  const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
+  const cfToken = process.env.CLOUDFLARE_API_TOKEN;
+
+  if (!cfZoneId || !cfToken) {
+    console.warn(
+      '[Cloudflare for SaaS] CLOUDFLARE_ZONE_ID o CLOUDFLARE_API_TOKEN no configurados. Omitiendo registro automático en Cloudflare.'
+    );
+    return { success: false, error: 'Credenciales de Cloudflare API no configuradas en las variables de entorno' };
+  }
+
+  const cleanHost = hostname.trim().toLowerCase();
+  try {
+    const url = `https://api.cloudflare.com/client/v4/zones/${cfZoneId}/custom_hostnames`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${cfToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        hostname: cleanHost,
+        ssl: {
+          method: 'http',
+          type: 'dv',
+          settings: {
+            min_tls_version: '1.2',
+          },
+        },
+      }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      console.log(`[Cloudflare for SaaS] Custom Hostname "${cleanHost}" registrado exitosamente en Cloudflare.`);
+      return { success: true, status: data.result?.status };
+    }
+
+    // Código 1437: Ya existe en la zona
+    const alreadyExists = data.errors?.some(
+      (e: any) => e.code === 1437 || String(e.message || '').includes('already exists')
+    );
+    if (alreadyExists) {
+      console.log(`[Cloudflare for SaaS] Custom Hostname "${cleanHost}" ya existía registrado en Cloudflare.`);
+      return { success: true, status: 'already_exists' };
+    }
+
+    const errMsg = data.errors?.map((e: any) => e.message).join(', ') || 'Error desconocido';
+    console.warn(`[Cloudflare for SaaS] No se pudo registrar "${cleanHost}": ${errMsg}`);
+    return { success: false, error: errMsg };
+  } catch (err: any) {
+    console.error(`[Cloudflare for SaaS] Excepción registrando "${cleanHost}":`, err);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Elimina un dominio propio de Cloudflare for SaaS (Custom Hostnames) al desvincularlo
+ */
+export async function removeCustomHostnameFromCloudflare(hostname: string): Promise<boolean> {
+  const cfZoneId = process.env.CLOUDFLARE_ZONE_ID;
+  const cfToken = process.env.CLOUDFLARE_API_TOKEN;
+
+  if (!cfZoneId || !cfToken) return false;
+
+  const cleanHost = hostname.trim().toLowerCase();
+  try {
+    // 1. Buscar el custom hostname para obtener su ID
+    const searchUrl = `https://api.cloudflare.com/client/v4/zones/${cfZoneId}/custom_hostnames?hostname=${encodeURIComponent(
+      cleanHost
+    )}`;
+    const searchRes = await fetch(searchUrl, {
+      headers: { Authorization: `Bearer ${cfToken}` },
+    });
+    const searchData = await searchRes.json();
+    const item = searchData.result?.[0];
+    if (!item?.id) {
+      return true; // Ya no existía
+    }
+
+    // 2. Eliminar por ID
+    const deleteUrl = `https://api.cloudflare.com/client/v4/zones/${cfZoneId}/custom_hostnames/${item.id}`;
+    const delRes = await fetch(deleteUrl, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${cfToken}` },
+    });
+    const delData = await delRes.json();
+    return Boolean(delData.success);
+  } catch (err) {
+    console.error(`[Cloudflare for SaaS] Error eliminando "${cleanHost}":`, err);
+    return false;
+  }
+}

@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
-import { purgeCloudflareCache } from '@/lib/cloudflare';
+import {
+  purgeCloudflareCache,
+  registerCustomHostnameInCloudflare,
+  removeCustomHostnameFromCloudflare,
+} from '@/lib/cloudflare';
 import { invalidateTenantCatalogCache } from '@/lib/catalog-db';
 
 // GET: Obtener la configuración visual y de marca del tenant actual
@@ -227,6 +231,27 @@ export async function POST(request: NextRequest) {
       if (tUpdateErr) {
         console.error('Error actualizando tabla tenants en Supabase:', tUpdateErr);
         return NextResponse.json({ error: tUpdateErr.message }, { status: 500 });
+      }
+
+      // Sincronizar automáticamente con Cloudflare for SaaS (Custom Hostnames)
+      if (updatedCustomDomain !== undefined && updatedCustomDomain !== tenantInfo?.custom_domain) {
+        if (updatedCustomDomain) {
+          // Desvincular el dominio anterior si existía
+          if (tenantInfo?.custom_domain && tenantInfo.custom_domain !== updatedCustomDomain) {
+            removeCustomHostnameFromCloudflare(tenantInfo.custom_domain).catch((e) =>
+              console.error('[Cloudflare for SaaS] Error desvinculando host anterior:', e)
+            );
+          }
+          // Registrar el nuevo dominio en Cloudflare for SaaS
+          registerCustomHostnameInCloudflare(updatedCustomDomain).catch((e) =>
+            console.error('[Cloudflare for SaaS] Error registrando custom hostname:', e)
+          );
+        } else if (tenantInfo?.custom_domain) {
+          // Si el usuario eliminó su dominio personalizado, removerlo de Cloudflare
+          removeCustomHostnameFromCloudflare(tenantInfo.custom_domain).catch((e) =>
+            console.error('[Cloudflare for SaaS] Error desvinculando host:', e)
+          );
+        }
       }
     }
 
