@@ -476,6 +476,7 @@ export default function TenantDashboard() {
         body: JSON.stringify({
           name: configForm.name,
           subdomain: cleanSub,
+          custom_domain: configForm.custom_domain,
           siteTitle: configForm.title,
           siteDescription: configForm.subtitle,
           whatsappNumber: configForm.whatsapp,
@@ -503,8 +504,17 @@ export default function TenantDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al guardar la configuración');
 
+      if (data.updated) {
+        setTenant((prev: any) => ({
+          ...prev,
+          name: data.updated.name ?? prev?.name,
+          subdomain: data.updated.subdomain ?? prev?.subdomain,
+          custom_domain: data.updated.custom_domain !== undefined ? data.updated.custom_domain : prev?.custom_domain,
+        }));
+      }
+
       alert('¡Configuración guardada exitosamente en Supabase!');
-      loadDashboardData();
+      await loadDashboardData();
     } catch (err: any) {
       alert(err.message || 'Error guardando cambios');
     } finally {

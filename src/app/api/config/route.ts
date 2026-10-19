@@ -147,9 +147,10 @@ export async function POST(request: NextRequest) {
 
     // 2.1 Procesar Custom Domain (si está habilitado para este tenant)
     let updatedCustomDomain: string | null | undefined = undefined;
-    if (body.custom_domain !== undefined) {
+    const requestedCustomDomain = body.custom_domain !== undefined ? body.custom_domain : body.customDomain;
+    if (requestedCustomDomain !== undefined) {
       const isEnabled = Boolean(tenantInfo?.custom_domain_enabled);
-      const rawDomain = String(body.custom_domain || '').trim();
+      const rawDomain = String(requestedCustomDomain || '').trim();
 
       if (rawDomain !== '') {
         if (!isEnabled) {

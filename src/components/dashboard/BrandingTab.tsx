@@ -202,9 +202,20 @@ export default function BrandingTab({
                   </div>
                 )}
 
-                <div className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>Las imágenes de tu catálogo se continuarán sirviendo de forma ultrarrápida desde nuestro CDN.</span>
+                <div className="text-[11px] text-slate-400 flex items-center justify-between gap-2 pt-1 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Las imágenes de tu catálogo se continuarán sirviendo de forma ultrarrápida desde nuestro CDN.</span>
+                  </div>
+                  <a
+                    href={`https://${configForm.custom_domain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 transition"
+                  >
+                    <span>Abrir https://{configForm.custom_domain}</span>
+                    <FaExternalLinkAlt className="text-[9px]" />
+                  </a>
                 </div>
               </div>
             )}

@@ -17,7 +17,17 @@ export default function DashboardHeader({
   onSignOut,
   onOpenSecurityModal,
 }: DashboardHeaderProps) {
-  const storefrontUrl = tenant ? `https://${tenant.subdomain}.${baseDomain}` : '#';
+  const isCustomDomainActive = Boolean(tenant?.custom_domain && tenant?.custom_domain_enabled);
+  const storefrontUrl = isCustomDomainActive
+    ? `https://${tenant.custom_domain}`
+    : tenant
+    ? `https://${tenant.subdomain}.${baseDomain}`
+    : '#';
+  const displayUrl = isCustomDomainActive
+    ? tenant.custom_domain
+    : tenant
+    ? `${tenant.subdomain}.${baseDomain}`
+    : '';
 
   return (
     <header className="border-b border-white/10 bg-slate-900/60 backdrop-blur-md sticky top-0 z-30">
@@ -34,15 +44,27 @@ export default function DashboardHeader({
                 {plan?.name || 'Gratuito'}
               </span>
             </div>
-            <a
-              href={storefrontUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-amber-400/90 hover:text-amber-300 flex items-center gap-1 font-mono transition"
-            >
-              <span>{tenant?.subdomain}.{baseDomain}</span>
-              <FaExternalLinkAlt className="text-[9px]" />
-            </a>
+            <div className="flex items-center gap-2">
+              <a
+                href={storefrontUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-amber-400/90 hover:text-amber-300 flex items-center gap-1 font-mono transition"
+                title={
+                  isCustomDomainActive
+                    ? `Dominio Personalizado: ${tenant.custom_domain}`
+                    : `Subdominio: ${tenant?.subdomain}.${baseDomain}`
+                }
+              >
+                <span>{displayUrl}</span>
+                <FaExternalLinkAlt className="text-[9px]" />
+              </a>
+              {isCustomDomainActive && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                  DOMINIO PROPIO
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
