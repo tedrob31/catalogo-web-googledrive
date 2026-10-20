@@ -77,8 +77,8 @@ Antes de modificar cualquier funcionalidad o proponer cambios, consulta los docu
 * **PROHIBIDO** usar `PathPrefix('/')` o comodines genéricos sin restricción de host en los routers de Traefik para el catálogo.
 * El VPS comparte la red `r4tlabsnet` con otros servicios críticos del servidor (`ratportainer.r4tlabs.com`, `imgproxy.r4tlabs.com`, etc.). Un router genérico o un `PathPrefix('/')` intercepta las llamadas `/api` de Portainer y otros contenedores, rompiendo el acceso administrativo al panel.
 * **Regla de Enrutamiento Válida en Traefik**:
-  * Los routers de `c4talogo` deben especificar explícitamente sus dominios autorizados:
-    `Host('c4talogo.com') || HostRegexp('.*\\.c4talogo\\.com') || Host('remate.catalogodemoda.pe')`
+  * Para admitir c4talogo.com, cualquier subdominio y cualquier dominio propio sin editar el compose, se utiliza la regla de exclusión estricta:
+    `Host('c4talogo.com') || HostRegexp('.*\\.c4talogo\\.com') || !HostRegexp('.*\\.r4tlabs\\.com')`
   * Si un stack entra en conflicto de enrutamiento o bloquea Portainer en Docker Swarm, la recuperación inmediata por terminal SSH es:
     `docker stack rm c4talogo_platform`
     *(Es 100% seguro y no causa pérdida de datos: la base de datos reside en Supabase Cloud y las fotos en Cloudflare R2)*.
