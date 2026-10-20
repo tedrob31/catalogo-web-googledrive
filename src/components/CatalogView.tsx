@@ -35,10 +35,18 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
     const [searchQuery, setSearchQuery] = useState('');
     const [lightboxPhotoIndex, setLightboxPhotoIndex] = useState<number>(-1);
 
-    // Sincronizar si cambia initialPath desde SSR
+    // Sincronizar si cambia initialPath desde SSR (evitar re-renders y ciclos si los álbumes son idénticos)
     useEffect(() => {
         if (initialPath && initialPath.length > 0) {
-            setActivePath(initialPath);
+            setActivePath(prev => {
+                if (
+                    prev.length === initialPath.length &&
+                    prev.every((alb, idx) => alb.id === initialPath[idx].id)
+                ) {
+                    return prev;
+                }
+                return initialPath;
+            });
         }
     }, [initialPath]);
 
@@ -80,9 +88,9 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
         return freshPath ? freshPath[freshPath.length - 1] : rootAlbum;
     }, [rootAlbum, activePath]);
 
-    // Enviar evento de métrica no bloqueante (visitas o clics WhatsApp)
-    const trackEvent = useCallback(
-        (pathStr: string, title: string, eventType: 'view' | 'whatsapp' = 'view') => {
+    // Enviar evento de métrica no bloqueante a la API
+    const sendMetricPayload = useCallback(
+        (pathStr: string, title: string, eventType: 'view' | 'whatsapp') => {
             if (!tenantId) return;
             try {
                 const payload = JSON.stringify({
@@ -103,21 +111,75 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                         keepalive: true,
                     }).catch(() => {});
                 }
-            } catch (e) {
+            } catch {
                 // Silencioso para garantizar que no interrumpa al usuario
             }
         },
         [tenantId]
     );
 
+    // Registro de vistas deduplicado con ventana de cooldown (15 min por ruta/sesión)
+    // Previene métricas infladas por cambio de foco (Alt+Tab), lecturas prolongadas o refrescos en background
+    const inMemoryViewsRef = useRef<Map<string, number>>(new Map());
+    const trackPageView = useCallback(
+        (pathStr: string, title: string) => {
+            if (!tenantId || typeof window === 'undefined') return;
+
+            const now = Date.now();
+            const VIEW_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutos por ruta en la misma sesión
+            const key = `c4t_view_${tenantId}_${pathStr}`;
+
+            try {
+                const lastTracked = Number(sessionStorage.getItem(key) || 0);
+                if (lastTracked && now - lastTracked < VIEW_COOLDOWN_MS) {
+                    return;
+                }
+                sessionStorage.setItem(key, String(now));
+            } catch {
+                const lastTracked = inMemoryViewsRef.current.get(key) || 0;
+                if (lastTracked && now - lastTracked < VIEW_COOLDOWN_MS) {
+                    return;
+                }
+                inMemoryViewsRef.current.set(key, now);
+            }
+
+            sendMetricPayload(pathStr, title, 'view');
+        },
+        [tenantId, sendMetricPayload]
+    );
+
+    // Registro de clics a WhatsApp con debounce (mínimo 3 segundos entre clics)
+    const lastWhatsappClickRef = useRef<number>(0);
+    const trackWhatsappClick = useCallback(
+        (pathStr: string, title: string) => {
+            if (!tenantId) return;
+            const now = Date.now();
+            if (now - lastWhatsappClickRef.current < 3000) {
+                return;
+            }
+            lastWhatsappClickRef.current = now;
+            sendMetricPayload(pathStr, title, 'whatsapp');
+        },
+        [tenantId, sendMetricPayload]
+    );
+
+    // Construcción de ruta canónica y título para métricas
+    const currentPathStr = useMemo(() => {
+        if (!activePath || activePath.length <= 1) return '/';
+        const segments = activePath.slice(1).map(a => slugify(a.name));
+        return segments.length > 0 ? '/' + segments.join('/') : '/';
+    }, [activePath]);
+
+    const currentAlbumTitle = useMemo(() => {
+        if (!activePath || activePath.length === 0) return rootAlbum?.name || 'Catálogo Principal';
+        return activePath[activePath.length - 1]?.name || rootAlbum?.name || 'Catálogo Principal';
+    }, [activePath, rootAlbum?.name]);
+
     // Registrar vista al ingresar o navegar entre álbumes
     useEffect(() => {
         if (!rootAlbum) return;
-        const current = activePath[activePath.length - 1] || rootAlbum;
-        const segments = activePath.slice(1).map(a => slugify(a.name));
-        const pathStr = segments.length > 0 ? '/' + segments.join('/') : '/';
-        trackEvent(pathStr, current.name, 'view');
-    }, [activePath, rootAlbum, trackEvent]);
+        trackPageView(currentPathStr, currentAlbumTitle);
+    }, [currentPathStr, currentAlbumTitle, rootAlbum, trackPageView]);
 
     // Search Logic
     const searchResults = useMemo(() => {
@@ -429,9 +491,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => {
-                        const segments = activePath.slice(1).map(a => slugify(a.name));
-                        const pathStr = segments.length > 0 ? '/' + segments.join('/') : '/';
-                        trackEvent(pathStr, currentAlbum?.name || 'Catálogo Principal', 'whatsapp');
+                        trackWhatsappClick(currentPathStr, currentAlbum?.name || 'Catálogo Principal');
                     }}
                     className="fixed bottom-6 right-6 z-40 bg-[#25D366] hover:bg-[#20ba59] text-white p-3.5 sm:p-4 rounded-full shadow-2xl transition transform hover:scale-110 active:scale-95 flex items-center justify-center text-2xl sm:text-3xl"
                     title="Hacer pedido por WhatsApp"

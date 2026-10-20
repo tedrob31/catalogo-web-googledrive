@@ -8,15 +8,22 @@ interface PhotoCardProps {
     onClick: () => void;
 }
 
+// Registro en memoria para asegurar que cada foto HD solo se precargue una única vez por sesión
+const prefetchedImages = new Set<string>();
+
 export default function PhotoCard({ photo, priority = false, onClick }: PhotoCardProps) {
     const [isLoading, setIsLoading] = useState(!priority);
 
-    // Precarga inteligente de alta resolución al pasar el cursor o posar el dedo
+    // Precarga inteligente de alta resolución: solo una vez por foto en toda la sesión
     const prefetchFullImage = () => {
-        if (photo.fullLink && typeof window !== 'undefined') {
-            const img = new window.Image();
-            img.src = photo.fullLink;
-        }
+        const url = photo.fullLink;
+        if (!url || typeof window === 'undefined') return;
+
+        if (prefetchedImages.has(url)) return;
+        prefetchedImages.add(url);
+
+        const img = new window.Image();
+        img.src = url;
     };
 
     return (
