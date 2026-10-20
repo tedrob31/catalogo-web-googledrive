@@ -93,6 +93,7 @@ export default function TenantDashboard() {
     folder_covers: {} as Record<string, string>,
     custom_domain: '',
     custom_domain_enabled: false,
+    redirect_to_custom_domain: false,
   });
 
   // Copia de respaldo guardada en Supabase para detección de cambios
@@ -205,6 +206,7 @@ export default function TenantDashboard() {
         folder_covers: loadedCovers,
         custom_domain: t.custom_domain || '',
         custom_domain_enabled: Boolean(t.custom_domain_enabled),
+        redirect_to_custom_domain: Boolean(rawSettings.redirect_to_custom_domain),
       });
     }
 
@@ -477,6 +479,7 @@ export default function TenantDashboard() {
           name: configForm.name,
           subdomain: cleanSub,
           custom_domain: configForm.custom_domain,
+          redirectToCustomDomain: configForm.redirect_to_custom_domain,
           siteTitle: configForm.title,
           siteDescription: configForm.subtitle,
           whatsappNumber: configForm.whatsapp,

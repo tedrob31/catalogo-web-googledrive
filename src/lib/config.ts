@@ -34,6 +34,7 @@ export interface AppConfig {
     logoUrl?: string;
     whatsappNumber?: string;
     theme?: string;
+    redirectToCustomDomain?: boolean;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {

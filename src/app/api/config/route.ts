@@ -273,6 +273,12 @@ export async function POST(request: NextRequest) {
       folder_covers: body.folderCovers !== undefined ? body.folderCovers : (existingSettings.folder_covers || {}),
       og_image: body.ogImage !== undefined ? body.ogImage : (existingSettings.og_image || ''),
       force_global_og_image: body.forceGlobalOgImage !== undefined ? Boolean(body.forceGlobalOgImage) : Boolean(existingSettings.force_global_og_image),
+      redirect_to_custom_domain:
+        body.redirectToCustomDomain !== undefined
+          ? Boolean(body.redirectToCustomDomain)
+          : body.redirect_to_custom_domain !== undefined
+          ? Boolean(body.redirect_to_custom_domain)
+          : Boolean(existingSettings.redirect_to_custom_domain),
     };
 
     const { error: updateError } = await adminClient

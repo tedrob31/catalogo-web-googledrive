@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import { loadTenantCatalog } from '@/lib/catalog-db';
 import CatalogView from '@/components/CatalogView';
 
@@ -72,6 +73,20 @@ export default async function TenantCatalogPage({ params }: Props) {
         </p>
       </div>
     );
+  }
+
+  // Redirección Automática si el inquilino tiene dominio propio activo y configuró redirigir
+  const shouldRedirect = Boolean(payload.config.redirectToCustomDomain);
+  const isAccessingViaSubdomain = subdomain.toLowerCase() === payload.tenant.subdomain?.toLowerCase();
+
+  if (
+    isAccessingViaSubdomain &&
+    payload.tenant.custom_domain &&
+    payload.tenant.custom_domain_enabled &&
+    shouldRedirect
+  ) {
+    const targetPath = slug.length > 0 ? `/${slug.join('/')}` : '';
+    redirect(`https://${payload.tenant.custom_domain}${targetPath}`);
   }
 
   return (

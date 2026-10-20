@@ -140,6 +140,31 @@ export default function BrandingTab({
               </span>
             </div>
 
+            {/* Opción de Redirección Automática desde el subdominio */}
+            {configForm.custom_domain && configForm.custom_domain.trim() !== '' && (
+              <label className="flex items-start gap-3 p-3.5 bg-slate-950/70 border border-amber-500/20 rounded-xl cursor-pointer hover:bg-slate-950/90 transition">
+                <input
+                  type="checkbox"
+                  checked={Boolean(configForm.redirect_to_custom_domain)}
+                  onChange={(e) =>
+                    setConfigForm((prev: any) => ({
+                      ...prev,
+                      redirect_to_custom_domain: e.target.checked,
+                    }))
+                  }
+                  className="mt-0.5 w-4 h-4 rounded text-amber-500 bg-slate-900 border-white/20 focus:ring-amber-500 cursor-pointer accent-amber-500 shrink-0"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-white block">
+                    Redirigir automáticamente visitantes a mi Dominio Personalizado (Recomendado)
+                  </span>
+                  <span className="text-[11px] text-slate-400 leading-relaxed block mt-0.5">
+                    Si alguien ingresa a <code className="text-amber-300 font-mono">{configForm.subdomain}.{baseDomain}</code>, será enviado automáticamente a <code className="text-amber-300 font-mono">https://{configForm.custom_domain}</code>. Si lo desactivas, ambos dominios funcionarán en paralelo como espejos.
+                  </span>
+                </div>
+              </label>
+            )}
+
             {/* Asistente interactivo de configuración DNS */}
             {configForm.custom_domain && configForm.custom_domain.trim() !== '' && (
               <div className="p-4 bg-slate-950/80 border border-white/10 rounded-xl space-y-3">

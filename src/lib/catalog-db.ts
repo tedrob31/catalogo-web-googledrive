@@ -12,6 +12,7 @@ export interface TenantCatalogPayload {
     name: string;
     subdomain: string;
     custom_domain: string | null;
+    custom_domain_enabled?: boolean;
   };
   data: CacheStructure;
   config: AppConfig;
@@ -260,6 +261,7 @@ async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBas
     cardBorderColor: rawSettings.card_border_color || undefined,
     ogImage: rawSettings.og_image || undefined,
     forceGlobalOgImage: rawSettings.force_global_og_image || false,
+    redirectToCustomDomain: Boolean(rawSettings.redirect_to_custom_domain),
   };
 
   const result: CachedTenantBase = {
