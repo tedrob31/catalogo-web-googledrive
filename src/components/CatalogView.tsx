@@ -50,11 +50,11 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
         }
     }, [initialPath]);
 
-    // Refrescar silenciosamente en segundo plano con limitador (mínimo 15 segundos entre peticiones)
+    // Refrescar silenciosamente en segundo plano con limitador (mínimo 30 segundos entre peticiones)
     // Esto garantiza que cientos de usuarios simultáneos navegando carpetas o alternando pestañas
     // no saturen el ancho de banda ni el servidor, mientras se mantiene el catálogo siempre actualizado.
     const lastBackgroundRefreshRef = useRef<number>(0);
-    const triggerBackgroundRefresh = useCallback((minIntervalMs = 15000) => {
+    const triggerBackgroundRefresh = useCallback((minIntervalMs = 30000) => {
         const now = Date.now();
         if (now - lastBackgroundRefreshRef.current > minIntervalMs) {
             lastBackgroundRefreshRef.current = now;
@@ -66,7 +66,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
     useEffect(() => {
         const onVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
-                triggerBackgroundRefresh(15000);
+                triggerBackgroundRefresh(30000);
             }
         };
         document.addEventListener('visibilitychange', onVisibilityChange);
