@@ -77,13 +77,12 @@ services:
         - "traefik.http.routers.r4t-c4talogo-http.priority=100"
 
         # Enrutamiento Catch-All para Dominios Propios Personalizados (VIP Tenants)
-        - "traefik.http.routers.r4t-customdomain-secure.rule=HostRegexp(`{host:.+}`)"
+        - "traefik.http.routers.r4t-customdomain-secure.rule=PathPrefix(`/`)"
         - "traefik.http.routers.r4t-customdomain-secure.entrypoints=websecure"
         - "traefik.http.routers.r4t-customdomain-secure.tls=true"
-        - "traefik.http.routers.r4t-customdomain-secure.tls.certresolver=letsencryptresolver"
         - "traefik.http.routers.r4t-customdomain-secure.service=backend_api-c4talogo"
         - "traefik.http.routers.r4t-customdomain-secure.priority=1"
-        - "traefik.http.routers.r4t-customdomain-http.rule=HostRegexp(`{host:.+}`)"
+        - "traefik.http.routers.r4t-customdomain-http.rule=PathPrefix(`/`)"
         - "traefik.http.routers.r4t-customdomain-http.entrypoints=web"
         - "traefik.http.routers.r4t-customdomain-http.service=backend_api-c4talogo"
         - "traefik.http.routers.r4t-customdomain-http.priority=1"
