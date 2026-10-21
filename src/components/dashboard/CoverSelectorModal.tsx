@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { FaSearch, FaTimes, FaImage } from 'react-icons/fa';
 
@@ -29,26 +29,37 @@ export default function CoverSelectorModal({
 }: CoverSelectorModalProps) {
   const [search, setSearch] = useState('');
 
+  // Memoizar lista de ítems para evitar recrear objetos en cada render
+  const items = useMemo(() => {
+    return detailedPhotos.length > 0
+      ? detailedPhotos
+      : availableCovers.map((url, idx) => ({
+          id: `cover_${idx}`,
+          name: url.split('/').pop()?.split('?')[0] || `Foto ${idx + 1}`,
+          r2_key: '',
+          url,
+          thumbnailUrl: url,
+        }));
+  }, [detailedPhotos, availableCovers]);
+
+  // Filtrado optimizado con memoization
+  const filteredItems = useMemo(() => {
+    if (!search.trim()) return items;
+    const q = search.toLowerCase();
+    return items.filter((item) => item.name.toLowerCase().includes(q));
+  }, [items, search]);
+
   if (!isOpen) return null;
 
-  // Combinar información detallada si existe, o usar URLs simples
-  const items = detailedPhotos.length > 0
-    ? detailedPhotos
-    : availableCovers.map((url, idx) => ({
-        id: `cover_${idx}`,
-        name: url.split('/').pop()?.split('?')[0] || `Foto ${idx + 1}`,
-        r2_key: '',
-        url,
-        thumbnailUrl: url,
-      }));
-
-  const filteredItems = items.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      {/* Fondo oscuro optimizado sin backdrop-blur pesado para scroll fluido a 60-120fps */}
+      <div 
+        className="fixed inset-0 bg-black/85 transition-opacity" 
+        onClick={onClose} 
+      />
+
+      <div className="relative bg-slate-900 border border-white/10 rounded-2xl p-6 max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl z-10 animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="flex justify-between items-center mb-4 pb-3 border-b border-white/10">
           <div>
@@ -80,8 +91,8 @@ export default function CoverSelectorModal({
           />
         </div>
 
-        {/* Image Grid */}
-        <div className="overflow-y-auto flex-1 pr-1">
+        {/* Image Grid con aceleración de hardware y content-visibility para scroll ultrarrápido */}
+        <div className="overflow-y-auto flex-1 pr-1 overscroll-contain [will-change:scroll-position]">
           {filteredItems.length === 0 ? (
             <div className="text-center py-16 text-slate-500 text-xs">
               No se encontraron imágenes disponibles. Sube fotos a la carpeta de Portadas o sincroniza tu catálogo.
@@ -95,7 +106,7 @@ export default function CoverSelectorModal({
                     onSelect(item.url, item.r2_key);
                     onClose();
                   }}
-                  className="cursor-pointer border border-white/10 hover:border-amber-500 rounded-xl overflow-hidden group relative bg-slate-800 transition shadow hover:shadow-amber-500/10"
+                  className="cursor-pointer border border-white/10 hover:border-amber-400 active:scale-95 rounded-xl overflow-hidden group relative bg-slate-800 transition-colors [content-visibility:auto] [contain-intrinsic-size:180px]"
                 >
                   <div className="relative aspect-square w-full bg-slate-950">
                     <Image
@@ -103,11 +114,14 @@ export default function CoverSelectorModal({
                       alt={item.name}
                       fill
                       unoptimized
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                      decoding="async"
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 180px"
+                      className="object-cover"
                     />
                   </div>
-                  <div className="p-2 bg-slate-900/90 border-t border-white/5">
-                    <p className="text-[11px] truncate text-slate-200 font-medium" title={item.name}>
+                  <div className="p-2 bg-slate-900 border-t border-white/5">
+                    <p className="text-[11px] truncate text-slate-200 font-medium group-hover:text-amber-400 transition-colors" title={item.name}>
                       {item.name}
                     </p>
                   </div>
