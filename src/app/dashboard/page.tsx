@@ -347,9 +347,11 @@ export default function TenantDashboard() {
     }
 
     const previousFolderId = integration?.catalog_folder_id;
-    const isFolderChanged = previousFolderId && previousFolderId !== selectedCatalogFolder.id;
+    const isCatalogFolderChanged = previousFolderId && previousFolderId !== selectedCatalogFolder.id;
+    const previousCoverFolderId = integration?.cover_folder_id;
+    const isCoverFolderChanged = (previousCoverFolderId || null) !== (selectedCoverFolder?.id || null);
 
-    if (isFolderChanged) {
+    if (isCatalogFolderChanged) {
       const confirmed = window.confirm(
         `⚠️ ATENCIÓN: Estás cambiando la carpeta principal de tu catálogo:\n\n` +
         `• Carpeta anterior: "${integration?.catalog_folder_name || 'Anterior'}"\n` +
@@ -374,8 +376,8 @@ export default function TenantDashboard() {
       });
       const data = await res.json();
       if (data.success) {
-        if (isFolderChanged) {
-          alert('¡Carpetas actualizadas! Sincronizando catálogo para descargar la nueva estructura y limpiar fotos anteriores...');
+        if (isCatalogFolderChanged || isCoverFolderChanged) {
+          alert('¡Carpetas actualizadas! Sincronizando catálogo para procesar la nueva estructura y portadas...');
           await loadDashboardData();
           handleSyncNow();
         } else {

@@ -524,17 +524,17 @@ async function syncFolderRecursive({
     if (!img.id || !img.name) continue;
     visitedDriveFileIds.add(img.id);
 
-    // Verificar límite de fotos del plan
-    if (visitedDriveFileIds.size > maxPhotos) {
-      console.warn(`[Sync Tenant ${tenantId}] Límite de fotos del plan alcanzado (${maxPhotos}).`);
-      break;
-    }
-
     const ext = (img.name.split('.').pop() || 'jpg').toLowerCase();
     const rawFileName = img.name.substring(0, img.name.lastIndexOf('.')) || img.name;
     const cleanFileName = slugify(rawFileName);
     const isCover = parentPath === '_covers' || parentPath.startsWith('_covers/');
     const folderType = isCover ? 'portadas' : 'catalogo';
+
+    // Verificar límite de fotos del plan (las fotos de portada tienen su propia cuota y nunca se bloquean por el catálogo)
+    if (!isCover && visitedDriveFileIds.size > maxPhotos) {
+      console.warn(`[Sync Tenant ${tenantId}] Límite de fotos del catálogo alcanzado (${maxPhotos}).`);
+      break;
+    }
 
     const existingPhoto = existingPhotosMap.get(img.id);
 
