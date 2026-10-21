@@ -35,9 +35,10 @@ interface CachedTenantBase {
   cachedAt: number;
 }
 
-// Caché en memoria RAM de ultra corta duración (TTL de 5 segundos para amortiguar ráfagas concurrentes)
+// Caché en memoria RAM de alta velocidad (TTL de 5 minutos para minimizar lecturas a Supabase)
+// Si el inquilino sincroniza en Google Drive o edita diseño/portada, invalidateTenantCatalogCache lo purga al instante (0ms)
 const memoryCatalogCache = new Map<string, CachedTenantBase>();
-const CACHE_TTL_MS = 5 * 1000;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos (300,000 ms)
 
 /**
  * Invalida inmediatamente el catálogo en la memoria RAM del servidor.
@@ -73,11 +74,11 @@ async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBas
     return cached;
   }
 
-  // Limpieza periódica automática si el Map supera 300 entradas para mantener la RAM liviana (<50MB)
+  // Limpieza periódica automática si el Map supera 300 tiendas para mantener la RAM liviana (<100MB)
   if (memoryCatalogCache.size > 300) {
     const now = Date.now();
     for (const [k, v] of memoryCatalogCache.entries()) {
-      if (now - v.cachedAt > CACHE_TTL_MS * 2) {
+      if (now - v.cachedAt > CACHE_TTL_MS) {
         memoryCatalogCache.delete(k);
       }
     }
