@@ -56,10 +56,19 @@ services:
       placement:
         constraints:
           - node.role == manager
+      update_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+        failure_action: rollback
+        monitor: 15s
+      rollback_config:
+        parallelism: 1
+        order: stop-first
       resources:
         limits:
           cpus: "4.0"
-          memory: 7168M
+          memory: 6144M
       labels:
         - traefik.enable=true
         - traefik.docker.network=r4tlabsnet

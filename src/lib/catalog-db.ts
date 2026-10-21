@@ -73,6 +73,16 @@ async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBas
     return cached;
   }
 
+  // Limpieza periódica automática si el Map supera 300 entradas para mantener la RAM liviana (<50MB)
+  if (memoryCatalogCache.size > 300) {
+    const now = Date.now();
+    for (const [k, v] of memoryCatalogCache.entries()) {
+      if (now - v.cachedAt > CACHE_TTL_MS * 2) {
+        memoryCatalogCache.delete(k);
+      }
+    }
+  }
+
   const supabase = createAdminClient();
 
   // 1. Obtener tenant activo por subdominio o custom_domain
