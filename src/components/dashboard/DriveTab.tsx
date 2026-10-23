@@ -18,6 +18,7 @@ import {
   FaLayerGroup,
   FaExpandArrowsAlt,
   FaCompressArrowsAlt,
+  FaUnlink,
 } from 'react-icons/fa';
 
 export interface AlbumItem {
@@ -55,6 +56,8 @@ interface DriveTabProps {
   onResetCover: (albumId: string) => void;
   savingCovers: boolean;
   onOpenCoverSelector: (albumId: string) => void;
+  onDisconnectDrive?: () => void;
+  disconnectingDrive?: boolean;
 }
 
 // Estructura de Nodo para el Árbol Jerárquico
@@ -87,6 +90,8 @@ export default function DriveTab({
   onResetCover,
   savingCovers,
   onOpenCoverSelector,
+  onDisconnectDrive,
+  disconnectingDrive = false,
 }: DriveTabProps) {
   // Estado local para búsqueda en el listado de álbumes encontrados
   const [albumFilter, setAlbumFilter] = useState('');
@@ -322,19 +327,33 @@ export default function DriveTab({
         </p>
 
         {integration?.is_connected ? (
-          <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs">
             <div className="flex items-center gap-2 font-medium">
-              <FaCheckCircle className="text-emerald-400 text-sm" />
+              <FaCheckCircle className="text-emerald-400 text-sm shrink-0" />
               <span>
                 Cuenta Drive vinculada: <strong className="text-white font-semibold">{integration.google_email}</strong>
               </span>
             </div>
-            <a
-              href="/api/auth/google"
-              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition font-medium"
-            >
-              Cambiar o Reconectar cuenta
-            </a>
+            <div className="flex items-center gap-2">
+              <a
+                href="/api/auth/google"
+                className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition font-medium"
+              >
+                Cambiar cuenta
+              </a>
+              {onDisconnectDrive && (
+                <button
+                  type="button"
+                  onClick={onDisconnectDrive}
+                  disabled={disconnectingDrive}
+                  className="px-3 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-lg transition font-medium flex items-center gap-1.5 disabled:opacity-50"
+                  title="Revocar acceso en los servidores de Google y desvincular cuenta"
+                >
+                  <FaUnlink className="text-xs" />
+                  <span>{disconnectingDrive ? 'Desvinculando...' : 'Desvincular'}</span>
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <a

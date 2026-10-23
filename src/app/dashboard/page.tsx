@@ -101,6 +101,7 @@ export default function TenantDashboard() {
 
   // Logs
   const [logs, setLogs] = useState<any[]>([]);
+  const [disconnectingDrive, setDisconnectingDrive] = useState(false);
 
   // Modal de selección de portadas
   const [coverModal, setCoverModal] = useState<{
@@ -391,6 +392,36 @@ export default function TenantDashboard() {
       console.error(err);
     } finally {
       setSavingFolders(false);
+    }
+  }
+
+  async function handleDisconnectDrive() {
+    const confirmed = window.confirm(
+      '¿Estás seguro de que deseas desvincular tu cuenta de Google Drive?\n\n' +
+      '• Se revocará el acceso de c4talogo.com ante los servidores de Google OAuth.\n' +
+      '• Se eliminarán los tokens de sesión almacenados en la base de datos.\n' +
+      '• La sincronización quedará en pausa hasta que vincules una cuenta nuevamente.'
+    );
+    if (!confirmed) return;
+
+    setDisconnectingDrive(true);
+    try {
+      const res = await fetch('/api/auth/google/disconnect', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert('Cuenta de Google Drive desvinculada y tokens revocados correctamente.');
+        setSelectedCatalogFolder(null);
+        setSelectedCoverFolder(null);
+        setIntegration(null);
+        await loadDashboardData();
+      } else {
+        alert(data.error || 'Error al desvincular la cuenta.');
+      }
+    } catch (err) {
+      console.error('Error desvinculando cuenta:', err);
+      alert('Error de conexión al intentar desvincular la cuenta.');
+    } finally {
+      setDisconnectingDrive(false);
     }
   }
 
@@ -814,6 +845,8 @@ export default function TenantDashboard() {
             onResetCover={handleResetCover}
             savingCovers={savingCovers}
             onOpenCoverSelector={handleOpenCoverSelector}
+            onDisconnectDrive={handleDisconnectDrive}
+            disconnectingDrive={disconnectingDrive}
           />
         )}
 

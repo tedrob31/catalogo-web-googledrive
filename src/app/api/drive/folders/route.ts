@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { searchDriveFolders } from '@/lib/google-auth';
 
 // GET: Buscar o listar carpetas de Google Drive del tenant autenticado
@@ -55,7 +56,8 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const { catalog_folder_id, catalog_folder_name, cover_folder_id, cover_folder_name } = body;
 
-  const { data, error } = await supabase
+  const adminSupabase = createAdminClient();
+  const { data, error } = await adminSupabase
     .from('google_integrations')
     .update({
       catalog_folder_id,
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     })
     .eq('tenant_id', membership.tenant_id)
-    .select()
+    .select('tenant_id, google_email, catalog_folder_id, catalog_folder_name, cover_folder_id, cover_folder_name, last_synced_at, is_connected')
     .single();
 
   if (error) {
