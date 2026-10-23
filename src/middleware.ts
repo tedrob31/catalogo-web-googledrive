@@ -86,10 +86,40 @@ export function middleware(request: NextRequest) {
   return response;
 }
 
+const CSP_POLICY = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "img-src 'self' data: blob: https: https://cdn.c4talogo.com https://img.c4talogo.com https://*.googleusercontent.com https://lh3.googleusercontent.com https://*.r2.cloudflarestorage.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https: wss: https://*.supabase.co wss://*.supabase.co https://accounts.google.com https://www.googleapis.com https://cdn.c4talogo.com https://img.c4talogo.com https://api.whatsapp.com https://wa.me",
+  "frame-src 'self' https://accounts.google.com https://content.googleapis.com https://docs.google.com",
+  "frame-ancestors 'self'",
+  "form-action 'self' https://accounts.google.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "upgrade-insecure-requests",
+].join('; ');
+
+/**
+ * Aplica encabezados estrictos de seguridad recomendados por OWASP / CASA
+ */
+function applySecurityHeaders(response: NextResponse) {
+  response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), browsing-topics=()');
+  response.headers.set('X-DNS-Prefetch-Control', 'on');
+  response.headers.set('Content-Security-Policy', CSP_POLICY);
+}
+
 /**
  * Aplica los encabezados de caché garantizados para navegación fluida y Cloudflare Edge Caching
  */
 function applyCacheHeaders(response: NextResponse, request: NextRequest) {
+  applySecurityHeaders(response);
+
   const isRSCRequest = request.nextUrl.searchParams.has('_rsc') || request.headers.has('RSC');
 
   if (isRSCRequest) {
