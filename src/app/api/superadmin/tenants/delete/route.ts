@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { deleteTenantPrefixFromR2 } from '@/lib/r2';
 import { invalidateTenantCatalogCache } from '@/lib/catalog-db';
+import { removeCustomHostnameFromCloudflare } from '@/lib/cloudflare';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,10 +38,10 @@ export async function POST(req: NextRequest) {
 
     const adminSupabase = createAdminClient();
 
-    // 1. Obtener datos de la tienda antes de borrarla
+    // 1. Obtener datos de la tienda antes de borrarla (incluyendo custom_domain)
     const { data: tenant, error: fetchError } = await adminSupabase
       .from('tenants')
-      .select('id, name, subdomain')
+      .select('id, name, subdomain, custom_domain')
       .eq('id', tenant_id)
       .single();
 
@@ -87,9 +88,20 @@ export async function POST(req: NextRequest) {
     // 2. Limpieza física de Cloudflare R2 (fotos, miniaturas y portadas)
     const deletedR2Count = await deleteTenantPrefixFromR2(tenant.id);
 
+    // 2b. Limpieza de dominio personalizado en Cloudflare for SaaS (Custom Hostnames) si existía
+    if (tenant.custom_domain) {
+      console.log(`[Delete Tenant] Eliminando custom hostname de Cloudflare: ${tenant.custom_domain}`);
+      await removeCustomHostnameFromCloudflare(tenant.custom_domain).catch((e) =>
+        console.warn(`[Delete Tenant] Error eliminando custom hostname ${tenant.custom_domain} de Cloudflare:`, e)
+      );
+    }
+
     // 3. Invalidar caché en RAM del servidor
     invalidateTenantCatalogCache(tenant.id);
     invalidateTenantCatalogCache(tenant.subdomain);
+    if (tenant.custom_domain) {
+      invalidateTenantCatalogCache(tenant.custom_domain);
+    }
 
     // 4. Eliminar el inquilino en Supabase (ON DELETE CASCADE borra álbumes, fotos, configs, integraciones y tenant_users)
     const { error: deleteTenantError } = await adminSupabase
@@ -123,9 +135,14 @@ export async function POST(req: NextRequest) {
       `Objetos R2 borrados: ${deletedR2Count}. Correos desautorizados: ${Array.from(emailsToUnwhitelist).join(', ')}`
     );
 
+    let message = `La tienda '${tenant.name}' (${tenant.subdomain}) fue dada de baja con éxito. Se eliminaron ${deletedR2Count} archivos de Cloudflare R2 y se revocó la autorización en la fase de prueba.`;
+    if (tenant.custom_domain) {
+      message += ` También se eliminó el dominio personalizado '${tenant.custom_domain}' de Cloudflare.`;
+    }
+
     return NextResponse.json({
       success: true,
-      message: `La tienda '${tenant.name}' (${tenant.subdomain}) fue dada de baja con éxito. Se eliminaron ${deletedR2Count} archivos de Cloudflare R2 y se revocó la autorización en la fase de prueba.`,
+      message,
       deletedR2Count,
     });
   } catch (error: any) {
