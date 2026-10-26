@@ -39,6 +39,7 @@ export async function runTenantSync(
       id,
       name,
       subdomain,
+      custom_domain,
       status,
       current_photos_count,
       current_storage_bytes,
