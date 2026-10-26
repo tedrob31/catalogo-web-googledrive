@@ -65,6 +65,89 @@ export function invalidateTenantCatalogCache(tenantIdOrSubdomain?: string) {
 }
 
 /**
+ * Recupera TODOS los registros de fotos de un tenant paginando en bloques de 1,000.
+ * Resuelve el límite rígido de 1,000 filas por consulta de Supabase / PostgREST.
+ */
+export async function fetchAllTenantPhotos(
+  supabase: ReturnType<typeof createAdminClient>,
+  tenantId: string
+): Promise<any[]> {
+  const allPhotos: any[] = [];
+  const pageSize = 1000;
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('photos')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .order('id', { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error(`[Catalog DB] Error paginando fotos (${from}-${from + pageSize - 1}):`, error);
+      break;
+    }
+
+    if (!data || data.length === 0) {
+      break;
+    }
+
+    allPhotos.push(...data);
+
+    if (data.length < pageSize) {
+      hasMore = false;
+    } else {
+      from += pageSize;
+    }
+  }
+
+  return allPhotos;
+}
+
+/**
+ * Recupera TODOS los álbumes de un tenant con paginación completa.
+ */
+export async function fetchAllTenantAlbums(
+  supabase: ReturnType<typeof createAdminClient>,
+  tenantId: string
+): Promise<any[]> {
+  const allAlbums: any[] = [];
+  const pageSize = 1000;
+  let from = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('albums')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .order('id', { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.error(`[Catalog DB] Error paginando álbumes (${from}-${from + pageSize - 1}):`, error);
+      break;
+    }
+
+    if (!data || data.length === 0) {
+      break;
+    }
+
+    allAlbums.push(...data);
+
+    if (data.length < pageSize) {
+      hasMore = false;
+    } else {
+      from += pageSize;
+    }
+  }
+
+  return allAlbums;
+}
+
+/**
  * Obtiene la estructura completa del catálogo del tenant desde la memoria RAM del servidor
  * o la construye desde Supabase si es la primera carga.
  */
@@ -137,29 +220,27 @@ async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBas
     ? tenant.tenant_configs[0]
     : tenant.tenant_configs;
 
-  // 2. Obtener todos los álbumes del tenant
-  const { data: dbAlbums } = await supabase
-    .from('albums')
-    .select('*')
-    .eq('tenant_id', tenant.id)
-    .order('order_index', { ascending: true })
-    .order('name', { ascending: true });
+  // 2. Obtener todos los álbumes del tenant con paginación
+  const dbAlbums = await fetchAllTenantAlbums(supabase, tenant.id);
+  dbAlbums.sort((a, b) => {
+    if (a.order_index !== b.order_index) return a.order_index - b.order_index;
+    return (a.name || '').localeCompare(b.name || '');
+  });
 
   // Filtrar estrictamente: EXCLUIR cualquier carpeta de portadas (_covers) del catálogo público
-  const catalogAlbums = (dbAlbums || []).filter(
+  const catalogAlbums = dbAlbums.filter(
     (a) =>
       !a.path?.startsWith('_covers') &&
       a.drive_folder_id !== integration?.cover_folder_id &&
       a.name.toLowerCase() !== 'portadas'
   );
 
-  // 3. Obtener todas las fotos del tenant
-  const { data: dbPhotos } = await supabase
-    .from('photos')
-    .select('*')
-    .eq('tenant_id', tenant.id)
-    .order('order_index', { ascending: true })
-    .order('name', { ascending: true });
+  // 3. Obtener todas las fotos del tenant con paginación completa (soporta 10,000+ fotos)
+  const dbPhotos = await fetchAllTenantPhotos(supabase, tenant.id);
+  dbPhotos.sort((a, b) => {
+    if (a.order_index !== b.order_index) return a.order_index - b.order_index;
+    return (a.name || '').localeCompare(b.name || '');
+  });
 
   // 4. Mapear fotos por álbum: miniatura liviana (500px ~15KB) para grilla rápida + HD (1080px) para lightbox
   const photosByAlbum = new Map<string, PhotoItem[]>();

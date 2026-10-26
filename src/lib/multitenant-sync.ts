@@ -5,7 +5,11 @@ import { slugify } from '@/lib/utils';
 import { drive_v3 } from 'googleapis';
 import { revalidatePath } from 'next/cache';
 import { purgeCloudflareCache } from '@/lib/cloudflare';
-import { invalidateTenantCatalogCache } from '@/lib/catalog-db';
+import {
+  invalidateTenantCatalogCache,
+  fetchAllTenantAlbums,
+  fetchAllTenantPhotos,
+} from '@/lib/catalog-db';
 
 export interface SyncProgress {
   tenantId: string;
@@ -107,11 +111,12 @@ export async function runTenantSync(
       modifiedAlbumPaths: [],
     };
 
-    // 3.1 Pre-cargar en memoria (RAM) todos los álbumes y fotos del tenant en 2 consultas únicas
-    // Esto elimina las 150+ consultas HTTP secuenciales a Supabase que causaban lentitud extrema
-    const [{ data: initialDbAlbums }, { data: initialDbPhotos }] = await Promise.all([
-      supabase.from('albums').select('*').eq('tenant_id', tenantId),
-      supabase.from('photos').select('*').eq('tenant_id', tenantId),
+    // 3.1 Pre-cargar en memoria (RAM) TODOS los álbumes y fotos del tenant con paginación completa
+    // Esto resuelve el límite rígido de 1,000 filas de PostgREST y garantiza que catálogos de 5,000+ fotos
+    // se mantengan en RAM para que la sincronización incremental tarde solo ~3-5 segundos sin re-descargas ni duplicados.
+    const [initialDbAlbums, initialDbPhotos] = await Promise.all([
+      fetchAllTenantAlbums(supabase, tenantId),
+      fetchAllTenantPhotos(supabase, tenantId),
     ]);
 
     const existingAlbumsMap = new Map<string, any>();
@@ -191,6 +196,12 @@ export async function runTenantSync(
       });
     }
 
+    // Si la sincronización fue abortada o cancelada durante el recorrido, no ejecutar limpieza espejo para evitar borrado accidental
+    if (progress.error) {
+      console.warn(`[Sync Tenant ${tenantId}] Sincronización finalizada con estado de error/cancelación: ${progress.error}. Omitiendo limpieza espejo.`);
+      return progress;
+    }
+
     // 4.2 Sincronización espejo de eliminaciones (Borrar en Supabase y R2 lo que fue eliminado en Google Drive)
     let deletedPhotosCount = 0;
     const deletedPhotoIds: string[] = [];
@@ -245,16 +256,14 @@ export async function runTenantSync(
     progress.photosCount = visitedDriveFileIds.size;
     progress.albumsCount = visitedDriveFolderIds.size;
 
-    // 5. Calcular almacenamiento exacto real de las fotos vigentes del tenant
-    const { data: storageRows } = await supabase
-      .from('photos')
-      .select('size_bytes')
-      .eq('tenant_id', tenantId);
-
-    const actualStorageBytes = (storageRows || []).reduce(
-      (sum, p: any) => sum + Number(p.size_bytes || 0),
-      0
-    );
+    // 5. Calcular almacenamiento exacto real de las fotos vigentes del tenant directamente de la memoria RAM
+    // Evita consultas truncadas a Supabase y calcula el tamaño exacto de miles de fotos instantáneamente
+    let actualStorageBytes = 0;
+    existingPhotosMap.forEach((p) => {
+      if (visitedDriveFileIds.has(p.drive_file_id)) {
+        actualStorageBytes += Number(p.size_bytes || 0);
+      }
+    });
 
     // Actualizar métricas del tenant y marcar log como completado
     await supabase
@@ -312,6 +321,9 @@ export async function runTenantSync(
       invalidateTenantCatalogCache(tenantId);
       if (tenant.subdomain) {
         invalidateTenantCatalogCache(tenant.subdomain);
+      }
+      if (tenant.custom_domain) {
+        invalidateTenantCatalogCache(tenant.custom_domain);
       }
       revalidatePath('/', 'layout');
     } catch (e) {
@@ -421,6 +433,8 @@ async function syncFolderRecursive({
   visitedDriveFolderIds,
   forceReupload = false,
 }: RecursiveSyncParams): Promise<void> {
+  if (progress.error) return;
+
   const currentSlug = slugify(folderName);
   const currentPath = parentPath ? `${parentPath}/${currentSlug}` : currentSlug;
 
@@ -521,6 +535,7 @@ async function syncFolderRecursive({
   // 3. Procesar imágenes directas a Cloudflare R2 sin Sharp con verificación instantánea en RAM
   let photoIndex = 0;
   for (const img of imageFiles) {
+    if (progress.error) break;
     if (!img.id || !img.name) continue;
     visitedDriveFileIds.add(img.id);
 
@@ -640,7 +655,7 @@ async function syncFolderRecursive({
           drive_modified_time: img.modifiedTime,
         });
       } else {
-        const { data: insertedPhoto } = await supabase.from('photos').insert({
+        const { data: insertedPhoto, error: insertError } = await supabase.from('photos').upsert({
           tenant_id: tenantId,
           album_id: album.id,
           drive_file_id: img.id,
@@ -651,10 +666,12 @@ async function syncFolderRecursive({
           size_bytes: buffer.length,
           drive_modified_time: img.modifiedTime,
           order_index: photoIndex++,
-        }).select('*').single();
+        }, { onConflict: 'tenant_id,drive_file_id' }).select('*').single();
 
         if (insertedPhoto) {
           existingPhotosMap.set(img.id, insertedPhoto);
+        } else if (insertError) {
+          console.warn(`[Sync Tenant ${tenantId}] Advertencia en upsert de foto ${img.name}:`, insertError);
         }
       }
 
@@ -668,14 +685,23 @@ async function syncFolderRecursive({
 
       // Reportar progreso incremental en tiempo real en Supabase para el polling
       if (logId && progress.newUploaded % 5 === 0) {
-        await supabase
+        const { data: currentLog } = await supabase
           .from('sync_logs')
           .update({
             total_photos: visitedDriveFileIds.size,
             items_processed: progress.newUploaded,
             total_albums: visitedDriveFolderIds.size,
           })
-          .eq('id', logId);
+          .eq('id', logId)
+          .select('status')
+          .single();
+
+        // Si el usuario o el sistema canceló o falló este log en la base de datos, abortar inmediatamente
+        if (currentLog && (currentLog.status === 'failed' || currentLog.status === 'cancelled')) {
+          console.warn(`[Sync Tenant ${tenantId}] Sincronización cancelada externamente detectada en sync_logs. Abortando.`);
+          progress.error = 'Sincronización cancelada';
+          break;
+        }
       }
     } catch (uploadErr) {
       console.error(`Error procesando foto ${img.name} (${img.id}):`, uploadErr);
@@ -685,6 +711,7 @@ async function syncFolderRecursive({
   // 4. Procesar recursivamente subcarpetas
   let folderIndex = 0;
   for (const subfolder of subfolders) {
+    if (progress.error) break;
     if (!subfolder.id || !subfolder.name) continue;
 
     await syncFolderRecursive({
