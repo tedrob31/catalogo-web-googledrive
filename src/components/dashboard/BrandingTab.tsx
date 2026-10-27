@@ -1,6 +1,17 @@
 'use client';
 
-import { FaShareAlt, FaImages, FaGlobe, FaKey, FaLock, FaCheckCircle, FaExternalLinkAlt } from 'react-icons/fa';
+import {
+  FaShareAlt,
+  FaImages,
+  FaGlobe,
+  FaKey,
+  FaLock,
+  FaCheckCircle,
+  FaExternalLinkAlt,
+  FaCamera,
+  FaTrash,
+  FaPlus,
+} from 'react-icons/fa';
 
 function isApexDomain(domain: string): boolean {
   const clean = domain.trim().toLowerCase();
@@ -44,6 +55,7 @@ interface BrandingTabProps {
   savingConfig: boolean;
   onSaveConfig: (e?: React.FormEvent) => void;
   onOpenMediaSelector: (targetField: '__LOGO__' | '__FAVICON__' | '__OG__') => void;
+  hasChanges?: boolean;
 }
 
 export default function BrandingTab({
@@ -53,6 +65,7 @@ export default function BrandingTab({
   savingConfig,
   onSaveConfig,
   onOpenMediaSelector,
+  hasChanges = false,
 }: BrandingTabProps) {
   return (
     <form onSubmit={onSaveConfig} className="space-y-6">
@@ -306,76 +319,246 @@ export default function BrandingTab({
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* 1. Logotipo de la Tienda */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-slate-300">URL del Logo:</label>
-              <button
-                type="button"
-                onClick={() => onOpenMediaSelector('__LOGO__')}
-                className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
-              >
-                <FaImages className="text-[10px]" />
-                <span>Elegir de fotos</span>
-              </button>
+            <div className="flex items-center justify-between mb-1.5">
+              <div>
+                <span className="text-xs font-semibold text-slate-200 block">Logotipo de la Tienda</span>
+                <span className="text-[11px] text-slate-400">Aparece en la cabecera de tu catálogo web.</span>
+              </div>
+              {configForm.logo_url && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                  <FaCheckCircle className="text-[9px]" /> Activo
+                </span>
+              )}
             </div>
-            <input
-              type="url"
-              placeholder="https://..."
-              value={configForm.logo_url}
-              onChange={(e) =>
-                setConfigForm((prev: any) => ({ ...prev, logo_url: e.target.value }))
-              }
-              className="w-full bg-slate-800 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
-            />
+
+            {configForm.logo_url ? (
+              <div className="p-3 bg-slate-950/70 border border-white/10 rounded-2xl flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-white/15 bg-slate-900 shrink-0 shadow-inner p-1 flex items-center justify-center">
+                    <img
+                      src={configForm.logo_url}
+                      alt="Vista previa del logo"
+                      className="w-full h-full object-contain rounded-lg"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-white block truncate">Logotipo configurado</span>
+                    <span className="text-[10px] text-slate-400 block truncate">
+                      {configForm.logo_url.split('/').pop()?.split('?')[0] || 'Foto seleccionada'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onOpenMediaSelector('__LOGO__')}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/10 transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <FaCamera className="text-[10px] text-amber-400" />
+                    <span>Cambiar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfigForm((prev: any) => ({ ...prev, logo_url: '' }))}
+                    className="p-2 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20 transition cursor-pointer"
+                    title="Quitar logotipo"
+                  >
+                    <FaTrash className="text-xs" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => onOpenMediaSelector('__LOGO__')}
+                className="p-4 bg-slate-950/40 hover:bg-slate-900/60 border-2 border-dashed border-white/15 hover:border-amber-400/50 rounded-2xl flex items-center justify-between gap-3 cursor-pointer transition group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 group-hover:text-amber-400 group-hover:bg-amber-400/10 transition">
+                    <FaImages className="text-base" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-300 group-hover:text-white block transition">
+                      Sin logotipo seleccionado
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Se mostrará el nombre comercial en texto.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 group-hover:bg-amber-500 group-hover:text-white transition flex items-center gap-1 pointer-events-none"
+                >
+                  <FaPlus className="text-[10px]" />
+                  <span>Elegir</span>
+                </button>
+              </div>
+            )}
           </div>
 
+          {/* 2. Favicon del Navegador */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-slate-300">URL del Favicon:</label>
-              <button
-                type="button"
-                onClick={() => onOpenMediaSelector('__FAVICON__')}
-                className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
-              >
-                <FaImages className="text-[10px]" />
-                <span>Elegir icono</span>
-              </button>
+            <div className="flex items-center justify-between mb-1.5">
+              <div>
+                <span className="text-xs font-semibold text-slate-200 block">Favicon del Navegador</span>
+                <span className="text-[11px] text-slate-400">Icono que aparece en la pestaña del navegador.</span>
+              </div>
+              {configForm.favicon_url && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                  <FaCheckCircle className="text-[9px]" /> Activo
+                </span>
+              )}
             </div>
-            <input
-              type="url"
-              placeholder="https://... o /favicon.ico"
-              value={configForm.favicon_url}
-              onChange={(e) =>
-                setConfigForm((prev: any) => ({ ...prev, favicon_url: e.target.value }))
-              }
-              className="w-full bg-slate-800 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
-            />
+
+            {configForm.favicon_url ? (
+              <div className="p-3 bg-slate-950/70 border border-white/10 rounded-2xl flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-white/15 bg-slate-900 shrink-0 shadow-inner p-1 flex items-center justify-center">
+                    <img
+                      src={configForm.favicon_url}
+                      alt="Vista previa del favicon"
+                      className="w-8 h-8 object-contain rounded-md"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-white block truncate">Favicon configurado</span>
+                    <span className="text-[10px] text-slate-400 block truncate">
+                      {configForm.favicon_url.split('/').pop()?.split('?')[0] || 'Icono seleccionado'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onOpenMediaSelector('__FAVICON__')}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/10 transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <FaCamera className="text-[10px] text-amber-400" />
+                    <span>Cambiar</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfigForm((prev: any) => ({ ...prev, favicon_url: '' }))}
+                    className="p-2 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20 transition cursor-pointer"
+                    title="Quitar favicon"
+                  >
+                    <FaTrash className="text-xs" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => onOpenMediaSelector('__FAVICON__')}
+                className="p-4 bg-slate-950/40 hover:bg-slate-900/60 border-2 border-dashed border-white/15 hover:border-amber-400/50 rounded-2xl flex items-center justify-between gap-3 cursor-pointer transition group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 group-hover:text-amber-400 group-hover:bg-amber-400/10 transition">
+                    <FaImages className="text-base" />
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-300 group-hover:text-white block transition">
+                      Sin favicon personalizado
+                    </span>
+                    <span className="text-[11px] text-slate-500">
+                      Se mostrará el icono por defecto de c4talogo.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 group-hover:bg-amber-500 group-hover:text-white transition flex items-center gap-1 pointer-events-none"
+                >
+                  <FaPlus className="text-[10px]" />
+                  <span>Elegir</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
+        {/* 3. Portada para Redes Sociales (OG Image) */}
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-xs font-medium text-slate-300">
-              Portada para Redes Sociales (OpenGraph / WhatsApp / Facebook):
-            </label>
-            <button
-              type="button"
-              onClick={() => onOpenMediaSelector('__OG__')}
-              className="text-[11px] text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
-            >
-              <FaImages className="text-[10px]" />
-              <span>Elegir portada</span>
-            </button>
+          <div className="flex items-center justify-between mb-1.5">
+            <div>
+              <span className="text-xs font-semibold text-slate-200 block">
+                Portada para Redes Sociales (OpenGraph / WhatsApp / Facebook)
+              </span>
+              <span className="text-[11px] text-slate-400">
+                Se muestra como vista previa destacada al compartir enlaces de tu tienda en redes o chats.
+              </span>
+            </div>
+            {configForm.og_image && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                <FaCheckCircle className="text-[9px]" /> Activa
+              </span>
+            )}
           </div>
-          <input
-            type="url"
-            placeholder="https://..."
-            value={configForm.og_image}
-            onChange={(e) =>
-              setConfigForm((prev: any) => ({ ...prev, og_image: e.target.value }))
-            }
-            className="w-full bg-slate-800 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
-          />
+
+          {configForm.og_image ? (
+            <div className="p-3 bg-slate-950/70 border border-white/10 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+                <div className="relative w-28 h-20 rounded-xl overflow-hidden border border-white/15 bg-slate-900 shrink-0 shadow-inner">
+                  <img
+                    src={configForm.og_image}
+                    alt="Vista previa portada redes"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-xs font-bold text-white block truncate">Portada de redes configurada</span>
+                  <span className="text-[10px] text-slate-400 block truncate">
+                    {configForm.og_image.split('/').pop()?.split('?')[0] || 'Foto seleccionada'}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <button
+                  type="button"
+                  onClick={() => onOpenMediaSelector('__OG__')}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/10 transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <FaCamera className="text-[10px] text-amber-400" />
+                  <span>Cambiar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfigForm((prev: any) => ({ ...prev, og_image: '' }))}
+                  className="p-2 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20 transition cursor-pointer"
+                  title="Quitar portada"
+                >
+                  <FaTrash className="text-xs" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              onClick={() => onOpenMediaSelector('__OG__')}
+              className="p-5 bg-slate-950/40 hover:bg-slate-900/60 border-2 border-dashed border-white/15 hover:border-amber-400/50 rounded-2xl flex items-center justify-between gap-3 cursor-pointer transition group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 group-hover:text-amber-400 group-hover:bg-amber-400/10 transition">
+                  <FaImages className="text-lg" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-300 group-hover:text-white block transition">
+                    Sin portada de redes sociales
+                  </span>
+                  <span className="text-[11px] text-slate-500">
+                    WhatsApp mostrará la primera foto del catálogo o álbum compartido.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 group-hover:bg-amber-500 group-hover:text-white transition flex items-center gap-1 pointer-events-none"
+              >
+                <FaPlus className="text-[10px]" />
+                <span>Elegir portada</span>
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="p-4 bg-white/5 rounded-xl border border-white/10 flex items-center justify-between">
@@ -400,10 +583,20 @@ export default function BrandingTab({
 
         <button
           type="submit"
-          disabled={savingConfig}
-          className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs rounded-xl transition disabled:opacity-50 cursor-pointer shadow"
+          disabled={!hasChanges || savingConfig}
+          className={`w-full py-3 font-bold text-xs rounded-xl transition shadow-lg flex items-center justify-center gap-2 ${
+            hasChanges && !savingConfig
+              ? 'bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white shadow-rose-500/20 active:scale-[0.99] cursor-pointer'
+              : 'bg-slate-800/80 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'
+          }`}
         >
-          {savingConfig ? 'Guardando...' : 'Guardar Marca y SEO en Supabase'}
+          {savingConfig ? (
+            'Guardando cambios...'
+          ) : hasChanges ? (
+            'Guardar Marca y SEO en Supabase'
+          ) : (
+            'Sin cambios por guardar'
+          )}
         </button>
       </div>
     </form>

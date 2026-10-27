@@ -8,6 +8,9 @@ import {
   removeCustomHostnameFromCloudflare,
 } from '@/lib/cloudflare';
 import { invalidateTenantCatalogCache } from '@/lib/catalog-db';
+import { Database } from '@/types/database.types';
+
+type TenantConfigUpdate = Database['public']['Tables']['tenant_configs']['Update'];
 
 // GET: Obtener la configuración visual y de marca del tenant actual
 export async function GET(request: NextRequest) {
@@ -103,11 +106,11 @@ export async function POST(request: NextRequest) {
       custom_domain_enabled: boolean;
     } | null;
 
-    // 1. Obtener settings actuales para no sobreescribir bloques de storefront u otras propiedades
+    // 1. Obtener configuración y settings actuales para no sobreescribir propiedades no enviadas
     const adminClient = createAdminClient();
     const { data: currentConfig } = await adminClient
       .from('tenant_configs')
-      .select('settings')
+      .select('title, subtitle, whatsapp, logo_url, favicon_url, primary_color, theme, settings')
       .eq('tenant_id', tenantId)
       .single();
 
@@ -281,19 +284,44 @@ export async function POST(request: NextRequest) {
           : Boolean(existingSettings.redirect_to_custom_domain),
     };
 
+    const configUpdateData: TenantConfigUpdate = {
+      settings: settingsPayload as any,
+      updated_at: new Date().toISOString(),
+    };
+
+    if (body.siteTitle !== undefined) {
+      configUpdateData.title = body.siteTitle || tenantInfo?.name || 'Mi Catálogo';
+    } else if (body.name !== undefined && !currentConfig?.title) {
+      configUpdateData.title = body.name;
+    }
+
+    if (body.siteDescription !== undefined) {
+      configUpdateData.subtitle = body.siteDescription || null;
+    }
+
+    if (body.whatsappNumber !== undefined) {
+      configUpdateData.whatsapp = body.whatsappNumber || null;
+    }
+
+    if (body.logoUrl !== undefined) {
+      configUpdateData.logo_url = body.logoUrl || null;
+    }
+
+    if (body.favicon !== undefined) {
+      configUpdateData.favicon_url = body.favicon || null;
+    }
+
+    if (body.primaryColor !== undefined) {
+      configUpdateData.primary_color = body.primaryColor || '#111827';
+    }
+
+    if (body.theme !== undefined) {
+      configUpdateData.theme = body.theme || 'light';
+    }
+
     const { error: updateError } = await adminClient
       .from('tenant_configs')
-      .update({
-        title: body.siteTitle || body.name || tenantInfo?.name || 'Mi Catálogo',
-        subtitle: body.siteDescription || null,
-        whatsapp: body.whatsappNumber || null,
-        logo_url: body.logoUrl || null,
-        favicon_url: body.favicon || null,
-        primary_color: body.primaryColor || '#111827',
-        theme: body.theme || 'light',
-        settings: settingsPayload,
-        updated_at: new Date().toISOString(),
-      })
+      .update(configUpdateData)
       .eq('tenant_id', tenantId);
 
     if (updateError) {

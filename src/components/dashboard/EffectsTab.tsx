@@ -7,6 +7,7 @@ interface EffectsTabProps {
   setConfigForm: (updater: any) => void;
   savingConfig: boolean;
   onSaveConfig: (e?: React.FormEvent) => void;
+  hasChanges?: boolean;
 }
 
 export default function EffectsTab({
@@ -14,6 +15,7 @@ export default function EffectsTab({
   setConfigForm,
   savingConfig,
   onSaveConfig,
+  hasChanges = false,
 }: EffectsTabProps) {
   return (
     <form onSubmit={onSaveConfig} className="space-y-6">
@@ -106,10 +108,14 @@ export default function EffectsTab({
 
         <button
           type="submit"
-          disabled={savingConfig}
-          className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-xs rounded-xl transition disabled:opacity-50 cursor-pointer shadow"
+          disabled={!hasChanges || savingConfig}
+          className={`w-full py-3 font-bold text-xs rounded-xl transition shadow-lg flex items-center justify-center gap-2 ${
+            hasChanges && !savingConfig
+              ? 'bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white shadow-rose-500/20 active:scale-[0.99] cursor-pointer'
+              : 'bg-slate-800/80 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'
+          }`}
         >
-          {savingConfig ? 'Guardando efectos...' : 'Guardar Efectos en Supabase'}
+          {savingConfig ? 'Guardando efectos...' : hasChanges ? 'Guardar Efectos en Supabase' : 'Sin cambios por guardar'}
         </button>
       </div>
     </form>

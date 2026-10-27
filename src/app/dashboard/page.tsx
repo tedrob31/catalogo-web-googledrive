@@ -96,7 +96,8 @@ export default function TenantDashboard() {
     redirect_to_custom_domain: false,
   });
 
-  // Copia de respaldo guardada en Supabase para detección de cambios
+  // Copia de respaldo guardada en Supabase para detección de cambios campo por campo
+  const [savedConfig, setSavedConfig] = useState<typeof configForm | null>(null);
   const [savedFolderCovers, setSavedFolderCovers] = useState<Record<string, string>>({});
 
   // Logs
@@ -180,7 +181,7 @@ export default function TenantDashboard() {
       const rawSettings = (cfg.settings as Record<string, any>) || {};
       const loadedCovers = (rawSettings.folder_covers as Record<string, string>) || {};
       setSavedFolderCovers(loadedCovers);
-      setConfigForm({
+      const loadedData = {
         name: t.name,
         subdomain: t.subdomain,
         title: cfg.title || t.name,
@@ -208,7 +209,9 @@ export default function TenantDashboard() {
         custom_domain: t.custom_domain || '',
         custom_domain_enabled: Boolean(t.custom_domain_enabled),
         redirect_to_custom_domain: Boolean(rawSettings.redirect_to_custom_domain),
-      });
+      };
+      setConfigForm(loadedData);
+      setSavedConfig(loadedData);
     }
 
     // 3. Cargar google_integrations
@@ -499,42 +502,81 @@ export default function TenantDashboard() {
     }
   }
 
-  async function handleSaveConfig(e?: React.FormEvent) {
+  // Detección precisa de cambios por cada pestaña para habilitar botones y enviar solo lo modificado
+  const hasBrandingChanges = useMemo(() => {
+    if (!savedConfig) return false;
+    return (
+      configForm.name !== savedConfig.name ||
+      configForm.subdomain !== savedConfig.subdomain ||
+      configForm.custom_domain !== savedConfig.custom_domain ||
+      Boolean(configForm.redirect_to_custom_domain) !== Boolean(savedConfig.redirect_to_custom_domain) ||
+      configForm.title !== savedConfig.title ||
+      configForm.subtitle !== savedConfig.subtitle ||
+      configForm.whatsapp !== savedConfig.whatsapp ||
+      configForm.logo_url !== savedConfig.logo_url ||
+      configForm.favicon_url !== savedConfig.favicon_url ||
+      configForm.og_image !== savedConfig.og_image ||
+      Boolean(configForm.force_global_og_image) !== Boolean(savedConfig.force_global_og_image)
+    );
+  }, [configForm, savedConfig]);
+
+  const hasDesignChanges = useMemo(() => {
+    if (!savedConfig) return false;
+    return (
+      configForm.primary_color !== savedConfig.primary_color ||
+      configForm.secondary_color !== savedConfig.secondary_color ||
+      configForm.text_color !== savedConfig.text_color ||
+      configForm.theme !== savedConfig.theme ||
+      configForm.grid_columns !== savedConfig.grid_columns ||
+      configForm.mobile_grid_columns !== savedConfig.mobile_grid_columns ||
+      Boolean(configForm.hide_album_titles) !== Boolean(savedConfig.hide_album_titles) ||
+      configForm.card_border_width !== savedConfig.card_border_width ||
+      configForm.card_border_color !== savedConfig.card_border_color
+    );
+  }, [configForm, savedConfig]);
+
+  const hasEffectsChanges = useMemo(() => {
+    if (!savedConfig) return false;
+    return (
+      configForm.seasonal_effect !== savedConfig.seasonal_effect ||
+      configForm.seasonal_custom_icon !== savedConfig.seasonal_custom_icon ||
+      configForm.seasonal_duration !== savedConfig.seasonal_duration ||
+      configForm.click_effect !== savedConfig.click_effect
+    );
+  }, [configForm, savedConfig]);
+
+  async function handleSaveBrandingConfig(e?: React.FormEvent) {
     if (e) e.preventDefault();
+    if (!hasBrandingChanges || !savedConfig) return;
+
     setSavingConfig(true);
     try {
-      const cleanSub = configForm.subdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+      const payload: Record<string, any> = {};
+
+      if (configForm.name !== savedConfig.name) payload.name = configForm.name;
+      if (configForm.subdomain !== savedConfig.subdomain) {
+        payload.subdomain = configForm.subdomain.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+      }
+      if (configForm.custom_domain !== savedConfig.custom_domain) {
+        payload.custom_domain = configForm.custom_domain;
+      }
+      if (Boolean(configForm.redirect_to_custom_domain) !== Boolean(savedConfig.redirect_to_custom_domain)) {
+        payload.redirectToCustomDomain = configForm.redirect_to_custom_domain;
+      }
+      if (configForm.title !== savedConfig.title) payload.siteTitle = configForm.title;
+      if (configForm.subtitle !== savedConfig.subtitle) payload.siteDescription = configForm.subtitle;
+      if (configForm.whatsapp !== savedConfig.whatsapp) payload.whatsappNumber = configForm.whatsapp;
+      if (configForm.logo_url !== savedConfig.logo_url) payload.logoUrl = configForm.logo_url;
+      if (configForm.favicon_url !== savedConfig.favicon_url) payload.favicon = configForm.favicon_url;
+      if (configForm.og_image !== savedConfig.og_image) payload.ogImage = configForm.og_image;
+      if (Boolean(configForm.force_global_og_image) !== Boolean(savedConfig.force_global_og_image)) {
+        payload.forceGlobalOgImage = configForm.force_global_og_image;
+      }
 
       const res = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: configForm.name,
-          subdomain: cleanSub,
-          custom_domain: configForm.custom_domain,
-          redirectToCustomDomain: configForm.redirect_to_custom_domain,
-          siteTitle: configForm.title,
-          siteDescription: configForm.subtitle,
-          whatsappNumber: configForm.whatsapp,
-          logoUrl: configForm.logo_url,
-          favicon: configForm.favicon_url,
-          primaryColor: configForm.primary_color,
-          secondaryColor: configForm.secondary_color,
-          textColor: configForm.text_color,
-          theme: configForm.theme,
-          gridColumns: configForm.grid_columns,
-          mobileGridColumns: configForm.mobile_grid_columns,
-          hideAlbumTitles: configForm.hide_album_titles,
-          cardBorderWidth: configForm.card_border_width,
-          cardBorderColor: configForm.card_border_color,
-          seasonalEffect: configForm.seasonal_effect,
-          seasonalCustomIcon: configForm.seasonal_custom_icon,
-          seasonalDuration: configForm.seasonal_duration,
-          clickEffect: configForm.click_effect,
-          ogImage: configForm.og_image,
-          forceGlobalOgImage: configForm.force_global_og_image,
-          folderCovers: configForm.folder_covers,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -549,10 +591,77 @@ export default function TenantDashboard() {
         }));
       }
 
-      alert('¡Configuración guardada exitosamente en Supabase!');
+      alert('¡Marca y SEO guardados exitosamente!');
       await loadDashboardData();
     } catch (err: any) {
       alert(err.message || 'Error guardando cambios');
+    } finally {
+      setSavingConfig(false);
+    }
+  }
+
+  async function handleSaveDesignConfig(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!hasDesignChanges || !savedConfig) return;
+
+    setSavingConfig(true);
+    try {
+      const payload: Record<string, any> = {};
+
+      if (configForm.primary_color !== savedConfig.primary_color) payload.primaryColor = configForm.primary_color;
+      if (configForm.secondary_color !== savedConfig.secondary_color) payload.secondaryColor = configForm.secondary_color;
+      if (configForm.text_color !== savedConfig.text_color) payload.textColor = configForm.text_color;
+      if (configForm.theme !== savedConfig.theme) payload.theme = configForm.theme;
+      if (configForm.grid_columns !== savedConfig.grid_columns) payload.gridColumns = configForm.grid_columns;
+      if (configForm.mobile_grid_columns !== savedConfig.mobile_grid_columns) payload.mobileGridColumns = configForm.mobile_grid_columns;
+      if (Boolean(configForm.hide_album_titles) !== Boolean(savedConfig.hide_album_titles)) payload.hideAlbumTitles = configForm.hide_album_titles;
+      if (configForm.card_border_width !== savedConfig.card_border_width) payload.cardBorderWidth = configForm.card_border_width;
+      if (configForm.card_border_color !== savedConfig.card_border_color) payload.cardBorderColor = configForm.card_border_color;
+
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al guardar diseño');
+
+      alert('¡Diseño guardado exitosamente!');
+      await loadDashboardData();
+    } catch (err: any) {
+      alert(err.message || 'Error guardando diseño');
+    } finally {
+      setSavingConfig(false);
+    }
+  }
+
+  async function handleSaveEffectsConfig(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (!hasEffectsChanges || !savedConfig) return;
+
+    setSavingConfig(true);
+    try {
+      const payload: Record<string, any> = {};
+
+      if (configForm.seasonal_effect !== savedConfig.seasonal_effect) payload.seasonalEffect = configForm.seasonal_effect;
+      if (configForm.seasonal_custom_icon !== savedConfig.seasonal_custom_icon) payload.seasonalCustomIcon = configForm.seasonal_custom_icon;
+      if (configForm.seasonal_duration !== savedConfig.seasonal_duration) payload.seasonalDuration = configForm.seasonal_duration;
+      if (configForm.click_effect !== savedConfig.click_effect) payload.clickEffect = configForm.click_effect;
+
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al guardar efectos');
+
+      alert('¡Efectos guardados exitosamente!');
+      await loadDashboardData();
+    } catch (err: any) {
+      alert(err.message || 'Error guardando efectos');
     } finally {
       setSavingConfig(false);
     }
@@ -855,7 +964,8 @@ export default function TenantDashboard() {
             configForm={configForm}
             setConfigForm={setConfigForm}
             savingConfig={savingConfig}
-            onSaveConfig={handleSaveConfig}
+            onSaveConfig={handleSaveDesignConfig}
+            hasChanges={hasDesignChanges}
           />
         )}
 
@@ -864,7 +974,8 @@ export default function TenantDashboard() {
             configForm={configForm}
             setConfigForm={setConfigForm}
             savingConfig={savingConfig}
-            onSaveConfig={handleSaveConfig}
+            onSaveConfig={handleSaveEffectsConfig}
+            hasChanges={hasEffectsChanges}
           />
         )}
 
@@ -874,8 +985,9 @@ export default function TenantDashboard() {
             setConfigForm={setConfigForm}
             baseDomain={baseDomain}
             savingConfig={savingConfig}
-            onSaveConfig={handleSaveConfig}
+            onSaveConfig={handleSaveBrandingConfig}
             onOpenMediaSelector={handleOpenMediaSelector}
+            hasChanges={hasBrandingChanges}
           />
         )}
 
