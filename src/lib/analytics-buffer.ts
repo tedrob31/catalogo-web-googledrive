@@ -138,13 +138,13 @@ export async function flushAnalyticsBuffer() {
 }
 
 /**
- * Elimina automáticamente registros con más de 35 días para garantizar que la tabla
- * nunca crezca indefinidamente y ocupe menos de 4 MB en disco.
+ * Elimina automáticamente registros con más de 30 días para garantizar que la tabla
+ * mantenga únicamente la ventana de 30 días del panel y ocupe mínimo espacio en disco.
  */
 export async function pruneOldMetrics() {
   try {
     const supabase = createAdminClient();
-    const cutoffDate = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000)
+    const cutoffDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
       .toISOString()
       .split('T')[0];
 

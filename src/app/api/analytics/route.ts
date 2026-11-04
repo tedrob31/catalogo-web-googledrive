@@ -34,56 +34,44 @@ export async function GET(req: NextRequest) {
       .toISOString()
       .split('T')[0];
 
-    // 2. Consultar métricas de los últimos 30 días
-    const { data: rows, error: metricsErr } = await adminSupabase
-      .from('tenant_page_metrics')
-      .select('*')
-      .eq('tenant_id', tenantId)
-      .gte('date', startDate)
-      .order('date', { ascending: true });
+    // 2. Ejecutar agregación atómica en PostgreSQL vía RPC (0ms, ultra-liviano y sin tope de 1,000 filas)
+    const { data: summaryData, error: metricsErr } = await adminSupabase
+      .rpc('get_tenant_analytics_summary', {
+        p_tenant_id: tenantId,
+        p_start_date: startDate,
+      });
 
     if (metricsErr) {
       console.error('[Analytics GET Error]:', metricsErr);
       return NextResponse.json({ error: metricsErr.message }, { status: 500 });
     }
 
-    // 3. Procesar y agregar datos para el dashboard
-    let totalViews = 0;
-    let totalWhatsapp = 0;
-    const dailyMap = new Map<string, { views: number; whatsapp: number }>();
-    const contentMap = new Map<string, { path: string; title: string; views: number; whatsapp: number }>();
+    const rawSummary = summaryData as {
+      total_views: number;
+      total_whatsapp: number;
+      daily_trend: Array<{ date: string; views: number; whatsapp: number }>;
+      top_content: Array<{ path: string; title: string; views: number; whatsapp: number }>;
+      top_page: string;
+    } | null;
 
-    // Inicializar los últimos 30 días en el mapa para que la gráfica no tenga huecos
+    const totalViews = Number(rawSummary?.total_views || 0);
+    const totalWhatsapp = Number(rawSummary?.total_whatsapp || 0);
+    const topPage = rawSummary?.top_page || 'Ninguna aún';
+    const topContent = rawSummary?.top_content || [];
+
+    // 3. Crear mapa con los 30 días para garantizar que la gráfica no tenga huecos
+    const dailyMap = new Map<string, { views: number; whatsapp: number }>();
     for (let i = 29; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const dStr = d.toISOString().split('T')[0];
       dailyMap.set(dStr, { views: 0, whatsapp: 0 });
     }
 
-    for (const r of rows || []) {
-      totalViews += r.views_count || 0;
-      totalWhatsapp += r.whatsapp_clicks || 0;
-
-      // Agregación diaria
-      const dayData = dailyMap.get(r.date) || { views: 0, whatsapp: 0 };
-      dayData.views += r.views_count || 0;
-      dayData.whatsapp += r.whatsapp_clicks || 0;
-      dailyMap.set(r.date, dayData);
-
-      // Agregación por contenido / álbum
-      const contentKey = r.path || '/';
-      const cData = contentMap.get(contentKey) || {
-        path: contentKey,
-        title: r.title || contentKey,
-        views: 0,
-        whatsapp: 0,
-      };
-      cData.views += r.views_count || 0;
-      cData.whatsapp += r.whatsapp_clicks || 0;
-      if (r.title && r.title !== 'Catálogo Principal') {
-        cData.title = r.title;
+    // Rellenar con los días agregados devueltos por la base de datos
+    for (const d of rawSummary?.daily_trend || []) {
+      if (dailyMap.has(d.date)) {
+        dailyMap.set(d.date, { views: Number(d.views || 0), whatsapp: Number(d.whatsapp || 0) });
       }
-      contentMap.set(contentKey, cData);
     }
 
     // Formatear array de tendencia diaria para Recharts
@@ -98,11 +86,6 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Formatear array de contenidos más populares ordenados por visitas
-    const topContent = Array.from(contentMap.values())
-      .sort((a, b) => b.views - a.views)
-      .slice(0, 15);
-
     const conversionRate = totalViews > 0 ? ((totalWhatsapp / totalViews) * 100).toFixed(1) : '0.0';
 
     return NextResponse.json({
@@ -113,7 +96,7 @@ export async function GET(req: NextRequest) {
         totalViews,
         totalWhatsapp,
         conversionRate: parseFloat(conversionRate),
-        topPage: topContent[0]?.title || 'Ninguna aún',
+        topPage,
       },
       dailyTrend,
       topContent,

@@ -507,6 +507,13 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_tenant_analytics_summary: {
+        Args: {
+          p_start_date: string
+          p_tenant_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

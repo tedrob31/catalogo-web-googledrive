@@ -508,3 +508,80 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION public.increment_page_metrics_batch(JSONB) TO anon, authenticated, service_role;
+
+CREATE OR REPLACE FUNCTION public.get_tenant_analytics_summary(
+    p_tenant_id UUID,
+    p_start_date DATE
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_result JSONB;
+    v_total_views BIGINT := 0;
+    v_total_whatsapp BIGINT := 0;
+    v_daily_trend JSONB;
+    v_top_content JSONB;
+    v_top_page TEXT := 'Ninguna aún';
+BEGIN
+    -- 1. Totales generales
+    SELECT 
+        COALESCE(SUM(views_count), 0),
+        COALESCE(SUM(whatsapp_clicks), 0)
+    INTO 
+        v_total_views,
+        v_total_whatsapp
+    FROM public.tenant_page_metrics
+    WHERE tenant_id = p_tenant_id AND date >= p_start_date;
+
+    -- 2. Tendencia diaria agregada por fecha (orden cronológico)
+    SELECT COALESCE(jsonb_agg(d ORDER BY (d->>'date') ASC), '[]'::jsonb)
+    INTO v_daily_trend
+    FROM (
+        SELECT jsonb_build_object(
+            'date', date::text,
+            'views', COALESCE(SUM(views_count), 0),
+            'whatsapp', COALESCE(SUM(whatsapp_clicks), 0)
+        ) AS d
+        FROM public.tenant_page_metrics
+        WHERE tenant_id = p_tenant_id AND date >= p_start_date
+        GROUP BY date
+    ) sub;
+
+    -- 3. Top 15 contenidos más visitados
+    SELECT COALESCE(jsonb_agg(c), '[]'::jsonb)
+    INTO v_top_content
+    FROM (
+        SELECT jsonb_build_object(
+            'path', path,
+            'title', MAX(title),
+            'views', COALESCE(SUM(views_count), 0),
+            'whatsapp', COALESCE(SUM(whatsapp_clicks), 0)
+        ) AS c
+        FROM public.tenant_page_metrics
+        WHERE tenant_id = p_tenant_id AND date >= p_start_date
+        GROUP BY path
+        ORDER BY SUM(views_count) DESC
+        LIMIT 15
+    ) sub;
+
+    -- Extraer el título de la página más visitada
+    IF jsonb_array_length(v_top_content) > 0 THEN
+        v_top_page := COALESCE(v_top_content->0->>'title', 'Ninguna aún');
+    END IF;
+
+    v_result := jsonb_build_object(
+        'total_views', v_total_views,
+        'total_whatsapp', v_total_whatsapp,
+        'daily_trend', v_daily_trend,
+        'top_content', v_top_content,
+        'top_page', v_top_page
+    );
+
+    RETURN v_result;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_tenant_analytics_summary(UUID, DATE) TO anon, authenticated, service_role;
