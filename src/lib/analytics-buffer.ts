@@ -14,7 +14,7 @@ const metricBuffer = new Map<string, MetricEntry>();
 let flushTimeout: NodeJS.Timeout | null = null;
 let lastPruneTime = 0;
 
-const FLUSH_INTERVAL_MS = 30 * 1000; // 30 segundos
+const FLUSH_INTERVAL_MS = 60 * 1000; // 60 segundos
 const PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 horas
 
 /**
@@ -64,8 +64,8 @@ export function recordMetricEvent(
     });
   }
 
-  // Si se acumulan más de 50 entradas pendientes, forzar un flush inmediato
-  if (metricBuffer.size >= 50) {
+  // Si se acumulan más de 80 entradas pendientes, forzar un flush inmediato
+  if (metricBuffer.size >= 80) {
     flushAnalyticsBuffer().catch((err) =>
       console.error('[Analytics Buffer] Error en flush anticipado:', err)
     );
@@ -80,7 +80,7 @@ export function recordMetricEvent(
 }
 
 /**
- * Envía el lote acumulado en memoria RAM a Supabase usando la función atómica increment_page_metric.
+ * Envía el lote acumulado en memoria RAM a Supabase usando la función atómica increment_page_metrics_batch.
  * Luego vacía el Map para liberar memoria inmediatamente.
  */
 export async function flushAnalyticsBuffer() {
@@ -98,12 +98,16 @@ export async function flushAnalyticsBuffer() {
   try {
     const supabase = createAdminClient();
 
-    // Ejecutar las llamadas de incremento en lotes paralelos controlados (chunks de 10)
-    const CHUNK_SIZE = 10;
-    for (let i = 0; i < entriesToFlush.length; i += CHUNK_SIZE) {
-      const chunk = entriesToFlush.slice(i, i + CHUNK_SIZE);
+    // Enviar el lote completo en una única llamada RPC atómica a PostgreSQL (ahorro masivo de llamadas HTTP)
+    const { error: batchError } = await supabase.rpc('increment_page_metrics_batch', {
+      p_metrics: entriesToFlush as any,
+    });
+
+    if (batchError) {
+      console.error('[Analytics Buffer] Error en increment_page_metrics_batch, ejecutando fallback:', batchError);
+      // Fallback de contingencia: procesar individualmente si el batch falla
       await Promise.allSettled(
-        chunk.map((item) =>
+        entriesToFlush.map((item) =>
           supabase.rpc('increment_page_metric', {
             p_tenant_id: item.tenant_id,
             p_date: item.date,
@@ -114,11 +118,11 @@ export async function flushAnalyticsBuffer() {
           })
         )
       );
+    } else {
+      console.log(
+        `[Analytics Buffer] Flush por lote exitoso: ${entriesToFlush.length} registros agrupados en 1 sola llamada a Supabase.`
+      );
     }
-
-    console.log(
-      `[Analytics Buffer] Flush exitoso: ${entriesToFlush.length} registros agrupados enviados a Supabase.`
-    );
 
     // Ejecutar poda de registros antiguos (>35 días) si ha pasado más de 1 día
     const now = Date.now();

@@ -501,6 +501,12 @@ export type Database = {
         }
         Returns: undefined
       }
+      increment_page_metrics_batch: {
+        Args: {
+          p_metrics: Json
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

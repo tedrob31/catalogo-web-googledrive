@@ -66,11 +66,12 @@ export function invalidateTenantCatalogCache(tenantIdOrSubdomain?: string) {
 
 /**
  * Recupera TODOS los registros de fotos de un tenant paginando en bloques de 1,000.
- * Resuelve el límite rígido de 1,000 filas por consulta de Supabase / PostgREST.
+ * Permite seleccionar columnas quirúrgicamente para ahorrar Egress masivo en Supabase.
  */
 export async function fetchAllTenantPhotos(
   supabase: ReturnType<typeof createAdminClient>,
-  tenantId: string
+  tenantId: string,
+  selectColumns: string = 'id, name, r2_key, album_id, width, height, order_index, drive_modified_time'
 ): Promise<any[]> {
   const allPhotos: any[] = [];
   const pageSize = 1000;
@@ -80,7 +81,7 @@ export async function fetchAllTenantPhotos(
   while (hasMore) {
     const { data, error } = await supabase
       .from('photos')
-      .select('*')
+      .select(selectColumns)
       .eq('tenant_id', tenantId)
       .order('id', { ascending: true })
       .range(from, from + pageSize - 1);
@@ -108,10 +109,12 @@ export async function fetchAllTenantPhotos(
 
 /**
  * Recupera TODOS los álbumes de un tenant con paginación completa.
+ * Permite seleccionar columnas específicas para minimizar la carga útil de datos.
  */
 export async function fetchAllTenantAlbums(
   supabase: ReturnType<typeof createAdminClient>,
-  tenantId: string
+  tenantId: string,
+  selectColumns: string = 'id, name, path, parent_id, order_index, drive_folder_id, cover_photo_r2_key'
 ): Promise<any[]> {
   const allAlbums: any[] = [];
   const pageSize = 1000;
@@ -121,7 +124,7 @@ export async function fetchAllTenantAlbums(
   while (hasMore) {
     const { data, error } = await supabase
       .from('albums')
-      .select('*')
+      .select(selectColumns)
       .eq('tenant_id', tenantId)
       .order('id', { ascending: true })
       .range(from, from + pageSize - 1);

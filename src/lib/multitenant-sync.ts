@@ -116,8 +116,16 @@ export async function runTenantSync(
     // Esto resuelve el límite rígido de 1,000 filas de PostgREST y garantiza que catálogos de 5,000+ fotos
     // se mantengan en RAM para que la sincronización incremental tarde solo ~3-5 segundos sin re-descargas ni duplicados.
     const [initialDbAlbums, initialDbPhotos] = await Promise.all([
-      fetchAllTenantAlbums(supabase, tenantId),
-      fetchAllTenantPhotos(supabase, tenantId),
+      fetchAllTenantAlbums(
+        supabase,
+        tenantId,
+        'id, drive_folder_id, name, slug, parent_id, path, order_index, cover_photo_r2_key'
+      ),
+      fetchAllTenantPhotos(
+        supabase,
+        tenantId,
+        'id, drive_file_id, name, r2_key, album_id, md5_checksum, drive_modified_time'
+      ),
     ]);
 
     const existingAlbumsMap = new Map<string, any>();

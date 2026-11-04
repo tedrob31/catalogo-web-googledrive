@@ -70,3 +70,30 @@ Este documento resume el funcionamiento actual, las capacidades del servidor y l
 2. **Fase 2 (Al crecer):** Subir a 2 réplicas en Docker Swarm para repartir tiendas concurrentes en núcleos separados.
 3. **Fase 3 (Empresa grande):** Escalar VPS a 8/16 vCPUs manteniendo la filosofía "Zero-Queue".
 
+---
+
+## 6. Hoja de Ruta: Optimización de Egress y Peticiones a Supabase (Tarea Pendiente)
+
+### 🎯 Objetivo:
+Reducir el consumo de Egress de Supabase (límite de 5 GB en plan Free) y minimizar las peticiones HTTP concurrentes hacia PostgREST.
+
+### 📋 Acciones Planificadas:
+
+1. **Proyección Quirúrgica de Columnas en `photos` (`src/lib/catalog-db.ts`):**
+   * **Problema actual:** La función `fetchAllTenantPhotos` utiliza `.select('*')` descargando todas las columnas de miles de fotos de la tienda, consumiendo cientos de MB de Egress innecesariamente.
+   * **Solución:** Reemplazar `.select('*')` por solo las 6 columnas estrictamente necesarias para el catálogo público:
+     ```typescript
+     .select('id, name, r2_key, album_id, width, height')
+     ```
+   * **Impacto esperado:** Reducción inmediata de entre un **60% y 75% del ancho de banda (Egress)** en cada carga inicial.
+
+2. **Lote Unificado de Analíticas / Métricas (`src/lib/analytics-buffer.ts`):**
+   * **Problema actual:** `flushAnalyticsBuffer()` envía un RPC individual (`/rest/v1/rpc/increment_page_metric`) por cada ruta de página visitada, generando ráfagas de 10 a 20 llamadas HTTP en el mismo segundo.
+   * **Solución:**
+     * Aumentar el intervalo de flush en memoria RAM de **30s a 60s o 120s**.
+     * Crear una función SQL en PostgreSQL `increment_page_metrics_batch(p_metrics jsonb)` que reciba el lote completo en un solo array y haga un `INSERT ... ON CONFLICT DO UPDATE` en una única transacción atómica.
+   * **Impacto esperado:** Disminución de más del **90% en la cantidad de peticiones API Gateway** hacia Supabase.
+
+3. **Caché en RAM Persistente (Keep-Warm):**
+   * Mantener estable el contenedor de Node.js para que `memoryCatalogCache` (TTL de 5 min) absorba el 99% de las visitas de los compradores sin hacer ninguna consulta a Supabase.
+

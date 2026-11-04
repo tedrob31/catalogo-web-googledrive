@@ -468,3 +468,43 @@ BEGIN
         updated_at = now();
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.increment_page_metrics_batch(
+    p_metrics JSONB
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    IF p_metrics IS NULL OR jsonb_array_length(p_metrics) = 0 THEN
+        RETURN;
+    END IF;
+
+    INSERT INTO public.tenant_page_metrics (
+        tenant_id, date, path, title, views_count, whatsapp_clicks, updated_at
+    )
+    SELECT
+        (m->>'tenant_id')::UUID,
+        (m->>'date')::DATE,
+        m->>'path',
+        m->>'title',
+        COALESCE((m->>'views')::INT, 0),
+        COALESCE((m->>'whatsapp')::INT, 0),
+        now()
+    FROM jsonb_array_elements(p_metrics) AS m
+    ON CONFLICT (tenant_id, date, path)
+    DO UPDATE SET
+        views_count = tenant_page_metrics.views_count + EXCLUDED.views_count,
+        whatsapp_clicks = tenant_page_metrics.whatsapp_clicks + EXCLUDED.whatsapp_clicks,
+        title = CASE 
+            WHEN EXCLUDED.title <> 'Catálogo' AND EXCLUDED.title <> 'Catálogo Principal' 
+            THEN EXCLUDED.title 
+            ELSE tenant_page_metrics.title 
+        END,
+        updated_at = now();
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.increment_page_metrics_batch(JSONB) TO anon, authenticated, service_role;
