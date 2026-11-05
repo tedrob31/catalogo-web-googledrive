@@ -11,6 +11,9 @@ import {
   FaCamera,
   FaTrash,
   FaPlus,
+  FaInstagram,
+  FaTiktok,
+  FaFacebook,
 } from 'react-icons/fa';
 
 function isApexDomain(domain: string): boolean {
@@ -312,6 +315,87 @@ export default function BrandingTab({
             placeholder="Catálogo de ropa, calzado y accesorios de alta calidad..."
             className="w-full bg-slate-800 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
           />
+        </div>
+
+        {/* Redes Sociales Oficiales */}
+        <div className="pt-4 border-t border-white/10 space-y-4">
+          <div>
+            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span>Redes Sociales (Enlaces en Pie de Página)</span>
+            </h3>
+            <span className="text-[11px] text-slate-400">
+              Aparecerán con su icono oficial en el pie de página de tu catálogo para que tus clientes te sigan.
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                <FaInstagram className="text-pink-400 text-sm" />
+                <span>Instagram:</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: @tutienda o instagram.com/tutienda"
+                value={configForm.social_links?.instagram || ''}
+                onChange={(e) =>
+                  setConfigForm((prev: any) => ({
+                    ...prev,
+                    social_links: {
+                      ...(prev.social_links || {}),
+                      instagram: e.target.value,
+                    },
+                  }))
+                }
+                className="w-full bg-slate-800 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-pink-500 placeholder:text-slate-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                <FaTiktok className="text-rose-400 text-sm" />
+                <span>TikTok:</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: @tutienda o tiktok.com/@tutienda"
+                value={configForm.social_links?.tiktok || ''}
+                onChange={(e) =>
+                  setConfigForm((prev: any) => ({
+                    ...prev,
+                    social_links: {
+                      ...(prev.social_links || {}),
+                      tiktok: e.target.value,
+                    },
+                  }))
+                }
+                className="w-full bg-slate-800 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500 placeholder:text-slate-600"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                <FaFacebook className="text-blue-400 text-sm" />
+                <span>Facebook:</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Ej: facebook.com/tutienda"
+                value={configForm.social_links?.facebook || ''}
+                onChange={(e) =>
+                  setConfigForm((prev: any) => ({
+                    ...prev,
+                    social_links: {
+                      ...(prev.social_links || {}),
+                      facebook: e.target.value,
+                    },
+                  }))
+                }
+                className="w-full bg-slate-800 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500 placeholder:text-slate-600"
+              />
+            </div>
+          </div>
         </div>
 
         <h2 className="text-base font-bold text-white pt-4 border-t border-white/10">

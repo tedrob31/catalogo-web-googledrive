@@ -357,6 +357,13 @@ async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBas
     ogImage: rawSettings.og_image || undefined,
     forceGlobalOgImage: rawSettings.force_global_og_image || false,
     redirectToCustomDomain: Boolean(rawSettings.redirect_to_custom_domain),
+    allowPhotoDownload: Boolean(rawSettings.allow_photo_download),
+    socialLinks: {
+      instagram: (rawConfig?.social_links as any)?.instagram || rawSettings.instagram || undefined,
+      facebook: (rawConfig?.social_links as any)?.facebook || rawSettings.facebook || undefined,
+      tiktok: (rawConfig?.social_links as any)?.tiktok || rawSettings.tiktok || undefined,
+      whatsapp: rawConfig?.whatsapp || (rawConfig?.social_links as any)?.whatsapp || undefined,
+    },
   };
 
   const result: CachedTenantBase = {

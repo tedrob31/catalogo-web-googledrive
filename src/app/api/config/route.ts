@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     const rawSettings = (config.settings as Record<string, any>) || {};
+    const rawSocial = (config.social_links as Record<string, any>) || {};
 
     const fullConfig = {
       siteTitle: config.title,
@@ -55,6 +56,13 @@ export async function GET(request: NextRequest) {
       secondaryColor: rawSettings.secondary_color || '#ffffff',
       textColor: rawSettings.text_color || '',
       backgroundImage: rawSettings.background_image || '',
+      allowPhotoDownload: Boolean(rawSettings.allow_photo_download),
+      socialLinks: {
+        instagram: rawSocial.instagram || '',
+        facebook: rawSocial.facebook || '',
+        tiktok: rawSocial.tiktok || '',
+        whatsapp: config.whatsapp || rawSocial.whatsapp || '',
+      },
       gridColumns: rawSettings.grid_columns || 5,
       mobileGridColumns: rawSettings.mobile_grid_columns || 2,
       hideAlbumTitles: rawSettings.hide_album_titles || false,
@@ -276,6 +284,12 @@ export async function POST(request: NextRequest) {
       folder_covers: body.folderCovers !== undefined ? body.folderCovers : (existingSettings.folder_covers || {}),
       og_image: body.ogImage !== undefined ? body.ogImage : (existingSettings.og_image || ''),
       force_global_og_image: body.forceGlobalOgImage !== undefined ? Boolean(body.forceGlobalOgImage) : Boolean(existingSettings.force_global_og_image),
+      allow_photo_download:
+        body.allowPhotoDownload !== undefined
+          ? Boolean(body.allowPhotoDownload)
+          : body.allow_photo_download !== undefined
+          ? Boolean(body.allow_photo_download)
+          : Boolean(existingSettings.allow_photo_download),
       redirect_to_custom_domain:
         body.redirectToCustomDomain !== undefined
           ? Boolean(body.redirectToCustomDomain)
@@ -317,6 +331,20 @@ export async function POST(request: NextRequest) {
 
     if (body.theme !== undefined) {
       configUpdateData.theme = body.theme || 'light';
+    }
+
+    if (body.social_links !== undefined || body.socialLinks !== undefined) {
+      const incomingSocial = body.social_links || body.socialLinks || {};
+      const { data: existingCfg } = await adminClient
+        .from('tenant_configs')
+        .select('social_links')
+        .eq('tenant_id', tenantId)
+        .single();
+
+      configUpdateData.social_links = {
+        ...((existingCfg?.social_links as Record<string, any>) || {}),
+        ...incomingSocial,
+      };
     }
 
     const { error: updateError } = await adminClient

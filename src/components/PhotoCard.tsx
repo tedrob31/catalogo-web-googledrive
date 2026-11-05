@@ -1,9 +1,11 @@
 import Image from 'next/image';
 import { PhotoItem } from '@/lib/types';
+import { AppConfig } from '@/lib/config';
 import { useState } from 'react';
 
 interface PhotoCardProps {
     photo: PhotoItem;
+    config?: AppConfig;
     priority?: boolean;
     onClick: () => void;
 }
@@ -11,7 +13,7 @@ interface PhotoCardProps {
 // Registro en memoria para asegurar que cada foto HD solo se precargue una única vez por sesión
 const prefetchedImages = new Set<string>();
 
-export default function PhotoCard({ photo, priority = false, onClick }: PhotoCardProps) {
+export default function PhotoCard({ photo, config, priority = false, onClick }: PhotoCardProps) {
     const [isLoading, setIsLoading] = useState(!priority);
 
     // Precarga inteligente de alta resolución: solo una vez por foto en toda la sesión
@@ -26,10 +28,16 @@ export default function PhotoCard({ photo, priority = false, onClick }: PhotoCar
         img.src = url;
     };
 
+    const borderStyle: React.CSSProperties = {
+        borderWidth: config?.cardBorderWidth !== undefined ? `${config.cardBorderWidth}px` : '1px',
+        borderColor: config?.cardBorderColor || undefined,
+        borderStyle: config?.cardBorderWidth === 0 ? 'none' : 'solid',
+    };
+
     return (
         <div
-            className="relative group cursor-pointer overflow-hidden rounded-lg bg-gray-100 dark:bg-zinc-900"
-            style={{ aspectRatio: '4/5' }}
+            className="relative group cursor-pointer overflow-hidden rounded-lg bg-gray-100 dark:bg-zinc-900 border-gray-200 dark:border-zinc-800"
+            style={{ aspectRatio: '4/5', ...borderStyle }}
             onClick={onClick}
             onMouseEnter={prefetchFullImage}
             onTouchStart={prefetchFullImage}

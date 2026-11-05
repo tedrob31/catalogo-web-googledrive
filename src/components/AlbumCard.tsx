@@ -17,9 +17,10 @@ export default function AlbumCard({ album, config, priority = false, onClick }: 
     const coverPhoto = album.photos[0] || album.subAlbums[0]?.photos[0];
     const thumbSrc = customCover || coverPhoto?.thumbnailLink || '';
 
-    const borderStyle = {
-        borderWidth: config.cardBorderWidth ? `${config.cardBorderWidth}px` : '1px',
+    const borderStyle: React.CSSProperties = {
+        borderWidth: config.cardBorderWidth !== undefined ? `${config.cardBorderWidth}px` : '1px',
         borderColor: config.cardBorderColor || undefined,
+        borderStyle: config.cardBorderWidth === 0 ? 'none' : 'solid',
     };
 
     return (

@@ -80,12 +80,19 @@ export default function TenantDashboard() {
     primary_color: '#111827',
     secondary_color: '#ffffff',
     text_color: '#000000',
+    background_image: '',
     theme: 'light',
     grid_columns: 5,
     mobile_grid_columns: 2,
     card_border_width: 1,
     card_border_color: '#e5e7eb',
     hide_album_titles: false,
+    allow_photo_download: false,
+    social_links: {
+      instagram: '',
+      facebook: '',
+      tiktok: '',
+    },
     seasonal_effect: 'none',
     seasonal_custom_icon: '',
     seasonal_duration: 0,
@@ -194,6 +201,7 @@ export default function TenantDashboard() {
         primary_color: cfg.primary_color || '#111827',
         secondary_color: rawSettings.secondary_color || '#ffffff',
         text_color: rawSettings.text_color || '#000000',
+        background_image: rawSettings.background_image || '',
         theme: cfg.theme || 'light',
         grid_columns: rawSettings.grid_columns || 5,
         mobile_grid_columns: rawSettings.mobile_grid_columns || 2,
@@ -201,6 +209,12 @@ export default function TenantDashboard() {
           rawSettings.card_border_width !== undefined ? Number(rawSettings.card_border_width) : 1,
         card_border_color: rawSettings.card_border_color || '#e5e7eb',
         hide_album_titles: Boolean(rawSettings.hide_album_titles),
+        allow_photo_download: Boolean(rawSettings.allow_photo_download),
+        social_links: {
+          instagram: (cfg.social_links as any)?.instagram || rawSettings.instagram || '',
+          facebook: (cfg.social_links as any)?.facebook || rawSettings.facebook || '',
+          tiktok: (cfg.social_links as any)?.tiktok || rawSettings.tiktok || '',
+        },
         seasonal_effect: rawSettings.seasonal_effect || 'none',
         seasonal_custom_icon: rawSettings.seasonal_custom_icon || '',
         seasonal_duration: Number(rawSettings.seasonal_duration) || 0,
@@ -516,7 +530,10 @@ export default function TenantDashboard() {
       configForm.logo_url !== savedConfig.logo_url ||
       configForm.favicon_url !== savedConfig.favicon_url ||
       configForm.og_image !== savedConfig.og_image ||
-      Boolean(configForm.force_global_og_image) !== Boolean(savedConfig.force_global_og_image)
+      Boolean(configForm.force_global_og_image) !== Boolean(savedConfig.force_global_og_image) ||
+      configForm.social_links?.instagram !== savedConfig.social_links?.instagram ||
+      configForm.social_links?.facebook !== savedConfig.social_links?.facebook ||
+      configForm.social_links?.tiktok !== savedConfig.social_links?.tiktok
     );
   }, [configForm, savedConfig]);
 
@@ -526,6 +543,8 @@ export default function TenantDashboard() {
       configForm.primary_color !== savedConfig.primary_color ||
       configForm.secondary_color !== savedConfig.secondary_color ||
       configForm.text_color !== savedConfig.text_color ||
+      configForm.background_image !== savedConfig.background_image ||
+      Boolean(configForm.allow_photo_download) !== Boolean(savedConfig.allow_photo_download) ||
       configForm.theme !== savedConfig.theme ||
       configForm.grid_columns !== savedConfig.grid_columns ||
       configForm.mobile_grid_columns !== savedConfig.mobile_grid_columns ||
@@ -572,6 +591,13 @@ export default function TenantDashboard() {
       if (Boolean(configForm.force_global_og_image) !== Boolean(savedConfig.force_global_og_image)) {
         payload.forceGlobalOgImage = configForm.force_global_og_image;
       }
+      if (
+        configForm.social_links?.instagram !== savedConfig.social_links?.instagram ||
+        configForm.social_links?.facebook !== savedConfig.social_links?.facebook ||
+        configForm.social_links?.tiktok !== savedConfig.social_links?.tiktok
+      ) {
+        payload.social_links = configForm.social_links;
+      }
 
       const res = await fetch('/api/config', {
         method: 'POST',
@@ -611,6 +637,10 @@ export default function TenantDashboard() {
       if (configForm.primary_color !== savedConfig.primary_color) payload.primaryColor = configForm.primary_color;
       if (configForm.secondary_color !== savedConfig.secondary_color) payload.secondaryColor = configForm.secondary_color;
       if (configForm.text_color !== savedConfig.text_color) payload.textColor = configForm.text_color;
+      if (configForm.background_image !== savedConfig.background_image) payload.backgroundImage = configForm.background_image;
+      if (Boolean(configForm.allow_photo_download) !== Boolean(savedConfig.allow_photo_download)) {
+        payload.allowPhotoDownload = configForm.allow_photo_download;
+      }
       if (configForm.theme !== savedConfig.theme) payload.theme = configForm.theme;
       if (configForm.grid_columns !== savedConfig.grid_columns) payload.gridColumns = configForm.grid_columns;
       if (configForm.mobile_grid_columns !== savedConfig.mobile_grid_columns) payload.mobileGridColumns = configForm.mobile_grid_columns;
@@ -678,11 +708,12 @@ export default function TenantDashboard() {
     });
   }
 
-  function handleOpenMediaSelector(field: '__LOGO__' | '__FAVICON__' | '__OG__') {
+  function handleOpenMediaSelector(field: '__LOGO__' | '__FAVICON__' | '__OG__' | '__BACKGROUND__') {
     const titles: Record<string, string> = {
       __LOGO__: 'Seleccionar Imagen para el Logotipo',
       __FAVICON__: 'Seleccionar Icono para el Favicon',
       __OG__: 'Seleccionar Portada para Redes Sociales (OG Image)',
+      __BACKGROUND__: 'Seleccionar Foto de Fondo Fija para el Catálogo',
     };
     setCoverModal({
       isOpen: true,
@@ -734,6 +765,8 @@ export default function TenantDashboard() {
         setConfigForm((prev) => ({ ...prev, favicon_url: url }));
       } else if (coverModal.targetId === '__OG__') {
         setConfigForm((prev) => ({ ...prev, og_image: url }));
+      } else if (coverModal.targetId === '__BACKGROUND__') {
+        setConfigForm((prev) => ({ ...prev, background_image: url }));
       }
     }
   }
@@ -965,6 +998,7 @@ export default function TenantDashboard() {
             setConfigForm={setConfigForm}
             savingConfig={savingConfig}
             onSaveConfig={handleSaveDesignConfig}
+            onOpenMediaSelector={handleOpenMediaSelector}
             hasChanges={hasDesignChanges}
           />
         )}

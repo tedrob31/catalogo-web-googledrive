@@ -35,6 +35,13 @@ export interface AppConfig {
     whatsappNumber?: string;
     theme?: string;
     redirectToCustomDomain?: boolean;
+    allowPhotoDownload?: boolean;
+    socialLinks?: {
+        instagram?: string;
+        facebook?: string;
+        tiktok?: string;
+        whatsapp?: string;
+    };
 }
 
 export const DEFAULT_CONFIG: AppConfig = {

@@ -9,10 +9,11 @@ import PhotoCard from './PhotoCard';
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
+import Download from "yet-another-react-lightbox/plugins/download";
 import { useRouter } from 'next/navigation';
 
 import { FiSearch, FiArrowLeft, FiGrid, FiHome } from 'react-icons/fi';
-import { FaWhatsapp } from 'react-icons/fa';
+import { FaWhatsapp, FaInstagram, FaTiktok, FaFacebook } from 'react-icons/fa';
 import { StorefrontConfig } from '@/lib/storefront';
 import StorefrontView from './storefront/StorefrontView';
 import SeasonalEffects from './SeasonalEffects';
@@ -24,6 +25,23 @@ interface CatalogViewProps {
     initialPath?: Album[];
     storefront?: StorefrontConfig;
     tenantId?: string;
+}
+
+function formatSocialUrl(value: string, platform: 'instagram' | 'tiktok' | 'facebook'): string {
+    const clean = value.trim();
+    if (clean.startsWith('http://') || clean.startsWith('https://')) return clean;
+    if (platform === 'instagram') {
+        const handle = clean.replace(/^@/, '');
+        return `https://instagram.com/${handle}`;
+    }
+    if (platform === 'tiktok') {
+        const handle = clean.startsWith('@') ? clean : `@${clean}`;
+        return `https://tiktok.com/${handle}`;
+    }
+    if (platform === 'facebook') {
+        return `https://facebook.com/${clean}`;
+    }
+    return clean;
 }
 
 export default function CatalogView({ data, config, initialPath, storefront, tenantId }: CatalogViewProps) {
@@ -303,19 +321,45 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
     const openLightbox = (index: number) => setLightboxPhotoIndex(index);
     const closeLightbox = () => setLightboxPhotoIndex(-1);
 
-    const mainStyle = {
-        backgroundImage: config.backgroundImage ? `url(${config.backgroundImage})` : undefined,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed',
+    const plugins = useMemo(() => {
+        return config.allowPhotoDownload ? [Zoom, Download] : [Zoom];
+    }, [config.allowPhotoDownload]);
+
+    const hasCustomBgColor = Boolean(config.secondaryColor && config.secondaryColor !== '#ffffff');
+
+    const mainStyle: React.CSSProperties = {
+        backgroundColor: hasCustomBgColor ? config.secondaryColor : undefined,
         color: config.textColor || undefined,
     };
 
+    const hasSocialLinks = Boolean(
+        config.socialLinks?.instagram ||
+        config.socialLinks?.tiktok ||
+        config.socialLinks?.facebook ||
+        config.whatsappNumber
+    );
+
     return (
         <div
-            className="min-h-screen bg-white dark:bg-zinc-950 text-gray-900 dark:text-gray-100 pb-20 transition-colors relative"
+            className={`min-h-screen text-gray-900 dark:text-gray-100 pb-20 transition-colors relative ${
+                config.backgroundImage
+                    ? 'bg-transparent'
+                    : hasCustomBgColor
+                    ? ''
+                    : 'bg-white dark:bg-zinc-950'
+            }`}
             style={mainStyle}
         >
+            {/* Foto de fondo fija (wallpaper) con rendimiento de aceleración gráfica */}
+            {config.backgroundImage && (
+                <div
+                    className="fixed inset-0 pointer-events-none z-0 bg-cover bg-center bg-no-repeat"
+                    style={{
+                        backgroundImage: `url(${config.backgroundImage})`,
+                    }}
+                />
+            )}
+
             <SeasonalEffects config={config} />
             <ClickEffects config={config} />
 
@@ -336,13 +380,13 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                                     handleBack();
                                 }
                             }}
-                            className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full text-gray-700 dark:text-gray-200 transition-colors"
+                            className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full text-gray-800 dark:text-gray-100 transition-colors cursor-pointer"
                             title={searchQuery ? "Ir al Inicio" : "Atrás"}
                         >
                             {searchQuery ? (
-                                <FiHome size={24} style={config.textColor ? { color: config.textColor } : undefined} />
+                                <FiHome size={24} />
                             ) : (
-                                <FiArrowLeft size={24} style={config.textColor ? { color: config.textColor } : undefined} />
+                                <FiArrowLeft size={24} />
                             )}
                         </button>
                     )}
@@ -355,7 +399,6 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                             className="bg-transparent border-none outline-none w-full text-sm text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            style={config.textColor ? { color: config.textColor } : undefined}
                         />
                     </div>
 
@@ -432,6 +475,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                                             <PhotoCard
                                                 key={photo.id}
                                                 photo={photo}
+                                                config={config}
                                                 priority={idx < 2}
                                                 onClick={() => openLightbox(idx)}
                                             />
@@ -450,7 +494,78 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                 )}
             </main>
 
-            {/* Lightbox Overlay con carga progresiva (apertura instantánea con miniatura y sustitución a HD) */}
+            {/* Footer con Redes Sociales y Marca Oficial */}
+            <footer className="mt-16 pt-8 pb-12 border-t border-gray-200/80 dark:border-zinc-800/80 text-center relative z-10">
+                <div className="max-w-4xl mx-auto px-4 space-y-4">
+                    <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 tracking-tight">
+                        {config.siteTitle}
+                    </h3>
+                    {config.siteDescription && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto line-clamp-2">
+                            {config.siteDescription}
+                        </p>
+                    )}
+
+                    {/* Botones / Enlaces a Redes Sociales */}
+                    {hasSocialLinks && (
+                        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                            {config.socialLinks?.instagram && (
+                                <a
+                                    href={formatSocialUrl(config.socialLinks.instagram, 'instagram')}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white dark:bg-zinc-900 dark:hover:from-purple-500 dark:hover:to-pink-500 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-800 transition-all shadow-sm group"
+                                >
+                                    <FaInstagram className="text-sm text-pink-500 group-hover:text-white transition-colors" />
+                                    <span>Instagram</span>
+                                </a>
+                            )}
+                            {config.socialLinks?.tiktok && (
+                                <a
+                                    href={formatSocialUrl(config.socialLinks.tiktok, 'tiktok')}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-black hover:text-white dark:bg-zinc-900 dark:hover:bg-black text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-800 transition-all shadow-sm group"
+                                >
+                                    <FaTiktok className="text-sm text-rose-500 group-hover:text-white transition-colors" />
+                                    <span>TikTok</span>
+                                </a>
+                            )}
+                            {config.socialLinks?.facebook && (
+                                <a
+                                    href={formatSocialUrl(config.socialLinks.facebook, 'facebook')}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-[#1877F2] hover:text-white dark:bg-zinc-900 dark:hover:bg-[#1877F2] text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-800 transition-all shadow-sm group"
+                                >
+                                    <FaFacebook className="text-sm text-blue-600 group-hover:text-white transition-colors" />
+                                    <span>Facebook</span>
+                                </a>
+                            )}
+                            {config.whatsappNumber && (
+                                <a
+                                    href={`https://wa.me/${config.whatsappNumber.replace(/[^0-9]/g, '')}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => {
+                                        trackWhatsappClick(currentPathStr, 'Pie de página');
+                                    }}
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-[#25D366] hover:text-white dark:bg-zinc-900 dark:hover:bg-[#25D366] text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-800 transition-all shadow-sm group"
+                                >
+                                    <FaWhatsapp className="text-sm text-emerald-500 group-hover:text-white transition-colors" />
+                                    <span>WhatsApp</span>
+                                </a>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="pt-4 text-[11px] text-gray-400 dark:text-gray-500">
+                        © {new Date().getFullYear()} {config.siteTitle}. Todos los derechos reservados.
+                    </div>
+                </div>
+            </footer>
+
+            {/* Lightbox Overlay con carga progresiva y descarga directa desde Cloudflare R2 */}
             <Lightbox
                 open={lightboxPhotoIndex >= 0}
                 close={() => setLightboxPhotoIndex(-1)}
@@ -458,11 +573,18 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                 slides={visiblePhotos.map(p => {
                     const w = p.width || 1080;
                     const h = p.height || 1080;
+                    const rawPhotoUrl = p.fullLink || p.thumbnailLink || '';
                     return {
-                        src: p.fullLink || p.thumbnailLink || '',
+                        src: rawPhotoUrl,
                         alt: p.name,
                         width: w,
                         height: h,
+                        download: config.allowPhotoDownload
+                            ? {
+                                  url: rawPhotoUrl,
+                                  filename: `${p.name.replace(/[/\\?%*:|"<>]/g, '_')}.jpg`,
+                              }
+                            : undefined,
                         srcSet: [
                             {
                                 src: p.thumbnailLink || '',
@@ -470,15 +592,37 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                                 height: Math.round((800 * h) / w),
                             },
                             {
-                                src: p.fullLink || p.thumbnailLink || '',
+                                src: rawPhotoUrl,
                                 width: 1600,
                                 height: h,
                             },
                         ],
                     };
                 })}
-                plugins={[Zoom]}
+                plugins={plugins}
                 zoom={{ maxZoomPixelRatio: 3 }}
+                download={
+                    config.allowPhotoDownload
+                        ? {
+                              download: async ({ slide, saveAs }) => {
+                                  try {
+                                      const url =
+                                          (typeof slide.download === 'object' ? slide.download.url : slide.src) || '';
+                                      const filename =
+                                          (typeof slide.download === 'object' ? slide.download.filename : '') ||
+                                          'foto.jpg';
+                                      const res = await fetch(url);
+                                      const blob = await res.blob();
+                                      saveAs(blob, filename);
+                                  } catch {
+                                      const url =
+                                          (typeof slide.download === 'object' ? slide.download.url : slide.src) || '';
+                                      window.open(url, '_blank');
+                                  }
+                              },
+                          }
+                        : undefined
+                }
                 controller={{ closeOnBackdropClick: true }}
             />
 
