@@ -574,6 +574,8 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                     const w = p.width || 1080;
                     const h = p.height || 1080;
                     const rawPhotoUrl = p.fullLink || p.thumbnailLink || '';
+                    const baseName = (p.name || 'foto').replace(/\.[a-zA-Z0-9]{3,4}$/, '');
+                    const cleanFilename = `${baseName.replace(/[/\\?%*:|"<>]/g, '_')}.jpg`;
                     return {
                         src: rawPhotoUrl,
                         alt: p.name,
@@ -582,7 +584,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                         download: config.allowPhotoDownload
                             ? {
                                   url: rawPhotoUrl,
-                                  filename: `${p.name.replace(/[/\\?%*:|"<>]/g, '_')}.jpg`,
+                                  filename: cleanFilename,
                               }
                             : undefined,
                         srcSet: [
@@ -605,19 +607,29 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                     config.allowPhotoDownload
                         ? {
                               download: async ({ slide, saveAs }) => {
+                                  const rawUrl =
+                                      (typeof slide.download === 'object' ? slide.download.url : slide.src) || '';
+                                  const rawFilename =
+                                      (typeof slide.download === 'object' ? slide.download.filename : '') ||
+                                      'foto.jpg';
+                                  const baseName = rawFilename.replace(/\.[a-zA-Z0-9]{3,4}$/, '');
+                                  const cleanFilename = `${baseName.replace(/[/\\?%*:|"<>]/g, '_')}.jpg`;
+                                  const downloadEndpoint = `/api/download?url=${encodeURIComponent(rawUrl)}&filename=${encodeURIComponent(cleanFilename)}`;
+
                                   try {
-                                      const url =
-                                          (typeof slide.download === 'object' ? slide.download.url : slide.src) || '';
-                                      const filename =
-                                          (typeof slide.download === 'object' ? slide.download.filename : '') ||
-                                          'foto.jpg';
-                                      const res = await fetch(url);
+                                      // 1. Descarga vía endpoint mismo origen (CORS-free) y saveAs directo
+                                      const res = await fetch(downloadEndpoint);
+                                      if (!res.ok) throw new Error(`HTTP ${res.status}`);
                                       const blob = await res.blob();
-                                      saveAs(blob, filename);
-                                  } catch {
-                                      const url =
-                                          (typeof slide.download === 'object' ? slide.download.url : slide.src) || '';
-                                      window.open(url, '_blank');
+                                      saveAs(blob, cleanFilename);
+                                  } catch (err) {
+                                      // 2. Fallback nativo: clic automático a endpoint con Content-Disposition: attachment
+                                      const link = document.createElement('a');
+                                      link.href = downloadEndpoint;
+                                      link.download = cleanFilename;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
                                   }
                               },
                           }
