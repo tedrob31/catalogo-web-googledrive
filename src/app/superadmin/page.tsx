@@ -580,11 +580,8 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans relative selection:bg-amber-500/20 selection:text-amber-200">
-      {/* Luz ambiental sutil (Studio ambient light) */}
-      <div className="absolute top-0 inset-x-0 h-96 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(245,158,11,0.06),rgba(255,255,255,0))] pointer-events-none" />
-
       {/* Top Header */}
-      <header className="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-30">
+      <header className="border-b border-zinc-800 bg-[#09090b]/90 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500 text-zinc-950 flex items-center justify-center font-black text-sm shadow-sm">
@@ -622,7 +619,7 @@ export default function SuperAdminDashboard() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8 space-y-8 relative z-10">
         {/* Global KPI Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 backdrop-blur-sm shadow-sm">
+          <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-zinc-700/80 transition-colors">
             <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2">
               <span>Total Tiendas</span>
               <FaUsers className="text-amber-400 text-sm" />
@@ -633,7 +630,7 @@ export default function SuperAdminDashboard() {
             </div>
           </div>
 
-          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 backdrop-blur-sm shadow-sm">
+          <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-zinc-700/80 transition-colors">
             <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2">
               <span>Fotos Indexadas</span>
               <FaImages className="text-amber-400 text-sm" />
@@ -642,7 +639,7 @@ export default function SuperAdminDashboard() {
             <div className="text-xs text-zinc-400 mt-1">Sincronizadas desde Google Drive</div>
           </div>
 
-          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 backdrop-blur-sm shadow-sm">
+          <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-zinc-700/80 transition-colors">
             <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2">
               <span>Almacenamiento Total</span>
               <FaHdd className="text-cyan-400 text-sm" />
@@ -654,7 +651,7 @@ export default function SuperAdminDashboard() {
             <div className="text-xs text-zinc-400 mt-1">Almacenado en Cloudflare R2</div>
           </div>
 
-          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 backdrop-blur-sm shadow-sm">
+          <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-zinc-700/80 transition-colors">
             <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2">
               <span>Planes Activos</span>
               <FaCrown className="text-emerald-400 text-sm" />
@@ -665,7 +662,7 @@ export default function SuperAdminDashboard() {
         </div>
 
         {/* 1. Selector de Portada Principal (c4talogo.com) */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 backdrop-blur-sm shadow-sm">
+        <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div>
               <div className="flex items-center gap-2">
@@ -750,7 +747,7 @@ export default function SuperAdminDashboard() {
         </div>
 
         {/* 2. Lista Blanca de Acceso (Fase Beta Cerrada) */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 space-y-6 backdrop-blur-sm shadow-sm">
+        <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 space-y-6 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
@@ -863,7 +860,7 @@ export default function SuperAdminDashboard() {
         </div>
 
         {/* 3. Subscription Plans Management */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 backdrop-blur-sm shadow-sm">
+        <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-base font-bold text-zinc-100">Configuración de Planes y Límites</h2>
@@ -1015,7 +1012,7 @@ export default function SuperAdminDashboard() {
         </div>
 
         {/* 4. Tenants Table & Management */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 backdrop-blur-sm shadow-sm">
+        <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h2 className="text-base font-bold text-zinc-100">Todos los Inquilinos (Tenants)</h2>

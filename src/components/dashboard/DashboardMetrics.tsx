@@ -27,11 +27,11 @@ export default function DashboardMetrics({
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
       {/* 1. Fotos en Catálogo */}
-      <div className="bg-zinc-900/40 border border-zinc-800/80 hover:border-zinc-700/80 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 backdrop-blur-sm group">
+      <div className="bg-[#121215] border border-zinc-800 hover:border-zinc-700/80 rounded-2xl p-5 flex flex-col justify-between transition-colors shadow-sm group">
         <div>
           <div className="flex items-center justify-between text-xs text-zinc-400 font-medium">
             <span className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/40">
+              <span className="p-1.5 rounded-lg bg-zinc-850 text-zinc-300 border border-zinc-700/40">
                 <FaImages className="text-xs" />
               </span>
               <span>Fotos en Catálogo</span>
@@ -49,18 +49,18 @@ export default function DashboardMetrics({
         </div>
         <div className="w-full bg-zinc-800/80 rounded-full h-1.5 overflow-hidden">
           <div
-            className="bg-amber-500 h-full rounded-full transition-all duration-500"
+            className="bg-amber-500 h-full rounded-full transition-all duration-300"
             style={{ width: `${photoPercentage}%` }}
           />
         </div>
       </div>
 
       {/* 2. Cuenta de Google Drive */}
-      <div className="bg-zinc-900/40 border border-zinc-800/80 hover:border-zinc-700/80 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 backdrop-blur-sm group">
+      <div className="bg-[#121215] border border-zinc-800 hover:border-zinc-700/80 rounded-2xl p-5 flex flex-col justify-between transition-colors shadow-sm group">
         <div>
           <div className="flex items-center justify-between text-xs text-zinc-400 font-medium">
             <span className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/40">
+              <span className="p-1.5 rounded-lg bg-zinc-850 text-zinc-300 border border-zinc-700/40">
                 <FaGoogle className="text-xs" />
               </span>
               <span>Google Drive</span>
@@ -94,7 +94,7 @@ export default function DashboardMetrics({
         {!integration?.is_connected && integration?.google_email ? (
           <a
             href="/api/auth/google"
-            className="mt-2 inline-flex items-center justify-center w-full py-1.5 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 rounded-xl font-medium text-xs transition"
+            className="mt-2 inline-flex items-center justify-center w-full py-1.5 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 rounded-xl font-medium text-xs transition-colors"
           >
             Reconectar cuenta
           </a>
@@ -104,11 +104,11 @@ export default function DashboardMetrics({
       </div>
 
       {/* 3. Última Sincronización */}
-      <div className="bg-zinc-900/40 border border-zinc-800/80 hover:border-zinc-700/80 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 backdrop-blur-sm group">
+      <div className="bg-[#121215] border border-zinc-800 hover:border-zinc-700/80 rounded-2xl p-5 flex flex-col justify-between transition-colors shadow-sm group">
         <div>
           <div className="flex items-center justify-between text-xs text-zinc-400 font-medium">
             <span className="flex items-center gap-2">
-              <span className="p-1.5 rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/40">
+              <span className="p-1.5 rounded-lg bg-zinc-850 text-zinc-300 border border-zinc-700/40">
                 <FaSync className="text-xs" />
               </span>
               <span>Sincronización</span>
@@ -133,7 +133,7 @@ export default function DashboardMetrics({
         <button
           onClick={onSyncNow}
           disabled={syncing || !integration?.catalog_folder_id}
-          className="mt-2 flex items-center justify-center gap-2 w-full py-2 px-3 bg-zinc-100 hover:bg-white text-zinc-900 rounded-xl text-xs font-semibold transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-[0.99]"
+          className="mt-2 flex items-center justify-center gap-2 w-full py-2 px-3 bg-zinc-100 hover:bg-white text-zinc-900 rounded-xl text-xs font-semibold transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-[0.99]"
         >
           <FaSync className={`text-xs ${syncing ? 'animate-spin' : ''}`} />
           <span>

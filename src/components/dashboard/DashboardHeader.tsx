@@ -30,7 +30,7 @@ export default function DashboardHeader({
     : '';
 
   return (
-    <header className="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-30 transition-all">
+    <header className="border-b border-zinc-800 bg-[#09090b]/90 backdrop-blur-md sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3.5">
           {/* Logo Badge Minimalista */}
@@ -74,7 +74,7 @@ export default function DashboardHeader({
         <div className="flex items-center gap-2 sm:gap-2.5">
           <button
             onClick={onOpenSecurityModal}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-300 hover:text-white rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition-all shadow-sm font-medium cursor-pointer active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-300 hover:text-white rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition-colors shadow-sm font-medium cursor-pointer active:scale-95"
             title="Asignar o cambiar contraseña de acceso"
           >
             <FaKey className="text-amber-400 text-[10px]" />
@@ -83,7 +83,7 @@ export default function DashboardHeader({
 
           <button
             onClick={onSignOut}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-400 hover:text-rose-400 rounded-xl hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-400 hover:text-rose-400 rounded-xl hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-colors cursor-pointer"
           >
             <FaSignOutAlt className="text-xs" />
             <span>Cerrar Sesión</span>

@@ -140,12 +140,12 @@ export default function DriveTab({
     return { rootNodes: roots, allNodeIds: allIds };
   }, [albums]);
 
-  // Inicializar todas las carpetas como expandidas en la primera carga
+  // Inicializar las carpetas raíz expandidas para navegación instantánea y fluida (evita sobrecargar el DOM)
   useEffect(() => {
-    if (allNodeIds.size > 0 && expandedFolderIds.size === 0) {
-      setExpandedFolderIds(new Set(allNodeIds));
+    if (rootNodes.length > 0 && expandedFolderIds.size === 0) {
+      setExpandedFolderIds(new Set(rootNodes.map((r) => r.id)));
     }
-  }, [allNodeIds]);
+  }, [rootNodes]);
 
   const toggleExpand = (id: string) => {
     setExpandedFolderIds((prev) => {
@@ -315,7 +315,7 @@ export default function DriveTab({
   return (
     <div className="space-y-6">
       {/* PASO 1: VINCULAR CUENTA DE GOOGLE DRIVE */}
-      <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 backdrop-blur-sm shadow-sm">
+      <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 shadow-sm">
         <h2 className="text-base font-bold text-zinc-100 mb-2 flex items-center gap-2">
           <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 text-amber-400 flex items-center justify-center text-xs font-mono font-bold shadow-sm">
             1
@@ -367,7 +367,7 @@ export default function DriveTab({
       </div>
 
       {/* PASO 2: SELECCIONAR CARPETAS */}
-      <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 backdrop-blur-sm shadow-sm">
+      <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 shadow-sm">
         <h2 className="text-base font-bold text-zinc-100 mb-2 flex items-center gap-2">
           <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 text-amber-400 flex items-center justify-center text-xs font-mono font-bold shadow-sm">
             2
@@ -482,10 +482,10 @@ export default function DriveTab({
       </div>
 
       {/* PASO 3: NAVEGACIÓN JERÁRQUICA DE ÁLBUMES Y ASIGNACIÓN DE PORTADAS */}
-      <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 relative backdrop-blur-sm shadow-sm">
+      <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 relative shadow-sm">
         {/* Banner Sticky de Cambios Pendientes */}
         {hasPendingChanges && (
-          <div className="sticky top-20 z-20 mb-6 p-4 rounded-xl bg-zinc-900/95 border border-amber-500/40 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="sticky top-20 z-20 mb-6 p-4 rounded-xl bg-[#18181b] border border-amber-500/40 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-amber-500 text-zinc-950 flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
                 {pendingCount}

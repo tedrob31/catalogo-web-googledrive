@@ -6,7 +6,7 @@ interface HistoryTabProps {
 
 export default function HistoryTab({ logs = [] }: HistoryTabProps) {
   return (
-    <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 backdrop-blur-sm shadow-sm">
+    <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 shadow-sm">
       <h2 className="text-base font-bold text-zinc-100 mb-4">Historial de Sincronizaciones</h2>
       {logs.length === 0 ? (
         <p className="text-xs text-zinc-500">Aún no hay registros de sincronización.</p>

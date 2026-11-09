@@ -21,7 +21,7 @@ export default function DesignTab({
 }: DesignTabProps) {
   return (
     <form onSubmit={onSaveConfig} className="space-y-6">
-      <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 space-y-6 backdrop-blur-sm">
+      <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 space-y-6 shadow-sm">
         <h2 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
           <FaPalette className="text-amber-400" />
           <span>Estructura de Grilla y Columnas</span>

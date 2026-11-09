@@ -859,10 +859,7 @@ export default function TenantDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans relative selection:bg-amber-500/20 selection:text-amber-200">
-      {/* Luz ambiental sutil (Studio ambient light) */}
-      <div className="absolute top-0 inset-x-0 h-96 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(245,158,11,0.06),rgba(255,255,255,0))] pointer-events-none" />
-
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans selection:bg-amber-500/20 selection:text-amber-200">
       {/* 1. Header Global */}
       <DashboardHeader
         tenant={tenant}
@@ -873,7 +870,7 @@ export default function TenantDashboard() {
       />
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
         {/* 2. Métricas Modulares */}
         <DashboardMetrics
           tenant={tenant}
@@ -884,15 +881,15 @@ export default function TenantDashboard() {
           onSyncNow={handleSyncNow}
         />
 
-        {/* 3. Navegación de Pestañas Segmentada (Linear / MacOS style) */}
+        {/* 3. Navegación de Pestañas Segmentada (Alta Velocidad 60-120fps) */}
         <div className="mb-8">
-          <div className="inline-flex p-1 bg-zinc-900/80 border border-zinc-800/80 rounded-2xl backdrop-blur-md gap-1 overflow-x-auto max-w-full scrollbar-none shadow-inner">
+          <div className="inline-flex p-1 bg-[#121215] border border-zinc-800 rounded-2xl gap-1 overflow-x-auto max-w-full scrollbar-none shadow-sm">
             <button
               onClick={() => setActiveTab('drive')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
                 activeTab === 'drive'
                   ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
               }`}
             >
               <FaGoogle className={activeTab === 'drive' ? 'text-amber-400' : 'text-zinc-500'} />
@@ -900,10 +897,10 @@ export default function TenantDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('design')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
                 activeTab === 'design'
                   ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
               }`}
             >
               <FaPalette className={activeTab === 'design' ? 'text-amber-400' : 'text-zinc-500'} />
@@ -911,10 +908,10 @@ export default function TenantDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('effects')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
                 activeTab === 'effects'
                   ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
               }`}
             >
               <FaMagic className={activeTab === 'effects' ? 'text-amber-400' : 'text-zinc-500'} />
@@ -922,10 +919,10 @@ export default function TenantDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('branding')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
                 activeTab === 'branding'
                   ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
               }`}
             >
               <FaShareAlt className={activeTab === 'branding' ? 'text-amber-400' : 'text-zinc-500'} />
@@ -933,10 +930,10 @@ export default function TenantDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('storefront')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
                 activeTab === 'storefront'
                   ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
               }`}
             >
               <FaStore className={activeTab === 'storefront' ? 'text-amber-400' : 'text-zinc-500'} />
@@ -944,10 +941,10 @@ export default function TenantDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('analytics')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
                 activeTab === 'analytics'
                   ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
               }`}
             >
               <FaChartLine className={activeTab === 'analytics' ? 'text-amber-400' : 'text-zinc-500'} />
@@ -955,10 +952,10 @@ export default function TenantDashboard() {
             </button>
             <button
               onClick={() => setActiveTab('history')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
                 activeTab === 'history'
                   ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
               }`}
             >
               <FaSync className={activeTab === 'history' ? 'text-amber-400' : 'text-zinc-500'} />

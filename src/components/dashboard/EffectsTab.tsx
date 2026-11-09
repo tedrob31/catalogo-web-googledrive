@@ -19,7 +19,7 @@ export default function EffectsTab({
 }: EffectsTabProps) {
   return (
     <form onSubmit={onSaveConfig} className="space-y-6">
-      <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 space-y-6 backdrop-blur-sm shadow-sm">
+      <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 space-y-6 shadow-sm">
         <h2 className="text-base font-bold text-zinc-100 flex items-center gap-2">
           <FaMagic className="text-amber-400" />
           <span>Animaciones de Temporada (Efectos de Caída)</span>
