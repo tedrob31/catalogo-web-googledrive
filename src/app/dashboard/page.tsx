@@ -825,10 +825,10 @@ export default function TenantDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-[#09090b] text-zinc-100 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <FaSync className="animate-spin text-4xl text-amber-500" />
-          <p className="text-slate-400 font-medium">Cargando panel de inquilino...</p>
+          <FaSync className="animate-spin text-3xl text-amber-400" />
+          <p className="text-zinc-400 font-medium text-xs tracking-wide">Cargando panel de inquilino...</p>
         </div>
       </div>
     );
@@ -837,20 +837,20 @@ export default function TenantDashboard() {
   // Si el usuario no tiene ninguna tienda asignada (no autorizado en fase beta)
   if (!tenant) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mb-4 text-2xl shadow-lg shadow-amber-500/10">
+      <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mb-4 text-xl shadow-sm">
           <FaLock />
         </div>
-        <h1 className="text-2xl font-black mb-2 tracking-tight">Acceso No Autorizado</h1>
-        <p className="text-slate-400 max-w-md text-sm mb-4 leading-relaxed">
-          Has iniciado sesión como <span className="text-white font-semibold">{user?.email}</span>, pero esta cuenta no tiene una tienda autorizada ni se encuentra en la lista de acceso de la fase de pruebas de <strong className="text-amber-400">c4talogo.com</strong>.
+        <h1 className="text-2xl font-bold mb-2 tracking-tight text-zinc-100">Acceso No Autorizado</h1>
+        <p className="text-zinc-400 max-w-md text-xs mb-4 leading-relaxed">
+          Has iniciado sesión como <span className="text-zinc-200 font-semibold">{user?.email}</span>, pero esta cuenta no tiene una tienda autorizada ni se encuentra en la lista de acceso de la fase de pruebas de <strong className="text-amber-400">c4talogo.com</strong>.
         </p>
-        <p className="text-slate-500 max-w-sm text-xs mb-6">
+        <p className="text-zinc-500 max-w-sm text-xs mb-6">
           Si eres cliente o dueño de una tienda y deseas activar tu catálogo, solicita tu alta con el administrador de la plataforma.
         </p>
         <button
           onClick={handleSignOut}
-          className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-rose-500/20 cursor-pointer"
+          className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-xl text-xs font-semibold transition shadow-sm cursor-pointer"
         >
           Cerrar Sesión
         </button>
@@ -859,7 +859,10 @@ export default function TenantDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans relative selection:bg-amber-500/20 selection:text-amber-200">
+      {/* Luz ambiental sutil (Studio ambient light) */}
+      <div className="absolute top-0 inset-x-0 h-96 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(245,158,11,0.06),rgba(255,255,255,0))] pointer-events-none" />
+
       {/* 1. Header Global */}
       <DashboardHeader
         tenant={tenant}
@@ -870,7 +873,7 @@ export default function TenantDashboard() {
       />
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1 relative z-10">
         {/* 2. Métricas Modulares */}
         <DashboardMetrics
           tenant={tenant}
@@ -881,85 +884,87 @@ export default function TenantDashboard() {
           onSyncNow={handleSyncNow}
         />
 
-        {/* 3. Navegación de Pestañas */}
-        <div className="flex border-b border-white/10 mb-8 overflow-x-auto gap-4 sm:gap-8 scrollbar-none">
-          <button
-            onClick={() => setActiveTab('drive')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${
-              activeTab === 'drive'
-                ? 'border-amber-500 text-amber-400 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            <FaGoogle />
-            <span>Google Drive</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('design')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${
-              activeTab === 'design'
-                ? 'border-amber-500 text-amber-400 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            <FaPalette />
-            <span>Diseño y Grilla</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('effects')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${
-              activeTab === 'effects'
-                ? 'border-amber-500 text-amber-400 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            <FaMagic />
-            <span>Efectos Interactivos</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('branding')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${
-              activeTab === 'branding'
-                ? 'border-amber-500 text-amber-400 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            <FaShareAlt />
-            <span>Subdominio y SEO</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('storefront')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${
-              activeTab === 'storefront'
-                ? 'border-amber-500 text-amber-400 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            <FaStore />
-            <span>Creador Storefront</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${
-              activeTab === 'analytics'
-                ? 'border-amber-500 text-amber-400 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            <FaChartLine />
-            <span>Métricas y Visitas</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`pb-3 border-b-2 flex items-center gap-2 whitespace-nowrap transition cursor-pointer ${
-              activeTab === 'history'
-                ? 'border-amber-500 text-amber-400 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            <FaSync />
-            <span>Historial</span>
-          </button>
+        {/* 3. Navegación de Pestañas Segmentada (Linear / MacOS style) */}
+        <div className="mb-8">
+          <div className="inline-flex p-1 bg-zinc-900/80 border border-zinc-800/80 rounded-2xl backdrop-blur-md gap-1 overflow-x-auto max-w-full scrollbar-none shadow-inner">
+            <button
+              onClick={() => setActiveTab('drive')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === 'drive'
+                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+              }`}
+            >
+              <FaGoogle className={activeTab === 'drive' ? 'text-amber-400' : 'text-zinc-500'} />
+              <span>Google Drive</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('design')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === 'design'
+                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+              }`}
+            >
+              <FaPalette className={activeTab === 'design' ? 'text-amber-400' : 'text-zinc-500'} />
+              <span>Diseño y Grilla</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('effects')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === 'effects'
+                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+              }`}
+            >
+              <FaMagic className={activeTab === 'effects' ? 'text-amber-400' : 'text-zinc-500'} />
+              <span>Efectos Interactivos</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('branding')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === 'branding'
+                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+              }`}
+            >
+              <FaShareAlt className={activeTab === 'branding' ? 'text-amber-400' : 'text-zinc-500'} />
+              <span>Subdominio y SEO</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('storefront')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === 'storefront'
+                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+              }`}
+            >
+              <FaStore className={activeTab === 'storefront' ? 'text-amber-400' : 'text-zinc-500'} />
+              <span>Creador Storefront</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === 'analytics'
+                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+              }`}
+            >
+              <FaChartLine className={activeTab === 'analytics' ? 'text-amber-400' : 'text-zinc-500'} />
+              <span>Métricas y Visitas</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('history')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === 'history'
+                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+              }`}
+            >
+              <FaSync className={activeTab === 'history' ? 'text-amber-400' : 'text-zinc-500'} />
+              <span>Historial</span>
+            </button>
+          </div>
         </div>
 
         {/* 4. Contenido Modular de Cada Pestaña */}

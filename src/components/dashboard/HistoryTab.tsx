@@ -6,16 +6,16 @@ interface HistoryTabProps {
 
 export default function HistoryTab({ logs = [] }: HistoryTabProps) {
   return (
-    <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-6">
-      <h2 className="text-base font-bold text-white mb-4">Historial de Sincronizaciones</h2>
+    <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 backdrop-blur-sm shadow-sm">
+      <h2 className="text-base font-bold text-zinc-100 mb-4">Historial de Sincronizaciones</h2>
       {logs.length === 0 ? (
-        <p className="text-xs text-slate-500">Aún no hay registros de sincronización.</p>
+        <p className="text-xs text-zinc-500">Aún no hay registros de sincronización.</p>
       ) : (
         <div className="space-y-3">
           {logs.map((log) => (
             <div
               key={log.id}
-              className="p-3.5 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between text-xs hover:bg-white/[0.07] transition"
+              className="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex items-center justify-between text-xs hover:bg-zinc-800/40 transition"
             >
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -28,7 +28,7 @@ export default function HistoryTab({ logs = [] }: HistoryTabProps) {
                         : 'bg-rose-500'
                     }`}
                   />
-                  <span className="font-semibold text-white uppercase tracking-wider text-[10px]">
+                  <span className="font-semibold text-zinc-200 uppercase tracking-wider text-[10px]">
                     {log.status}
                   </span>
                   {log.error_message && (
@@ -37,16 +37,16 @@ export default function HistoryTab({ logs = [] }: HistoryTabProps) {
                     </span>
                   )}
                 </div>
-                <span className="text-slate-400 text-[11px]">
+                <span className="text-zinc-400 text-[11px]">
                   Inicio: {new Date(log.started_at).toLocaleString('es-PE')}
                 </span>
               </div>
 
               <div className="text-right">
-                <div className="text-white font-mono font-medium">
+                <div className="text-zinc-100 font-mono font-medium">
                   {log.total_photos || 0} fotos
                 </div>
-                <div className="text-[10px] text-slate-500">
+                <div className="text-[10px] text-zinc-500">
                   {log.items_processed || 0} fotos subidas a Cloudflare R2
                 </div>
               </div>

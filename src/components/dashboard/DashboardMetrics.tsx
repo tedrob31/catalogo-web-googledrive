@@ -27,93 +27,121 @@ export default function DashboardMetrics({
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
       {/* 1. Fotos en Catálogo */}
-      <div className="bg-slate-900/40 border border-white/10 rounded-xl p-4 flex flex-col justify-between">
+      <div className="bg-zinc-900/40 border border-zinc-800/80 hover:border-zinc-700/80 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 backdrop-blur-sm group">
         <div>
-          <div className="text-xs text-slate-400 font-medium mb-1 flex items-center gap-1.5">
-            <FaImages className="text-amber-400" />
-            <span>Fotos en Catálogo</span>
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {currentPhotos}
-            <span className="text-xs text-slate-500 font-normal ml-1">
-              / {maxPhotos} máx
+          <div className="flex items-center justify-between text-xs text-zinc-400 font-medium">
+            <span className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/40">
+                <FaImages className="text-xs" />
+              </span>
+              <span>Fotos en Catálogo</span>
             </span>
+            <span className="text-[11px] font-mono text-zinc-500">{photoPercentage}% cupo</span>
+          </div>
+          <div className="mt-4 mb-3">
+            <div className="text-3xl font-bold tracking-tight text-zinc-100 font-mono">
+              {currentPhotos.toLocaleString('es-PE')}
+              <span className="text-sm font-normal text-zinc-500 ml-1.5 font-sans">
+                / {maxPhotos.toLocaleString('es-PE')} máx
+              </span>
+            </div>
           </div>
         </div>
-        <div className="w-full bg-white/5 rounded-full h-1.5 mt-3 overflow-hidden">
+        <div className="w-full bg-zinc-800/80 rounded-full h-1.5 overflow-hidden">
           <div
-            className="bg-gradient-to-r from-amber-500 to-rose-500 h-full rounded-full transition-all duration-500"
+            className="bg-amber-500 h-full rounded-full transition-all duration-500"
             style={{ width: `${photoPercentage}%` }}
           />
         </div>
       </div>
 
       {/* 2. Cuenta de Google Drive */}
-      <div className="bg-slate-900/40 border border-white/10 rounded-xl p-4 flex flex-col justify-between">
+      <div className="bg-zinc-900/40 border border-zinc-800/80 hover:border-zinc-700/80 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 backdrop-blur-sm group">
         <div>
-          <div className="text-xs text-slate-400 font-medium mb-1 flex items-center gap-1.5">
-            <FaGoogle className="text-rose-400" />
-            <span>Google Drive</span>
-          </div>
-          <div className="text-sm font-semibold text-white truncate" title={integration?.google_email || 'No vinculada'}>
-            {integration?.google_email || 'No vinculada'}
-          </div>
-        </div>
-        <div className="text-xs text-slate-500 mt-2 flex items-center justify-between">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center justify-between text-xs text-zinc-400 font-medium">
+            <span className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/40">
+                <FaGoogle className="text-xs" />
+              </span>
+              <span>Google Drive</span>
+            </span>
             {integration?.is_connected ? (
-              <>
-                <FaCheckCircle className="text-emerald-400 text-xs" />
-                <span className="text-emerald-400 font-medium">Conectado</span>
-              </>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Conectado</span>
+              </span>
             ) : (
-              <>
-                <FaExclamationCircle className="text-amber-400 text-xs" />
-                <span className="text-amber-400 font-medium truncate">
-                  {integration?.google_email ? 'Sesión expirada (7d)' : 'Por autorizar'}
-                </span>
-              </>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                <span>{integration?.google_email ? 'Sesión expirada' : 'Por autorizar'}</span>
+              </span>
             )}
           </div>
-          {!integration?.is_connected && integration?.google_email && (
-            <a
-              href="/api/auth/google"
-              className="px-2 py-0.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded font-semibold text-[11px] transition"
+          <div className="mt-4 mb-2">
+            <div
+              className="text-sm font-semibold text-zinc-100 truncate tracking-tight"
+              title={integration?.google_email || 'No vinculada'}
             >
-              Reconectar
-            </a>
-          )}
+              {integration?.google_email || 'No vinculada'}
+            </div>
+            <p className="text-xs text-zinc-500 mt-0.5 truncate">
+              {integration?.catalog_folder_name
+                ? `Carpeta: ${integration.catalog_folder_name}`
+                : 'Carpeta de catálogo pendiente'}
+            </p>
+          </div>
         </div>
+        {!integration?.is_connected && integration?.google_email ? (
+          <a
+            href="/api/auth/google"
+            className="mt-2 inline-flex items-center justify-center w-full py-1.5 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/20 rounded-xl font-medium text-xs transition"
+          >
+            Reconectar cuenta
+          </a>
+        ) : (
+          <div className="text-[11px] text-zinc-500 pt-1">Sincronización incremental activa</div>
+        )}
       </div>
 
-      {/* 4. Última Sincronización */}
-      <div className="bg-slate-900/40 border border-white/10 rounded-xl p-4 flex flex-col justify-between">
+      {/* 3. Última Sincronización */}
+      <div className="bg-zinc-900/40 border border-zinc-800/80 hover:border-zinc-700/80 rounded-2xl p-5 flex flex-col justify-between transition-all duration-300 backdrop-blur-sm group">
         <div>
-          <div className="text-xs text-slate-400 font-medium mb-1">Última Sincronización</div>
-          <div className="text-xs font-semibold text-white truncate">
-            {integration?.last_synced_at
-              ? new Date(integration.last_synced_at).toLocaleString('es-PE', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })
-              : 'Nunca sincronizado'}
+          <div className="flex items-center justify-between text-xs text-zinc-400 font-medium">
+            <span className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-zinc-800/80 text-zinc-300 border border-zinc-700/40">
+                <FaSync className="text-xs" />
+              </span>
+              <span>Sincronización</span>
+            </span>
+            <span className="text-[11px] font-mono text-zinc-500">Espejo Cloudflare R2</span>
+          </div>
+          <div className="mt-4 mb-2">
+            <div className="text-xs text-zinc-400">Última actualización:</div>
+            <div className="text-sm font-semibold text-zinc-100 truncate mt-0.5">
+              {integration?.last_synced_at
+                ? new Date(integration.last_synced_at).toLocaleString('es-PE', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : 'Nunca sincronizado'}
+            </div>
           </div>
         </div>
         <button
           onClick={onSyncNow}
           disabled={syncing || !integration?.catalog_folder_id}
-          className="mt-3 flex items-center justify-center gap-2 py-2 px-3 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-lg text-xs font-semibold transition disabled:opacity-40 disabled:pointer-events-none cursor-pointer shadow"
+          className="mt-2 flex items-center justify-center gap-2 w-full py-2 px-3 bg-zinc-100 hover:bg-white text-zinc-900 rounded-xl text-xs font-semibold transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer active:scale-[0.99]"
         >
-          <FaSync className={syncing ? 'animate-spin' : ''} />
+          <FaSync className={`text-xs ${syncing ? 'animate-spin' : ''}`} />
           <span>
             {syncing
               ? syncLiveStatus
                 ? `Sync (${syncLiveStatus.total_photos || 0})...`
                 : 'Iniciando...'
-              : 'Sincronizar'}
+              : 'Sincronizar ahora'}
           </span>
         </button>
       </div>

@@ -549,18 +549,18 @@ export default function SuperAdminDashboard() {
 
   if (accessDenied) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center mb-4 text-2xl shadow-lg shadow-amber-500/10">
+      <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mb-4 text-xl shadow-sm">
           <FaLock />
         </div>
-        <h1 className="text-2xl font-black mb-2 tracking-tight">Acceso Restringido</h1>
-        <p className="text-slate-400 max-w-md text-sm mb-6 leading-relaxed">
-          Has iniciado sesión como <span className="text-white font-semibold">{currentUserEmail}</span>, pero esta cuenta no tiene privilegios de SuperAdministrador en la plataforma.
+        <h1 className="text-2xl font-bold mb-2 tracking-tight text-zinc-100">Acceso Restringido</h1>
+        <p className="text-zinc-400 max-w-md text-xs mb-6 leading-relaxed">
+          Has iniciado sesión como <span className="text-zinc-200 font-semibold">{currentUserEmail}</span>, pero esta cuenta no tiene privilegios de SuperAdministrador en la plataforma.
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => router.push('/dashboard')}
-            className="px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition cursor-pointer"
+            className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700/80 rounded-xl text-xs font-semibold text-zinc-200 transition cursor-pointer shadow-sm"
           >
             Ir a mi Dashboard de Inquilino
           </button>
@@ -569,7 +569,7 @@ export default function SuperAdminDashboard() {
               await supabase.auth.signOut();
               router.push('/login');
             }}
-            className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-rose-500/20 cursor-pointer"
+            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-xl text-xs font-semibold transition shadow-sm cursor-pointer"
           >
             Cerrar sesión e ingresar con otra cuenta
           </button>
@@ -579,26 +579,29 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-rose-500 selection:text-white">
+    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans relative selection:bg-amber-500/20 selection:text-amber-200">
+      {/* Luz ambiental sutil (Studio ambient light) */}
+      <div className="absolute top-0 inset-x-0 h-96 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(245,158,11,0.06),rgba(255,255,255,0))] pointer-events-none" />
+
       {/* Top Header */}
-      <header className="border-b border-rose-500/20 bg-black/60 backdrop-blur-md sticky top-0 z-30">
+      <header className="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-rose-600 to-amber-500 flex items-center justify-center font-black text-white text-sm shadow-lg shadow-rose-600/30">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 text-zinc-950 flex items-center justify-center font-black text-sm shadow-sm">
               <FaShieldAlt />
             </div>
             <div>
-              <span className="font-extrabold text-sm text-white tracking-wide">
+              <span className="font-bold text-sm text-zinc-100 tracking-wide">
                 C4TALOGO MAESTRO
               </span>
-              <div className="text-[11px] text-slate-400 font-mono">
+              <div className="text-[11px] text-zinc-400 font-mono">
                 app.{baseDomain} (SuperAdmin)
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-xs text-slate-400 font-mono hidden md:inline">
+            <span className="text-xs text-zinc-400 font-mono hidden md:inline">
               {currentUserEmail}
             </span>
             <button
@@ -606,7 +609,7 @@ export default function SuperAdminDashboard() {
                 await supabase.auth.signOut();
                 router.push('/login');
               }}
-              className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 cursor-pointer"
+              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 cursor-pointer shadow-sm"
             >
               <FaSignOutAlt className="text-xs" />
               <span>Cerrar Sesión</span>
@@ -616,61 +619,61 @@ export default function SuperAdminDashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8 space-y-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8 space-y-8 relative z-10">
         {/* Global KPI Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-5">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 backdrop-blur-sm shadow-sm">
+            <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2">
               <span>Total Tiendas</span>
-              <FaUsers className="text-rose-400 text-sm" />
+              <FaUsers className="text-amber-400 text-sm" />
             </div>
-            <div className="text-3xl font-black text-white">{globalStats.totalTenants}</div>
+            <div className="text-3xl font-bold font-mono text-zinc-100 tracking-tight">{globalStats.totalTenants}</div>
             <div className="text-xs text-emerald-400 font-medium mt-1">
               {globalStats.activeTenants} activas actualmente
             </div>
           </div>
 
-          <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-5">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 backdrop-blur-sm shadow-sm">
+            <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2">
               <span>Fotos Indexadas</span>
               <FaImages className="text-amber-400 text-sm" />
             </div>
-            <div className="text-3xl font-black text-white">{globalStats.totalPhotos}</div>
-            <div className="text-xs text-slate-400 mt-1">Sincronizadas desde Google Drive</div>
+            <div className="text-3xl font-bold font-mono text-zinc-100 tracking-tight">{globalStats.totalPhotos}</div>
+            <div className="text-xs text-zinc-400 mt-1">Sincronizadas desde Google Drive</div>
           </div>
 
-          <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-5">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 backdrop-blur-sm shadow-sm">
+            <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2">
               <span>Almacenamiento Total</span>
               <FaHdd className="text-cyan-400 text-sm" />
             </div>
-            <div className="text-3xl font-black text-white">
+            <div className="text-3xl font-bold font-mono text-zinc-100 tracking-tight">
               {globalStats.totalStorageMB}{' '}
-              <span className="text-sm font-normal text-slate-400">MB</span>
+              <span className="text-sm font-normal text-zinc-400">MB</span>
             </div>
-            <div className="text-xs text-slate-400 mt-1">Almacenado en Cloudflare R2</div>
+            <div className="text-xs text-zinc-400 mt-1">Almacenado en Cloudflare R2</div>
           </div>
 
-          <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-5">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
+          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-5 backdrop-blur-sm shadow-sm">
+            <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2">
               <span>Planes Activos</span>
               <FaCrown className="text-emerald-400 text-sm" />
             </div>
-            <div className="text-3xl font-black text-white">{plans.length}</div>
+            <div className="text-3xl font-bold font-mono text-zinc-100 tracking-tight">{plans.length}</div>
             <div className="text-xs text-emerald-400 font-medium mt-1">Básico, Pro, Premium</div>
           </div>
         </div>
 
         {/* 1. Selector de Portada Principal (c4talogo.com) */}
-        <div className="bg-gradient-to-r from-slate-900/80 via-slate-900/50 to-slate-900/80 border border-white/10 rounded-2xl p-6 shadow-xl">
+        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 backdrop-blur-sm shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div>
               <div className="flex items-center gap-2">
                 <FaGlobe className="text-amber-400 text-base" />
-                <h2 className="text-base font-bold text-white">Página de Inicio Principal (c4talogo.com)</h2>
+                <h2 className="text-base font-bold text-zinc-100">Página de Inicio Principal (c4talogo.com)</h2>
               </div>
-              <p className="text-xs text-slate-400 mt-1">
-                Elige qué diseño ven los usuarios al ingresar a la raíz <span className="text-white font-mono font-semibold">{baseDomain}</span>.
+              <p className="text-xs text-zinc-400 mt-1">
+                Elige qué diseño ven los usuarios al ingresar a la raíz <span className="text-zinc-200 font-mono font-semibold">{baseDomain}</span>.
               </p>
             </div>
 
@@ -687,17 +690,17 @@ export default function SuperAdminDashboard() {
               onClick={() => handleSwitchLanding('minimal')}
               className={`p-4 rounded-xl border transition cursor-pointer relative ${
                 activeLanding === 'minimal'
-                  ? 'bg-amber-500/10 border-amber-500 shadow-lg shadow-amber-500/10'
-                  : 'bg-white/5 border-white/10 hover:border-white/20'
+                  ? 'bg-amber-500/10 border-amber-500/50 shadow-sm'
+                  : 'bg-zinc-950/60 border-zinc-800/80 hover:border-zinc-750'
               }`}
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-bold mb-2">
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 text-[10px] font-bold mb-2 border border-amber-500/20">
                     RECOMENDADA EN BETA
                   </div>
-                  <h3 className="text-sm font-bold text-white">Minimalista e Informativa</h3>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  <h3 className="text-sm font-bold text-zinc-100">Minimalista e Informativa</h3>
+                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
                     Explica a compradores que los catálogos están en sus subdominios oficiales (<code className="text-amber-300">tienda.{baseDomain}</code>) y ofrece acceso privado a administradores. Sin registro público.
                   </p>
                 </div>
@@ -718,17 +721,17 @@ export default function SuperAdminDashboard() {
               onClick={() => handleSwitchLanding('classic')}
               className={`p-4 rounded-xl border transition cursor-pointer relative ${
                 activeLanding === 'classic'
-                  ? 'bg-rose-500/10 border-rose-500 shadow-lg shadow-rose-500/10'
-                  : 'bg-white/5 border-white/10 hover:border-white/20'
+                  ? 'bg-amber-500/10 border-amber-500/50 shadow-sm'
+                  : 'bg-zinc-950/60 border-zinc-800/80 hover:border-zinc-750'
               }`}
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 text-[10px] font-bold mb-2">
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-300 text-[10px] font-bold mb-2 border border-zinc-700/60">
                     GOOGLE VERIFICADO
                   </div>
-                  <h3 className="text-sm font-bold text-white">SaaS Comercial Completo</h3>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  <h3 className="text-sm font-bold text-zinc-100">SaaS Comercial Completo</h3>
+                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
                     Landing page comercial original con características completas de la plataforma, arquitectura Google Drive nativa, WhatsApp y comparativas de valor.
                   </p>
                 </div>
@@ -738,7 +741,7 @@ export default function SuperAdminDashboard() {
                     name="landing_type"
                     checked={activeLanding === 'classic'}
                     onChange={() => handleSwitchLanding('classic')}
-                    className="accent-rose-500 w-4 h-4 cursor-pointer"
+                    className="accent-amber-500 w-4 h-4 cursor-pointer"
                   />
                 </div>
               </div>
@@ -747,14 +750,14 @@ export default function SuperAdminDashboard() {
         </div>
 
         {/* 2. Lista Blanca de Acceso (Fase Beta Cerrada) */}
-        <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6 space-y-6">
+        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 space-y-6 backdrop-blur-sm shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <FaUserShield className="text-rose-400 text-base" />
-                <h2 className="text-base font-bold text-white">Lista Blanca de Acceso (Whitelist — Fase Beta)</h2>
+                <FaUserShield className="text-amber-400 text-base" />
+                <h2 className="text-base font-bold text-zinc-100">Lista Blanca de Acceso (Whitelist — Fase Beta)</h2>
               </div>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-zinc-400 mt-1">
                 Controla exactamente qué correos tienen permiso de entrar o crear tiendas durante la prueba cerrada.
               </p>
             </div>
@@ -764,8 +767,8 @@ export default function SuperAdminDashboard() {
                 onClick={handleToggleClosedBeta}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition border cursor-pointer ${
                   closedBetaEnabled
-                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                    : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                    : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
                 }`}
               >
                 {closedBetaEnabled ? <FaToggleOn className="text-base" /> : <FaToggleOff className="text-base" />}
@@ -783,20 +786,20 @@ export default function SuperAdminDashboard() {
           {/* Formulario para agregar correo */}
           <form onSubmit={handleAddWhitelistEmail} className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <FaEnvelope className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs" />
+              <FaEnvelope className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 text-xs" />
               <input
                 type="email"
                 required
                 value={newWhitelistEmail}
                 onChange={(e) => setNewWhitelistEmail(e.target.value)}
                 placeholder="autorizar.nuevo.usuario@gmail.com"
-                className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-white/10 rounded-xl text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-500 font-mono"
+                className="w-full pl-10 pr-4 py-2 bg-zinc-950/70 border border-zinc-800 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 font-mono transition"
               />
             </div>
             <button
               type="submit"
               disabled={addingWhitelist}
-              className="px-5 py-2 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-xl text-xs font-bold transition shadow disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+              className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-xl text-xs font-semibold transition shadow-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
             >
               <FaPlus className="text-[10px]" />
               <span>{addingWhitelist ? 'Autorizando...' : 'Autorizar Correo'}</span>
@@ -804,9 +807,9 @@ export default function SuperAdminDashboard() {
           </form>
 
           {/* Tabla de correos en whitelist */}
-          <div className="overflow-x-auto border border-white/5 rounded-xl">
+          <div className="overflow-x-auto border border-zinc-800/80 rounded-xl">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/60 text-slate-400 border-b border-white/5 font-medium">
+              <thead className="bg-zinc-950/70 text-zinc-400 border-b border-zinc-800/80 font-medium">
                 <tr>
                   <th className="py-2.5 px-4">Correo Autorizado</th>
                   <th className="py-2.5 px-4">Estado de Tienda</th>
@@ -814,38 +817,38 @@ export default function SuperAdminDashboard() {
                   <th className="py-2.5 px-4 text-right">Acción</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-zinc-800/60">
                 {whitelist.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="py-4 text-center text-slate-500 text-xs">
+                    <td colSpan={4} className="py-4 text-center text-zinc-500 text-xs">
                       No hay correos en la lista blanca aún.
                     </td>
                   </tr>
                 ) : (
                   whitelist.map((w) => (
-                    <tr key={w.email} className="hover:bg-white/[0.02] transition text-slate-300">
-                      <td className="py-2.5 px-4 font-mono font-medium text-white flex items-center gap-2">
-                        <FaEnvelope className="text-slate-500 text-[10px]" />
+                    <tr key={w.email} className="hover:bg-zinc-800/30 transition text-zinc-300">
+                      <td className="py-2.5 px-4 font-mono font-medium text-zinc-100 flex items-center gap-2">
+                        <FaEnvelope className="text-zinc-500 text-[10px]" />
                         <span>{w.email}</span>
                       </td>
                       <td className="py-2.5 px-4">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
                             w.has_active_store
-                              ? 'bg-emerald-500/20 text-emerald-400'
-                              : 'bg-slate-800 text-slate-400'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : 'bg-zinc-800 text-zinc-400 border border-zinc-700/60'
                           }`}
                         >
                           {w.has_active_store ? 'Tienda Activa' : 'Pendiente / Sin Tienda'}
                         </span>
                       </td>
-                      <td className="py-2.5 px-4 text-slate-500 font-mono text-[11px]">
+                      <td className="py-2.5 px-4 text-zinc-500 font-mono text-[11px]">
                         {new Date(w.created_at).toLocaleDateString('es-PE')}
                       </td>
                       <td className="py-2.5 px-4 text-right">
                         <button
                           onClick={() => handleRemoveWhitelistEmail(w.email)}
-                          className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-[11px] transition cursor-pointer"
+                          className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg text-[11px] transition cursor-pointer"
                           title="Revocar autorización"
                         >
                           Revocar
@@ -860,11 +863,11 @@ export default function SuperAdminDashboard() {
         </div>
 
         {/* 3. Subscription Plans Management */}
-        <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6">
+        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 backdrop-blur-sm shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-base font-bold text-white">Configuración de Planes y Límites</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <h2 className="text-base font-bold text-zinc-100">Configuración de Planes y Límites</h2>
+              <p className="text-xs text-zinc-400 mt-0.5">
                 Personaliza fotos máximas, cuota de almacenamiento en MB y precio de suscripción.
               </p>
             </div>
@@ -876,20 +879,17 @@ export default function SuperAdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {plans.map((p) => {
               const isEditing = editingPlanId === p.id;
-              const isFree = p.slug === 'free';
               const isEnterprise = p.slug === 'enterprise';
 
               return (
                 <div
                   key={p.id}
-                  className={`bg-slate-900/80 border rounded-xl p-5 flex flex-col justify-between transition ${
+                  className={`bg-zinc-950/60 border rounded-xl p-5 flex flex-col justify-between transition ${
                     isEditing
-                      ? 'border-amber-500/80 ring-1 ring-amber-500/50'
+                      ? 'border-amber-500 ring-1 ring-amber-500/40'
                       : isEnterprise
-                      ? 'border-rose-500/40 shadow-lg shadow-rose-500/5'
-                      : isFree
-                      ? 'border-white/10'
-                      : 'border-amber-500/30'
+                      ? 'border-amber-500/30'
+                      : 'border-zinc-800/80'
                   }`}
                 >
                   <div>
@@ -899,20 +899,20 @@ export default function SuperAdminDashboard() {
                           type="text"
                           value={planForm.name}
                           onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
-                          className="bg-slate-800 border border-white/20 rounded px-2 py-1 text-sm font-bold text-white w-full mr-2"
+                          className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-sm font-bold text-zinc-100 w-full mr-2"
                         />
                       ) : (
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-base text-white">{p.name}</h3>
+                          <h3 className="font-bold text-base text-zinc-100">{p.name}</h3>
                           {isEnterprise && (
-                            <span className="text-[10px] bg-rose-500/20 text-rose-300 px-2 py-0.5 rounded font-semibold uppercase tracking-wider">
+                            <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded font-semibold uppercase tracking-wider">
                               Top
                             </span>
                           )}
                         </div>
                       )}
 
-                      <span className="text-[10px] text-slate-500 font-mono uppercase bg-white/5 px-2 py-0.5 rounded">
+                      <span className="text-[10px] text-zinc-500 font-mono uppercase bg-zinc-800 px-2 py-0.5 rounded">
                         {p.slug}
                       </span>
                     </div>
@@ -920,29 +920,29 @@ export default function SuperAdminDashboard() {
                     {isEditing ? (
                       <div className="space-y-3 text-xs mb-4">
                         <div>
-                          <label className="block text-slate-400 mb-1">Fotos Máximas:</label>
+                          <label className="block text-zinc-400 mb-1">Fotos Máximas:</label>
                           <input
                             type="number"
                             value={planForm.max_photos}
                             onChange={(e) =>
                               setPlanForm({ ...planForm, max_photos: Number(e.target.value) })
                             }
-                            className="w-full bg-slate-800 border border-white/20 rounded px-2 py-1 text-white font-mono"
+                            className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-white font-mono"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-400 mb-1">Almacenamiento (MB):</label>
+                          <label className="block text-zinc-400 mb-1">Almacenamiento (MB):</label>
                           <input
                             type="number"
                             value={planForm.max_storage_mb}
                             onChange={(e) =>
                               setPlanForm({ ...planForm, max_storage_mb: Number(e.target.value) })
                             }
-                            className="w-full bg-slate-800 border border-white/20 rounded px-2 py-1 text-white font-mono"
+                            className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-white font-mono"
                           />
                         </div>
                         <div>
-                          <label className="block text-slate-400 mb-1">Precio Mensual ($):</label>
+                          <label className="block text-zinc-400 mb-1">Precio Mensual ($):</label>
                           <input
                             type="number"
                             step="0.01"
@@ -950,25 +950,25 @@ export default function SuperAdminDashboard() {
                             onChange={(e) =>
                               setPlanForm({ ...planForm, price_monthly: Number(e.target.value) })
                             }
-                            className="w-full bg-slate-800 border border-white/20 rounded px-2 py-1 text-white font-mono"
+                            className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-white font-mono"
                           />
                         </div>
                       </div>
                     ) : (
                       <div className="space-y-2 text-xs mb-4">
-                        <div className="flex justify-between py-1 border-b border-white/5 text-slate-300">
+                        <div className="flex justify-between py-1 border-b border-zinc-800/80 text-zinc-300">
                           <span>Fotos Límite:</span>
-                          <strong className="text-white font-mono">{p.max_photos} fotos</strong>
+                          <strong className="text-zinc-100 font-mono">{p.max_photos} fotos</strong>
                         </div>
-                        <div className="flex justify-between py-1 border-b border-white/5 text-slate-300">
+                        <div className="flex justify-between py-1 border-b border-zinc-800/80 text-zinc-300">
                           <span>Almacenamiento:</span>
-                          <strong className="text-white font-mono">
+                          <strong className="text-zinc-100 font-mono">
                             {p.max_storage_mb >= 1024
                               ? `${(p.max_storage_mb / 1024).toFixed(1)} GB`
                               : `${p.max_storage_mb} MB`}
                           </strong>
                         </div>
-                        <div className="flex justify-between py-1 text-slate-300">
+                        <div className="flex justify-between py-1 text-zinc-300">
                           <span>Precio Mensual:</span>
                           <strong className="text-emerald-400 font-mono">
                             {Number(p.price_monthly) === 0
@@ -980,20 +980,20 @@ export default function SuperAdminDashboard() {
                     )}
                   </div>
 
-                  <div className="pt-4 mt-2 border-t border-white/10 flex gap-2">
+                  <div className="pt-4 mt-2 border-t border-zinc-800/80 flex gap-2">
                     {isEditing ? (
                       <>
                         <button
                           onClick={() => handleSavePlan(p.id)}
                           disabled={savingPlan}
-                          className="flex-1 py-1.5 px-3 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 shadow"
+                          className="flex-1 py-1.5 px-3 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
                         >
                           <FaSave />
                           <span>{savingPlan ? 'Guardando...' : 'Guardar'}</span>
                         </button>
                         <button
                           onClick={() => setEditingPlanId(null)}
-                          className="py-1.5 px-3 bg-white/10 hover:bg-white/20 text-slate-300 rounded-lg text-xs transition cursor-pointer"
+                          className="py-1.5 px-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/80 rounded-lg text-xs transition cursor-pointer"
                         >
                           Cancelar
                         </button>
@@ -1001,7 +1001,7 @@ export default function SuperAdminDashboard() {
                     ) : (
                       <button
                         onClick={() => startEditPlan(p)}
-                        className="w-full py-1.5 px-3 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-lg text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5"
+                        className="w-full py-1.5 px-3 bg-zinc-800/80 hover:bg-zinc-750 border border-zinc-750 text-zinc-200 rounded-lg text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
                       >
                         <FaEdit className="text-amber-400 text-[10px]" />
                         <span>Editar Configuración</span>
@@ -1015,11 +1015,11 @@ export default function SuperAdminDashboard() {
         </div>
 
         {/* 4. Tenants Table & Management */}
-        <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6">
+        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-6 backdrop-blur-sm shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
-              <h2 className="text-base font-bold text-white">Todos los Inquilinos (Tenants)</h2>
-              <span className="text-xs text-slate-400 font-mono">
+              <h2 className="text-base font-bold text-zinc-100">Todos los Inquilinos (Tenants)</h2>
+              <span className="text-xs text-zinc-400 font-mono">
                 Total: {tenants.length} tiendas registradas
               </span>
             </div>
@@ -1031,7 +1031,7 @@ export default function SuperAdminDashboard() {
                 generateRandomPassword();
                 setIsCreateModalOpen(true);
               }}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-rose-500/20 active:scale-95 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-xl text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
             >
               <FaPlus className="text-[10px]" />
               <span>+ Nueva Tienda / Invitar Cliente</span>
@@ -1039,29 +1039,29 @@ export default function SuperAdminDashboard() {
           </div>
 
           {tenants.length === 0 ? (
-            <div className="text-center py-8 text-xs text-slate-500">
+            <div className="text-center py-8 text-xs text-zinc-500">
               Aún no hay inquilinos registrados.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto border border-zinc-800/80 rounded-xl">
               <table className="w-full text-left text-xs">
-                <thead className="text-slate-400 border-b border-white/10 font-medium">
+                <thead className="bg-zinc-950/70 text-zinc-400 border-b border-zinc-800/80 font-medium">
                   <tr>
-                    <th className="pb-3">Tienda / Subdominio / Correo</th>
-                    <th className="pb-3">Dominio Propio (VIP)</th>
-                    <th className="pb-3">Estado</th>
-                    <th className="pb-3">Plan Asignado</th>
-                    <th className="pb-3">Fotos</th>
-                    <th className="pb-3">Almacenamiento</th>
-                    <th className="pb-3">Fecha Alta</th>
-                    <th className="pb-3 text-right">Acciones</th>
+                    <th className="py-3 px-4">Tienda / Subdominio / Correo</th>
+                    <th className="py-3 px-4">Dominio Propio (VIP)</th>
+                    <th className="py-3 px-4">Estado</th>
+                    <th className="py-3 px-4">Plan Asignado</th>
+                    <th className="py-3 px-4">Fotos</th>
+                    <th className="py-3 px-4">Almacenamiento</th>
+                    <th className="py-3 px-4">Fecha Alta</th>
+                    <th className="py-3 px-4 text-right">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-zinc-800/60">
                   {tenants.map((t) => (
-                    <tr key={t.id} className="text-slate-300 hover:bg-white/[0.02] transition">
-                      <td className="py-3">
-                        <div className="font-semibold text-white">{t.name}</div>
+                    <tr key={t.id} className="text-zinc-300 hover:bg-zinc-800/30 transition">
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-zinc-100">{t.name}</div>
                         <a
                           href={`https://${t.subdomain}.${baseDomain}`}
                           target="_blank"
@@ -1073,24 +1073,24 @@ export default function SuperAdminDashboard() {
                           </span>
                           <FaExternalLinkAlt className="text-[9px]" />
                         </a>
-                        <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-1 font-mono">
-                          <FaEnvelope className="text-slate-500 text-[10px]" />
+                        <div className="text-[11px] text-zinc-400 flex items-center gap-1.5 mt-1 font-mono">
+                          <FaEnvelope className="text-zinc-500 text-[10px]" />
                           <span>{t.owner_email || t.google_email || 'Sin correo asociado'}</span>
                         </div>
                       </td>
 
-                      <td className="py-3">
+                      <td className="py-3.5 px-4">
                         <div className="flex flex-col gap-1.5">
                           <button
                             onClick={() => handleToggleCustomDomain(t)}
                             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition w-fit cursor-pointer ${
                               t.custom_domain_enabled
-                                ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
-                                : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
+                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
+                                : 'bg-zinc-800/80 border-zinc-700/60 text-zinc-400 hover:bg-zinc-750'
                             }`}
                             title="Haz clic para activar o desactivar la función de Dominio Propio para este inquilino"
                           >
-                            <FaGlobe className={t.custom_domain_enabled ? 'text-amber-400' : 'text-slate-500'} />
+                            <FaGlobe className={t.custom_domain_enabled ? 'text-amber-400' : 'text-zinc-500'} />
                             <span>{t.custom_domain_enabled ? 'Habilitado' : 'Deshabilitado'}</span>
                           </button>
 
@@ -1108,7 +1108,7 @@ export default function SuperAdminDashboard() {
                               <button
                                 onClick={() => handleEditCustomDomain(t)}
                                 title="Editar o borrar dominio"
-                                className="text-slate-500 hover:text-amber-300 p-0.5 cursor-pointer"
+                                className="text-zinc-500 hover:text-amber-300 p-0.5 cursor-pointer"
                               >
                                 <FaEdit className="text-[10px]" />
                               </button>
@@ -1116,7 +1116,7 @@ export default function SuperAdminDashboard() {
                           ) : t.custom_domain_enabled ? (
                             <button
                               onClick={() => handleEditCustomDomain(t)}
-                              className="text-[10px] text-amber-400/80 hover:text-amber-300 underline cursor-pointer text-left"
+                              className="text-[10px] text-amber-400/90 hover:text-amber-300 underline cursor-pointer text-left"
                             >
                               + Asignar dominio manual
                             </button>
@@ -1124,23 +1124,23 @@ export default function SuperAdminDashboard() {
                         </div>
                       </td>
 
-                      <td className="py-3">
+                      <td className="py-3.5 px-4">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
                             t.status === 'active'
-                              ? 'bg-emerald-500/20 text-emerald-400'
-                              : 'bg-red-500/20 text-red-400'
+                              ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                              : 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
                           }`}
                         >
                           {t.status === 'active' ? 'Activo' : 'Suspendido'}
                         </span>
                       </td>
 
-                      <td className="py-3">
+                      <td className="py-3.5 px-4">
                         <select
                           value={t.plan_id || ''}
                           onChange={(e) => handleChangePlan(t.id, e.target.value)}
-                          className="bg-slate-800 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+                          className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:border-amber-500/60 transition"
                         >
                           {plans.map((p) => (
                             <option key={p.id} value={p.id}>
@@ -1150,24 +1150,24 @@ export default function SuperAdminDashboard() {
                         </select>
                       </td>
 
-                      <td className="py-3 font-mono">{t.current_photos_count || 0}</td>
+                      <td className="py-3.5 px-4 font-mono text-zinc-100">{t.current_photos_count || 0}</td>
 
-                      <td className="py-3 font-mono text-slate-400">
+                      <td className="py-3.5 px-4 font-mono text-zinc-400">
                         {Math.round((t.current_storage_bytes || 0) / (1024 * 1024))} MB
                       </td>
 
-                      <td className="py-3 text-slate-500 font-mono">
+                      <td className="py-3.5 px-4 text-zinc-500 font-mono">
                         {new Date(t.created_at).toLocaleDateString('es-PE')}
                       </td>
 
-                      <td className="py-3 text-right">
+                      <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => handleToggleStatus(t.id, t.status)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer border ${
                               t.status === 'active'
-                                ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-400'
-                                : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400'
+                                ? 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700/80 text-zinc-300'
+                                : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20'
                             }`}
                           >
                             {t.status === 'active' ? 'Suspender' : 'Reactivar'}
@@ -1183,7 +1183,7 @@ export default function SuperAdminDashboard() {
                                 error: null,
                               });
                             }}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-500/20 hover:bg-red-500/30 text-red-400 transition cursor-pointer flex items-center gap-1"
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 transition cursor-pointer flex items-center gap-1"
                             title="Eliminar tienda de Supabase y fotos de R2"
                           >
                             <FaTrash className="text-[10px]" />
@@ -1203,22 +1203,22 @@ export default function SuperAdminDashboard() {
       {/* MODAL 1: NUEVA TIENDA / INVITAR USUARIO */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-white/10 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-sm">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-sm shadow-sm">
                   <FaStore />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Alta de Nueva Tienda</h3>
-                  <p className="text-[11px] text-slate-400">
+                  <h3 className="text-base font-bold text-zinc-100">Alta de Nueva Tienda</h3>
+                  <p className="text-[11px] text-zinc-400">
                     Crea la tienda, el subdominio y las credenciales de acceso iniciales.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
-                className="text-slate-400 hover:text-white text-lg font-mono cursor-pointer"
+                className="text-zinc-400 hover:text-white text-lg font-mono cursor-pointer"
               >
                 ✕
               </button>
@@ -1226,35 +1226,35 @@ export default function SuperAdminDashboard() {
 
             {createdSuccessData ? (
               <div className="space-y-4">
-                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-2">
+                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-2">
                   <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
                     <FaCheckCircle />
                     <span>¡Tienda creada y autorizada con éxito!</span>
                   </div>
-                  <p className="text-xs text-slate-300 leading-relaxed">
+                  <p className="text-xs text-zinc-300 leading-relaxed">
                     Comparte las siguientes credenciales con el cliente para que pueda ingresar a su panel:
                   </p>
                 </div>
 
-                <div className="bg-slate-950 p-4 rounded-xl border border-white/10 space-y-2 font-mono text-xs">
+                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2 font-mono text-xs">
                   <div>
-                    <span className="text-slate-500">Catálogo Web:</span>{' '}
+                    <span className="text-zinc-500">Catálogo Web:</span>{' '}
                     <span className="text-amber-400 font-semibold">
                       https://{createdSuccessData.credentials.subdomain}.{baseDomain}
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-500">Panel Login:</span>{' '}
-                    <span className="text-white">https://{baseDomain}/login</span>
+                    <span className="text-zinc-500">Panel Login:</span>{' '}
+                    <span className="text-zinc-100">https://{baseDomain}/login</span>
                   </div>
                   <div>
-                    <span className="text-slate-500">Usuario (Email):</span>{' '}
+                    <span className="text-zinc-500">Usuario (Email):</span>{' '}
                     <span className="text-emerald-400 font-semibold">
                       {createdSuccessData.credentials.email}
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-500">Contraseña temporal:</span>{' '}
+                    <span className="text-zinc-500">Contraseña temporal:</span>{' '}
                     <span className="text-rose-400 font-bold">
                       {createdSuccessData.credentials.password}
                     </span>
@@ -1263,7 +1263,7 @@ export default function SuperAdminDashboard() {
 
                 <button
                   onClick={copyCredentialsToClipboard}
-                  className="w-full py-2.5 px-4 bg-white/10 hover:bg-white/15 border border-white/20 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-2.5 px-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/80 text-zinc-100 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                 >
                   <FaCopy />
                   <span>
@@ -1279,7 +1279,7 @@ export default function SuperAdminDashboard() {
                       setIsCreateModalOpen(false);
                       setCreatedSuccessData(null);
                     }}
-                    className="px-5 py-2 bg-gradient-to-r from-amber-500 to-rose-500 text-white rounded-xl text-xs font-semibold cursor-pointer"
+                    className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-xl text-xs font-semibold cursor-pointer shadow-sm"
                   >
                     Cerrar
                   </button>
@@ -1288,13 +1288,13 @@ export default function SuperAdminDashboard() {
             ) : (
               <form onSubmit={handleCreateTenantSubmit} className="space-y-4">
                 {createError && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-xs font-medium">
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-medium">
                     {createError}
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-zinc-300 mb-1">
                     Nombre del Negocio o Tienda
                   </label>
                   <input
@@ -1314,12 +1314,12 @@ export default function SuperAdminDashboard() {
                       }));
                     }}
                     placeholder="Ej. Modas Camila"
-                    className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-500"
+                    className="w-full bg-zinc-950/70 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 transition"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-zinc-300 mb-1">
                     Subdominio asignado
                   </label>
                   <div className="flex items-center">
@@ -1334,16 +1334,16 @@ export default function SuperAdminDashboard() {
                         })
                       }
                       placeholder="modascamila"
-                      className="flex-1 bg-slate-950 border border-white/10 rounded-l-xl px-3 py-2 text-xs text-amber-300 font-mono focus:outline-none focus:border-amber-500"
+                      className="flex-1 bg-zinc-950/70 border border-zinc-800 rounded-l-xl px-3 py-2 text-xs text-amber-300 font-mono placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 transition"
                     />
-                    <span className="bg-slate-800 border border-l-0 border-white/10 px-3 py-2 rounded-r-xl text-xs text-slate-400 font-mono">
+                    <span className="bg-zinc-800 border border-l-0 border-zinc-700/80 px-3 py-2 rounded-r-xl text-xs text-zinc-400 font-mono">
                       .{baseDomain}
                     </span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-zinc-300 mb-1">
                     Correo Electrónico del Cliente
                   </label>
                   <input
@@ -1352,13 +1352,13 @@ export default function SuperAdminDashboard() {
                     value={createForm.email}
                     onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                     placeholder="cliente@gmail.com"
-                    className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-500"
+                    className="w-full bg-zinc-950/70 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 transition"
                   />
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-medium text-slate-300">
+                    <label className="text-xs font-medium text-zinc-300">
                       Contraseña Asignada
                     </label>
                     <button
@@ -1378,12 +1378,12 @@ export default function SuperAdminDashboard() {
                         setCreateForm({ ...createForm, password: e.target.value })
                       }
                       placeholder="Contraseña segura"
-                      className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 pr-10 text-xs text-white font-mono placeholder-slate-600 focus:outline-none focus:border-amber-500"
+                      className="w-full bg-zinc-950/70 border border-zinc-800 rounded-xl px-3 py-2 pr-10 text-xs text-zinc-100 font-mono placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 transition"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white text-xs cursor-pointer"
                     >
                       {showPassword ? <FaEyeSlash /> : <FaEye />}
                     </button>
@@ -1391,13 +1391,13 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
+                  <label className="block text-xs font-medium text-zinc-300 mb-1">
                     Plan de Suscripción
                   </label>
                   <select
                     value={createForm.plan_id}
                     onChange={(e) => setCreateForm({ ...createForm, plan_id: e.target.value })}
-                    className="w-full bg-slate-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-zinc-950/70 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-amber-500/60 transition"
                   >
                     {plans.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -1407,18 +1407,18 @@ export default function SuperAdminDashboard() {
                   </select>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800">
                   <button
                     type="button"
                     onClick={() => setIsCreateModalOpen(false)}
-                    className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-xs transition cursor-pointer"
+                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-750 rounded-xl text-xs transition cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={creatingTenant}
-                    className="px-5 py-2 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-rose-500/20 disabled:opacity-50 cursor-pointer"
+                    className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50 cursor-pointer"
                   >
                     {creatingTenant ? 'Creando...' : 'Crear Tienda y Autorizar'}
                   </button>
@@ -1432,26 +1432,26 @@ export default function SuperAdminDashboard() {
       {/* MODAL 2: DAR DE BAJA TIENDA (ELIMINACIÓN EN CASCADA) */}
       {deleteModal.isOpen && deleteModal.tenant && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-red-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-red-400">
-              <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center text-lg">
+          <div className="bg-zinc-900 border border-rose-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-lg">
                 <FaExclamationTriangle />
               </div>
               <div>
                 <h3 className="text-base font-bold text-white">Dar de baja Tienda</h3>
-                <p className="text-[11px] text-red-400/90 font-medium">
+                <p className="text-[11px] text-rose-400 font-medium">
                   Eliminación irreversible en cascada
                 </p>
               </div>
             </div>
 
-            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-slate-300 leading-relaxed space-y-2">
+            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-zinc-300 leading-relaxed space-y-2">
               <p>
                 Estás a punto de eliminar definitivamente la tienda:{' '}
                 <strong className="text-white">{deleteModal.tenant.name}</strong> (
                 <code className="text-amber-300 font-mono">{deleteModal.tenant.subdomain}</code>).
               </p>
-              <ul className="list-disc list-inside space-y-1 text-slate-400 text-[11px]">
+              <ul className="list-disc list-inside space-y-1 text-zinc-400 text-[11px]">
                 <li>Se borrarán todas las fotos del bucket de Cloudflare R2.</li>
                 <li>Se eliminarán álbumes, fotos y configuraciones de Supabase.</li>
                 <li>Se revocará el subdominio y se quitará de la lista blanca de acceso.</li>
@@ -1459,13 +1459,13 @@ export default function SuperAdminDashboard() {
             </div>
 
             {deleteModal.error && (
-              <div className="p-2.5 bg-red-500/20 border border-red-500/40 rounded-lg text-xs text-red-300">
+              <div className="p-2.5 bg-rose-500/20 border border-rose-500/30 rounded-lg text-xs text-rose-300">
                 {deleteModal.error}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">
+              <label className="block text-xs font-medium text-zinc-300 mb-1">
                 Para confirmar, escribe el subdominio:{' '}
                 <code className="text-amber-400 font-mono font-bold">
                   {deleteModal.tenant.subdomain}
@@ -1478,11 +1478,11 @@ export default function SuperAdminDashboard() {
                   setDeleteModal({ ...deleteModal, confirmText: e.target.value })
                 }
                 placeholder={deleteModal.tenant.subdomain}
-                className="w-full bg-slate-950 border border-red-500/30 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-red-500"
+                className="w-full bg-zinc-950 border border-rose-500/30 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-rose-500"
               />
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800">
               <button
                 type="button"
                 onClick={() =>
@@ -1494,7 +1494,7 @@ export default function SuperAdminDashboard() {
                     error: null,
                   })
                 }
-                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-xs transition cursor-pointer"
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-750 rounded-xl text-xs transition cursor-pointer"
               >
                 Cancelar
               </button>
@@ -1506,7 +1506,7 @@ export default function SuperAdminDashboard() {
                   deleteModal.confirmText.trim().toLowerCase() !==
                     deleteModal.tenant.subdomain.toLowerCase()
                 }
-                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-red-600/30 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
               >
                 <FaTrash className="text-[10px]" />
                 <span>

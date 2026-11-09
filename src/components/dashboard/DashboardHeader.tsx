@@ -30,26 +30,29 @@ export default function DashboardHeader({
     : '';
 
   return (
-    <header className="border-b border-white/10 bg-slate-900/60 backdrop-blur-md sticky top-0 z-30">
-      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 flex items-center justify-center font-black text-white text-sm shadow-md">
+    <header className="border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-30 transition-all">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-3.5">
+          {/* Logo Badge Minimalista */}
+          <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center font-black text-amber-400 text-xs shadow-inner tracking-wider">
             C4
           </div>
+
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-bold text-sm text-white">{tenant?.name || 'Mi Tienda'}</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-medium flex items-center gap-1">
-                <FaCrown className="text-[10px]" />
-                {plan?.name || 'Gratuito'}
+              <span className="font-semibold text-sm text-zinc-100 tracking-tight">{tenant?.name || 'Mi Tienda'}</span>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-[11px] font-medium text-zinc-300">
+                <FaCrown className="text-[10px] text-amber-400" />
+                <span>{plan?.name || 'Gratuito'}</span>
               </span>
             </div>
-            <div className="flex items-center gap-2">
+
+            <div className="flex items-center gap-2 mt-0.5">
               <a
                 href={storefrontUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-amber-400/90 hover:text-amber-300 flex items-center gap-1 font-mono transition"
+                className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-amber-400 font-mono transition-colors group"
                 title={
                   isCustomDomainActive
                     ? `Dominio Personalizado: ${tenant.custom_domain}`
@@ -57,10 +60,10 @@ export default function DashboardHeader({
                 }
               >
                 <span>{displayUrl}</span>
-                <FaExternalLinkAlt className="text-[9px]" />
+                <FaExternalLinkAlt className="text-[9px] text-zinc-600 group-hover:text-amber-400 transition-colors" />
               </a>
               {isCustomDomainActive && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 font-semibold border border-amber-500/20">
                   DOMINIO PROPIO
                 </span>
               )}
@@ -68,21 +71,21 @@ export default function DashboardHeader({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-2.5">
           <button
             onClick={onOpenSecurityModal}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-300 hover:text-white rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition cursor-pointer font-medium"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-300 hover:text-white rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition-all shadow-sm font-medium cursor-pointer active:scale-95"
             title="Asignar o cambiar contraseña de acceso"
           >
-            <FaKey className="text-amber-400 text-[11px]" />
+            <FaKey className="text-amber-400 text-[10px]" />
             <span className="hidden sm:inline">Contraseña</span>
           </button>
 
           <button
             onClick={onSignOut}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs text-zinc-400 hover:text-rose-400 rounded-xl hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all cursor-pointer"
           >
-            <FaSignOutAlt />
+            <FaSignOutAlt className="text-xs" />
             <span>Cerrar Sesión</span>
           </button>
         </div>
