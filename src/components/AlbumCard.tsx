@@ -49,7 +49,10 @@ export default function AlbumCard({ album, config, priority = false, onClick }: 
                 <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
             </div>
             {!config.hideAlbumTitles && (
-                <h3 className="text-sm font-semibold truncate text-gray-900 dark:text-gray-100 group-hover:text-blue-500">
+                <h3
+                    className="text-sm font-semibold truncate transition-colors"
+                    style={{ color: config.textColor || undefined }}
+                >
                     {album.name}
                 </h3>
             )}

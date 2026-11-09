@@ -112,6 +112,16 @@ export const CloudflareImageProfiles = {
       format: 'auto',
     }),
 
+  // Fondo de pantalla fija (wallpaper) optimizado para alta fidelidad móvil y desktop (~100-150 kB)
+  wallpaper: (r2Key: string) =>
+    buildCloudflareImageUrl(r2Key, {
+      width: 1920,
+      fit: 'cover',
+      gravity: 'auto',
+      quality: 80,
+      format: 'auto',
+    }),
+
   // URL original directa sin transformación (fallback directo desde R2)
   raw: (r2Key: string) => {
     if (!r2Key) return '';
@@ -124,5 +134,45 @@ export const CloudflareImageProfiles = {
     return `${cdnDomain}/${encodedKey}`;
   },
 };
+
+/**
+ * Optimiza cualquier URL de fondo (incluso si fue guardada previamente como miniatura de portada cuadrada)
+ * para que se entregue a través de Cloudflare Image Resizing en calidad wallpaper HD.
+ */
+export function optimizeWallpaperUrl(url?: string): string {
+  if (!url) return '';
+  // Si no pertenece a nuestro CDN de Cloudflare R2, devolver tal cual
+  const cdnDomain = getR2PublicDomain();
+  if (!url.includes(cdnDomain) && !url.includes('/cdn-cgi/image/')) {
+    return url;
+  }
+
+  // Extraer la clave relativa de R2 (después de cdn-cgi/image/... o del dominio)
+  let r2Key = '';
+  if (url.includes('/cdn-cgi/image/')) {
+    const parts = url.split('/cdn-cgi/image/');
+    if (parts.length > 1) {
+      // Eliminar las opciones previas (ej. "width=600,height=600,fit=cover/")
+      const afterCdnCgi = parts[1];
+      const firstSlash = afterCdnCgi.indexOf('/');
+      if (firstSlash !== -1) {
+        r2Key = decodeURIComponent(afterCdnCgi.substring(firstSlash + 1));
+      }
+    }
+  } else {
+    try {
+      const parsed = new URL(url);
+      r2Key = decodeURIComponent(parsed.pathname.startsWith('/') ? parsed.pathname.slice(1) : parsed.pathname);
+    } catch {
+      r2Key = url;
+    }
+  }
+
+  if (r2Key) {
+    return CloudflareImageProfiles.wallpaper(r2Key);
+  }
+
+  return url;
+}
 
 export const ImageProfiles = CloudflareImageProfiles;

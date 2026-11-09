@@ -18,6 +18,8 @@ import { StorefrontConfig } from '@/lib/storefront';
 import StorefrontView from './storefront/StorefrontView';
 import SeasonalEffects from './SeasonalEffects';
 import ClickEffects from './ClickEffects';
+import { hexToRgba, isColorDark } from '@/lib/theme-presets';
+import { optimizeWallpaperUrl } from '@/lib/cloudflare-images';
 
 interface CatalogViewProps {
     data: CacheStructure | null;
@@ -325,11 +327,16 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
         return config.allowPhotoDownload ? [Zoom, Download] : [Zoom];
     }, [config.allowPhotoDownload]);
 
+    const isDark = isColorDark(config.secondaryColor);
     const hasCustomBgColor = Boolean(config.secondaryColor && config.secondaryColor !== '#ffffff');
 
+    const textColor = config.textColor || (isDark ? '#f8fafc' : '#0f172a');
+    const headerBgColor = hexToRgba(config.secondaryColor || (isDark ? '#090d16' : '#ffffff'), 0.88);
+    const headerBorderColor = config.cardBorderColor || (isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)');
+
     const mainStyle: React.CSSProperties = {
-        backgroundColor: hasCustomBgColor ? config.secondaryColor : undefined,
-        color: config.textColor || undefined,
+        backgroundColor: hasCustomBgColor && !config.backgroundImage ? config.secondaryColor : undefined,
+        color: textColor,
     };
 
     const hasSocialLinks = Boolean(
@@ -341,7 +348,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
 
     return (
         <div
-            className={`min-h-screen text-gray-900 dark:text-gray-100 pb-20 transition-colors relative ${
+            className={`min-h-screen flex flex-col transition-colors relative ${isDark ? 'dark' : ''} ${
                 config.backgroundImage
                     ? 'bg-transparent'
                     : hasCustomBgColor
@@ -350,23 +357,40 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
             }`}
             style={mainStyle}
         >
-            {/* Foto de fondo fija (wallpaper) con rendimiento de aceleración gráfica */}
+            {/* Foto de fondo fija (wallpaper) con aceleración por hardware aislada en GPU (0ms lag en celulares) */}
             {config.backgroundImage && (
-                <div
-                    className="fixed inset-0 pointer-events-none z-0 bg-cover bg-center bg-no-repeat"
-                    style={{
-                        backgroundImage: `url(${config.backgroundImage})`,
-                    }}
-                />
+                <>
+                    <div
+                        className="fixed top-0 left-0 w-full h-[100dvh] pointer-events-none -z-10 bg-cover bg-center bg-no-repeat [transform:translate3d(0,0,0)] [backface-visibility:hidden] will-change-transform"
+                        style={{
+                            backgroundImage: `url(${optimizeWallpaperUrl(config.backgroundImage)})`,
+                        }}
+                    />
+                    {/* Filtro scrim de opacidad para garantizar lectura y contraste de fotos */}
+                    <div
+                        className="fixed inset-0 pointer-events-none -z-10"
+                        style={{
+                            backgroundColor: hasCustomBgColor ? config.secondaryColor : (isDark ? '#000000' : '#ffffff'),
+                            opacity: isDark ? 0.45 : 0.25,
+                        }}
+                    />
+                </>
             )}
 
             <SeasonalEffects config={config} />
             <ClickEffects config={config} />
 
-            {/* Header / Search Bar con Modo Noche Adaptativo */}
-            <header className="sticky top-0 z-40 bg-white/85 dark:bg-zinc-950/85 backdrop-blur-md border-b border-gray-200 dark:border-zinc-800 p-4 text-gray-900 dark:text-gray-100 relative">
-                <div className="max-w-7xl mx-auto flex gap-4 items-center">
-                    {/* Navigation Controls */}
+            {/* Header / Search Bar con Adaptación Translúcida Dinámica según el Tema */}
+            <header
+                className="sticky top-0 z-40 backdrop-blur-md border-b p-3.5 sm:p-4 transition-colors relative"
+                style={{
+                    backgroundColor: headerBgColor,
+                    borderColor: headerBorderColor,
+                    color: textColor,
+                }}
+            >
+                <div className="max-w-7xl mx-auto flex gap-3 sm:gap-4 items-center">
+                    {/* Navigation Controls con contraste permanente garantizado */}
                     {(activePath.length > 1 || searchQuery) && (
                         <button
                             onClick={() => {
@@ -380,47 +404,62 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                                     handleBack();
                                 }
                             }}
-                            className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full text-gray-800 dark:text-gray-100 transition-colors cursor-pointer"
+                            className="p-2 rounded-full transition-colors cursor-pointer shrink-0"
+                            style={{
+                                color: textColor,
+                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                            }}
                             title={searchQuery ? "Ir al Inicio" : "Atrás"}
                         >
                             {searchQuery ? (
-                                <FiHome size={24} />
+                                <FiHome size={20} className="sm:w-[22px] sm:h-[22px]" />
                             ) : (
-                                <FiArrowLeft size={24} />
+                                <FiArrowLeft size={20} className="sm:w-[22px] sm:h-[22px]" />
                             )}
                         </button>
                     )}
 
-                    <div className="flex-1 flex items-center gap-2 bg-gray-100 dark:bg-zinc-900 rounded-full px-4 py-2 border border-transparent focus-within:border-blue-500 transition-colors bg-opacity-90">
-                        <FiSearch className="text-gray-400 dark:text-gray-500 shrink-0" />
+                    <div
+                        className="flex-1 flex items-center gap-2 rounded-full px-4 py-2 border transition-colors"
+                        style={{
+                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                        }}
+                    >
+                        <FiSearch className="shrink-0 opacity-60" style={{ color: textColor }} />
                         <input
                             type="text"
                             placeholder="Buscar álbumes y fotos..."
-                            className="bg-transparent border-none outline-none w-full text-sm text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                            className="bg-transparent border-none outline-none w-full text-sm placeholder:opacity-50"
+                            style={{ color: textColor }}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
 
                     {/* Simple Stats or Branding */}
-                    <div className="hidden sm:block text-sm font-medium opacity-70 text-gray-700 dark:text-gray-300">
+                    <div
+                        className="hidden sm:block text-sm font-semibold opacity-80 truncate max-w-xs"
+                        style={{ color: textColor }}
+                    >
                         {rootAlbum.name}
                     </div>
                 </div>
 
-                {/* Breadcrumbs for browsing con soporte completo de Modo Noche */}
+                {/* Breadcrumbs for browsing con contraste adaptado al tema */}
                 {!isSearching && (
-                    <div className="max-w-7xl mx-auto mt-2 px-1 flex gap-2 overflow-x-auto text-sm no-scrollbar">
+                    <div className="max-w-7xl mx-auto mt-2 px-1 flex gap-2 overflow-x-auto text-xs sm:text-sm no-scrollbar">
                         {activePath.map((album, idx) => (
                             <div key={album.id} className="flex items-center whitespace-nowrap">
-                                {idx > 0 && <span className="mx-2 opacity-40 text-gray-400 dark:text-gray-600">/</span>}
+                                {idx > 0 && <span className="mx-2 opacity-40">/</span>}
                                 <button
                                     onClick={() => handleBreadcrumb(idx)}
                                     className={`hover:underline transition-colors ${
                                         idx === activePath.length - 1
-                                            ? 'font-bold text-gray-900 dark:text-white'
-                                            : 'opacity-70 text-gray-600 dark:text-gray-300'
+                                            ? 'font-bold'
+                                            : 'opacity-70'
                                     }`}
+                                    style={{ color: textColor }}
                                 >
                                     {album.name}
                                 </button>
@@ -431,7 +470,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
             </header>
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto p-4 space-y-8 animate-in fade-in duration-300">
+            <main className="flex-1 max-w-7xl w-full mx-auto p-4 space-y-6 animate-in fade-in duration-300">
                 {/* --- STOREFRONT BUILDER INJECTION --- */}
                 {!isSearching && activePath.length === 1 && storefront?.enabled && storefront.blocks.length > 0 ? (
                     <StorefrontView storefront={storefront} appConfig={config} />
@@ -440,7 +479,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                         {/* Albums Grid */}
                         {visibleAlbums.length > 0 && (
                             <section>
-                                <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                <h2 className="text-xl font-bold mb-4 flex items-center gap-2" style={{ color: textColor }}>
                                     <FiGrid /> {isSearching ? 'Álbumes encontrados' : 'Álbumes'}
                                 </h2>
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 md:gap-6 gap-x-4 gap-y-6">
@@ -460,7 +499,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                         {/* Photos Grid */}
                         {visiblePhotos.length > 0 && (
                             <section>
-                                <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100 mt-8">
+                                <h2 className="text-xl font-bold mb-4 mt-8" style={{ color: textColor }}>
                                     {isSearching ? 'Fotos encontradas' : 'Fotos'}
                                 </h2>
                                 <div className="grid gap-1 sm:gap-4 md:gap-6">
@@ -486,7 +525,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                         )}
 
                         {visibleAlbums.length === 0 && visiblePhotos.length === 0 && (
-                            <div className="text-center py-20 text-gray-500 dark:text-gray-400">
+                            <div className="text-center py-12" style={{ color: textColor, opacity: 0.6 }}>
                                 <p>No se encontró contenido.</p>
                             </div>
                         )}
@@ -494,29 +533,35 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                 )}
             </main>
 
-            {/* Footer con Redes Sociales y Marca Oficial */}
-            <footer className="mt-16 pt-8 pb-12 border-t border-gray-200/80 dark:border-zinc-800/80 text-center relative z-10">
-                <div className="max-w-4xl mx-auto px-4 space-y-4">
-                    <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 tracking-tight">
+            {/* Footer con Redes Sociales y Marca Oficial (Compacto & Armónico) */}
+            <footer
+                className="mt-8 py-6 border-t text-center relative z-10 transition-colors"
+                style={{
+                    borderColor: headerBorderColor,
+                    color: textColor,
+                }}
+            >
+                <div className="max-w-4xl mx-auto px-4 space-y-3">
+                    <h3 className="text-sm font-bold tracking-tight" style={{ color: textColor }}>
                         {config.siteTitle}
                     </h3>
                     {config.siteDescription && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto line-clamp-2">
+                        <p className="text-xs max-w-md mx-auto line-clamp-2 opacity-75" style={{ color: textColor }}>
                             {config.siteDescription}
                         </p>
                     )}
 
                     {/* Botones / Enlaces a Redes Sociales */}
                     {hasSocialLinks && (
-                        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                        <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
                             {config.socialLinks?.instagram && (
                                 <a
                                     href={formatSocialUrl(config.socialLinks.instagram, 'instagram')}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white dark:bg-zinc-900 dark:hover:from-purple-500 dark:hover:to-pink-500 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-800 transition-all shadow-sm group"
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white dark:bg-zinc-900 dark:hover:from-purple-500 dark:hover:to-pink-500 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-800 transition-all shadow-sm group"
                                 >
-                                    <FaInstagram className="text-sm text-pink-500 group-hover:text-white transition-colors" />
+                                    <FaInstagram className="text-xs text-pink-500 group-hover:text-white transition-colors" />
                                     <span>Instagram</span>
                                 </a>
                             )}
@@ -525,9 +570,9 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                                     href={formatSocialUrl(config.socialLinks.tiktok, 'tiktok')}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-black hover:text-white dark:bg-zinc-900 dark:hover:bg-black text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-800 transition-all shadow-sm group"
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-black hover:text-white dark:bg-zinc-900 dark:hover:bg-black text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-800 transition-all shadow-sm group"
                                 >
-                                    <FaTiktok className="text-sm text-rose-500 group-hover:text-white transition-colors" />
+                                    <FaTiktok className="text-xs text-rose-500 group-hover:text-white transition-colors" />
                                     <span>TikTok</span>
                                 </a>
                             )}
@@ -536,9 +581,9 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                                     href={formatSocialUrl(config.socialLinks.facebook, 'facebook')}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-[#1877F2] hover:text-white dark:bg-zinc-900 dark:hover:bg-[#1877F2] text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-800 transition-all shadow-sm group"
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-[#1877F2] hover:text-white dark:bg-zinc-900 dark:hover:bg-[#1877F2] text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-800 transition-all shadow-sm group"
                                 >
-                                    <FaFacebook className="text-sm text-blue-600 group-hover:text-white transition-colors" />
+                                    <FaFacebook className="text-xs text-blue-600 group-hover:text-white transition-colors" />
                                     <span>Facebook</span>
                                 </a>
                             )}
@@ -550,16 +595,16 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                                     onClick={() => {
                                         trackWhatsappClick(currentPathStr, 'Pie de página');
                                     }}
-                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-[#25D366] hover:text-white dark:bg-zinc-900 dark:hover:bg-[#25D366] text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-800 transition-all shadow-sm group"
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-[#25D366] hover:text-white dark:bg-zinc-900 dark:hover:bg-[#25D366] text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-zinc-800 transition-all shadow-sm group"
                                 >
-                                    <FaWhatsapp className="text-sm text-emerald-500 group-hover:text-white transition-colors" />
+                                    <FaWhatsapp className="text-xs text-emerald-500 group-hover:text-white transition-colors" />
                                     <span>WhatsApp</span>
                                 </a>
                             )}
                         </div>
                     )}
 
-                    <div className="pt-4 text-[11px] text-gray-400 dark:text-gray-500">
+                    <div className="pt-2 text-[11px] opacity-50" style={{ color: textColor }}>
                         © {new Date().getFullYear()} {config.siteTitle}. Todos los derechos reservados.
                     </div>
                 </div>

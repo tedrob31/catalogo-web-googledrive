@@ -26,6 +26,7 @@ import CoverSelectorModal from '@/components/dashboard/CoverSelectorModal';
 import AccountSecurityModal from '@/components/dashboard/AccountSecurityModal';
 import StorefrontBuilder from '@/components/admin/StorefrontBuilder';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
+import { ImageProfiles, optimizeWallpaperUrl } from '@/lib/cloudflare-images';
 
 export const dynamic = 'force-dynamic';
 
@@ -766,7 +767,8 @@ export default function TenantDashboard() {
       } else if (coverModal.targetId === '__OG__') {
         setConfigForm((prev) => ({ ...prev, og_image: url }));
       } else if (coverModal.targetId === '__BACKGROUND__') {
-        setConfigForm((prev) => ({ ...prev, background_image: url }));
+        const bgUrl = r2Key ? ImageProfiles.wallpaper(r2Key) : optimizeWallpaperUrl(url);
+        setConfigForm((prev) => ({ ...prev, background_image: bgUrl }));
       }
     }
   }
