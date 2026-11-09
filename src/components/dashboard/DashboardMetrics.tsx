@@ -1,6 +1,6 @@
 'use client';
 
-import { FaImages, FaHdd, FaGoogle, FaSync, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
+import { FaImages, FaGoogle, FaSync, FaCheckCircle, FaExclamationCircle } from 'react-icons/fa';
 
 interface DashboardMetricsProps {
   tenant: any;
@@ -19,19 +19,13 @@ export default function DashboardMetrics({
   syncLiveStatus,
   onSyncNow,
 }: DashboardMetricsProps) {
-  // 1. Métricas de Fotos
+  // Métricas de Fotos
   const currentPhotos = tenant?.current_photos_count || 0;
   const maxPhotos = plan?.max_photos || 500;
   const photoPercentage = Math.min(100, Math.round((currentPhotos / maxPhotos) * 100));
 
-  // 2. Métricas de Almacenamiento (MB)
-  const currentStorageBytes = tenant?.current_storage_bytes || 0;
-  const currentStorageMB = Number((currentStorageBytes / (1024 * 1024)).toFixed(1));
-  const maxStorageMB = plan?.max_storage_mb || 512;
-  const storagePercentage = Math.min(100, Math.round((currentStorageMB / maxStorageMB) * 100));
-
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
       {/* 1. Fotos en Catálogo */}
       <div className="bg-slate-900/40 border border-white/10 rounded-xl p-4 flex flex-col justify-between">
         <div>
@@ -54,30 +48,7 @@ export default function DashboardMetrics({
         </div>
       </div>
 
-      {/* 2. Almacenamiento Consumido */}
-      <div className="bg-slate-900/40 border border-white/10 rounded-xl p-4 flex flex-col justify-between">
-        <div>
-          <div className="text-xs text-slate-400 font-medium mb-1 flex items-center gap-1.5">
-            <FaHdd className="text-cyan-400" />
-            <span>Almacenamiento</span>
-          </div>
-          <div className="text-2xl font-bold text-white">
-            {currentStorageMB}
-            <span className="text-xs text-slate-300 font-medium ml-1">MB</span>
-            <span className="text-xs text-slate-500 font-normal ml-1">
-              / {maxStorageMB} MB
-            </span>
-          </div>
-        </div>
-        <div className="w-full bg-white/5 rounded-full h-1.5 mt-3 overflow-hidden">
-          <div
-            className="bg-gradient-to-r from-cyan-500 to-blue-500 h-full rounded-full transition-all duration-500"
-            style={{ width: `${storagePercentage}%` }}
-          />
-        </div>
-      </div>
-
-      {/* 3. Cuenta de Google Drive */}
+      {/* 2. Cuenta de Google Drive */}
       <div className="bg-slate-900/40 border border-white/10 rounded-xl p-4 flex flex-col justify-between">
         <div>
           <div className="text-xs text-slate-400 font-medium mb-1 flex items-center gap-1.5">

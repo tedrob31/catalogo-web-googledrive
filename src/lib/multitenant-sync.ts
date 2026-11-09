@@ -124,7 +124,7 @@ export async function runTenantSync(
       fetchAllTenantPhotos(
         supabase,
         tenantId,
-        'id, drive_file_id, name, r2_key, album_id, md5_checksum, drive_modified_time'
+        'id, drive_file_id, name, r2_key, album_id, md5_checksum, drive_modified_time, size_bytes'
       ),
     ]);
 
