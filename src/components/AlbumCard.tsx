@@ -17,9 +17,12 @@ export default function AlbumCard({ album, config, priority = false, onClick }: 
     const coverPhoto = album.photos[0] || album.subAlbums[0]?.photos[0];
     const thumbSrc = customCover || coverPhoto?.thumbnailLink || '';
 
+    const isWhiteColor = !config.secondaryColor || config.secondaryColor.toLowerCase() === '#ffffff' || config.secondaryColor.toLowerCase() === '#fff';
+    const hasCustomColor = !isWhiteColor;
+
     const borderStyle: React.CSSProperties = {
         borderWidth: config.cardBorderWidth !== undefined ? `${config.cardBorderWidth}px` : '1px',
-        borderColor: config.cardBorderColor || undefined,
+        borderColor: hasCustomColor ? config.cardBorderColor || undefined : undefined,
         borderStyle: config.cardBorderWidth === 0 ? 'none' : 'solid',
     };
 
@@ -50,8 +53,12 @@ export default function AlbumCard({ album, config, priority = false, onClick }: 
             </div>
             {!config.hideAlbumTitles && (
                 <h3
-                    className="text-sm font-semibold truncate transition-colors"
-                    style={{ color: config.textColor || undefined }}
+                    className={`text-sm font-semibold truncate transition-colors ${
+                        hasCustomColor
+                            ? 'group-hover:opacity-80'
+                            : 'text-gray-900 dark:text-gray-100 group-hover:text-blue-500'
+                    }`}
+                    style={hasCustomColor ? { color: config.textColor || undefined } : undefined}
                 >
                     {album.name}
                 </h3>

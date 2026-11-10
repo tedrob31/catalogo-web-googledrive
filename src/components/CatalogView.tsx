@@ -327,8 +327,9 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
         return config.allowPhotoDownload ? [Zoom, Download] : [Zoom];
     }, [config.allowPhotoDownload]);
 
-    const isDark = isColorDark(config.secondaryColor);
-    const hasCustomBgColor = Boolean(config.secondaryColor && config.secondaryColor !== '#ffffff');
+    const isWhiteColor = !config.secondaryColor || config.secondaryColor.toLowerCase() === '#ffffff' || config.secondaryColor.toLowerCase() === '#fff';
+    const hasCustomBgColor = !isWhiteColor;
+    const isDark = hasCustomBgColor ? isColorDark(config.secondaryColor) : false;
 
     const textColor = config.textColor || (isDark ? '#f8fafc' : '#0f172a');
     const headerBgColor = hexToRgba(config.secondaryColor || (isDark ? '#090d16' : '#ffffff'), 0.88);
@@ -336,7 +337,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
 
     const mainStyle: React.CSSProperties = {
         backgroundColor: hasCustomBgColor && !config.backgroundImage ? config.secondaryColor : undefined,
-        color: textColor,
+        color: hasCustomBgColor ? textColor : undefined,
     };
 
     const hasSocialLinks = Boolean(
@@ -348,12 +349,12 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
 
     return (
         <div
-            className={`min-h-screen flex flex-col transition-colors relative ${isDark ? 'dark' : ''} ${
+            className={`min-h-screen flex flex-col transition-colors relative ${hasCustomBgColor && isDark ? 'dark' : ''} ${
                 config.backgroundImage
                     ? 'bg-transparent'
                     : hasCustomBgColor
                     ? ''
-                    : 'bg-white dark:bg-zinc-950'
+                    : 'bg-white dark:bg-zinc-950 text-gray-900 dark:text-gray-100'
             }`}
             style={mainStyle}
         >
@@ -382,12 +383,20 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
 
             {/* Header / Search Bar con Adaptación Translúcida Dinámica según el Tema */}
             <header
-                className="sticky top-0 z-40 backdrop-blur-md border-b p-3.5 sm:p-4 transition-colors relative"
-                style={{
-                    backgroundColor: headerBgColor,
-                    borderColor: headerBorderColor,
-                    color: textColor,
-                }}
+                className={`sticky top-0 z-40 backdrop-blur-md border-b p-3.5 sm:p-4 transition-colors relative ${
+                    hasCustomBgColor
+                        ? ''
+                        : 'bg-white/85 dark:bg-zinc-950/85 border-gray-200 dark:border-zinc-800 text-gray-900 dark:text-gray-100'
+                }`}
+                style={
+                    hasCustomBgColor
+                        ? {
+                              backgroundColor: headerBgColor,
+                              borderColor: headerBorderColor,
+                              color: textColor,
+                          }
+                        : undefined
+                }
             >
                 <div className="max-w-7xl mx-auto flex gap-3 sm:gap-4 items-center">
                     {/* Navigation Controls con contraste permanente garantizado */}
@@ -404,11 +413,19 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                                     handleBack();
                                 }
                             }}
-                            className="p-2 rounded-full transition-colors cursor-pointer shrink-0"
-                            style={{
-                                color: textColor,
-                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
-                            }}
+                            className={`p-2 rounded-full transition-colors cursor-pointer shrink-0 ${
+                                hasCustomBgColor
+                                    ? ''
+                                    : 'text-gray-800 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-zinc-800 bg-black/5 dark:bg-white/10'
+                            }`}
+                            style={
+                                hasCustomBgColor
+                                    ? {
+                                          color: textColor,
+                                          backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                                      }
+                                    : undefined
+                            }
                             title={searchQuery ? "Ir al Inicio" : "Atrás"}
                         >
                             {searchQuery ? (
@@ -420,18 +437,33 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                     )}
 
                     <div
-                        className="flex-1 flex items-center gap-2 rounded-full px-4 py-2 border transition-colors"
-                        style={{
-                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-                            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
-                        }}
+                        className={`flex-1 flex items-center gap-2 rounded-full px-4 py-2 border transition-colors ${
+                            hasCustomBgColor
+                                ? ''
+                                : 'bg-gray-100 dark:bg-zinc-900 border-transparent focus-within:border-blue-500/60'
+                        }`}
+                        style={
+                            hasCustomBgColor
+                                ? {
+                                      backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                                      borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                                  }
+                                : undefined
+                        }
                     >
-                        <FiSearch className="shrink-0 opacity-60" style={{ color: textColor }} />
+                        <FiSearch
+                            className={`shrink-0 ${hasCustomBgColor ? 'opacity-60' : 'text-gray-400 dark:text-gray-500'}`}
+                            style={hasCustomBgColor ? { color: textColor } : undefined}
+                        />
                         <input
                             type="text"
                             placeholder="Buscar álbumes y fotos..."
-                            className="bg-transparent border-none outline-none w-full text-sm placeholder:opacity-50"
-                            style={{ color: textColor }}
+                            className={`bg-transparent border-none outline-none w-full text-sm ${
+                                hasCustomBgColor
+                                    ? 'placeholder:opacity-50'
+                                    : 'text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400'
+                            }`}
+                            style={hasCustomBgColor ? { color: textColor } : undefined}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -439,8 +471,12 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
 
                     {/* Simple Stats or Branding */}
                     <div
-                        className="hidden sm:block text-sm font-semibold opacity-80 truncate max-w-xs"
-                        style={{ color: textColor }}
+                        className={`hidden sm:block text-sm font-semibold truncate max-w-xs ${
+                            hasCustomBgColor
+                                ? 'opacity-80'
+                                : 'text-gray-700 dark:text-gray-300'
+                        }`}
+                        style={hasCustomBgColor ? { color: textColor } : undefined}
                     >
                         {rootAlbum.name}
                     </div>
@@ -451,15 +487,19 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                     <div className="max-w-7xl mx-auto mt-2 px-1 flex gap-2 overflow-x-auto text-xs sm:text-sm no-scrollbar">
                         {activePath.map((album, idx) => (
                             <div key={album.id} className="flex items-center whitespace-nowrap">
-                                {idx > 0 && <span className="mx-2 opacity-40">/</span>}
+                                {idx > 0 && (
+                                    <span className={`mx-2 ${hasCustomBgColor ? 'opacity-40' : 'text-gray-400 dark:text-gray-600'}`}>
+                                        /
+                                    </span>
+                                )}
                                 <button
                                     onClick={() => handleBreadcrumb(idx)}
                                     className={`hover:underline transition-colors ${
                                         idx === activePath.length - 1
-                                            ? 'font-bold'
-                                            : 'opacity-70'
+                                            ? hasCustomBgColor ? 'font-bold' : 'font-bold text-gray-900 dark:text-white'
+                                            : hasCustomBgColor ? 'opacity-70' : 'text-gray-600 dark:text-gray-300'
                                     }`}
-                                    style={{ color: textColor }}
+                                    style={hasCustomBgColor ? { color: textColor } : undefined}
                                 >
                                     {album.name}
                                 </button>
@@ -479,7 +519,12 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                         {/* Albums Grid */}
                         {visibleAlbums.length > 0 && (
                             <section>
-                                <h2 className="text-xl font-bold mb-4 flex items-center gap-2" style={{ color: textColor }}>
+                                <h2
+                                    className={`text-xl font-bold mb-4 flex items-center gap-2 ${
+                                        hasCustomBgColor ? '' : 'text-gray-900 dark:text-gray-100'
+                                    }`}
+                                    style={hasCustomBgColor ? { color: textColor } : undefined}
+                                >
                                     <FiGrid /> {isSearching ? 'Álbumes encontrados' : 'Álbumes'}
                                 </h2>
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 md:gap-6 gap-x-4 gap-y-6">
@@ -499,7 +544,12 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                         {/* Photos Grid */}
                         {visiblePhotos.length > 0 && (
                             <section>
-                                <h2 className="text-xl font-bold mb-4 mt-8" style={{ color: textColor }}>
+                                <h2
+                                    className={`text-xl font-bold mb-4 mt-8 ${
+                                        hasCustomBgColor ? '' : 'text-gray-900 dark:text-gray-100'
+                                    }`}
+                                    style={hasCustomBgColor ? { color: textColor } : undefined}
+                                >
                                     {isSearching ? 'Fotos encontradas' : 'Fotos'}
                                 </h2>
                                 <div className="grid gap-1 sm:gap-4 md:gap-6">
@@ -525,7 +575,12 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                         )}
 
                         {visibleAlbums.length === 0 && visiblePhotos.length === 0 && (
-                            <div className="text-center py-12" style={{ color: textColor, opacity: 0.6 }}>
+                            <div
+                                className={`text-center py-12 ${
+                                    hasCustomBgColor ? 'opacity-60' : 'text-gray-500 dark:text-gray-400'
+                                }`}
+                                style={hasCustomBgColor ? { color: textColor } : undefined}
+                            >
                                 <p>No se encontró contenido.</p>
                             </div>
                         )}
@@ -535,18 +590,36 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
 
             {/* Footer con Redes Sociales y Marca Oficial (Compacto & Armónico) */}
             <footer
-                className="mt-8 py-6 border-t text-center relative z-10 transition-colors"
-                style={{
-                    borderColor: headerBorderColor,
-                    color: textColor,
-                }}
+                className={`mt-8 py-6 border-t text-center relative z-10 transition-colors ${
+                    hasCustomBgColor
+                        ? ''
+                        : 'border-gray-200/80 dark:border-zinc-800/80 text-gray-900 dark:text-gray-100'
+                }`}
+                style={
+                    hasCustomBgColor
+                        ? {
+                              borderColor: headerBorderColor,
+                              color: textColor,
+                          }
+                        : undefined
+                }
             >
                 <div className="max-w-4xl mx-auto px-4 space-y-3">
-                    <h3 className="text-sm font-bold tracking-tight" style={{ color: textColor }}>
+                    <h3
+                        className={`text-sm font-bold tracking-tight ${
+                            hasCustomBgColor ? '' : 'text-gray-900 dark:text-gray-100'
+                        }`}
+                        style={hasCustomBgColor ? { color: textColor } : undefined}
+                    >
                         {config.siteTitle}
                     </h3>
                     {config.siteDescription && (
-                        <p className="text-xs max-w-md mx-auto line-clamp-2 opacity-75" style={{ color: textColor }}>
+                        <p
+                            className={`text-xs max-w-md mx-auto line-clamp-2 ${
+                                hasCustomBgColor ? 'opacity-75' : 'text-gray-500 dark:text-gray-400'
+                            }`}
+                            style={hasCustomBgColor ? { color: textColor } : undefined}
+                        >
                             {config.siteDescription}
                         </p>
                     )}
@@ -604,7 +677,12 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                         </div>
                     )}
 
-                    <div className="pt-2 text-[11px] opacity-50" style={{ color: textColor }}>
+                    <div
+                        className={`pt-2 text-[11px] ${
+                            hasCustomBgColor ? 'opacity-50' : 'text-gray-400 dark:text-gray-500'
+                        }`}
+                        style={hasCustomBgColor ? { color: textColor } : undefined}
+                    >
                         © {new Date().getFullYear()} {config.siteTitle}. Todos los derechos reservados.
                     </div>
                 </div>

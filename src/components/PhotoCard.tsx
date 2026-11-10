@@ -28,9 +28,12 @@ export default function PhotoCard({ photo, config, priority = false, onClick }: 
         img.src = url;
     };
 
+    const isWhiteColor = !config?.secondaryColor || config.secondaryColor.toLowerCase() === '#ffffff' || config.secondaryColor.toLowerCase() === '#fff';
+    const hasCustomColor = !isWhiteColor;
+
     const borderStyle: React.CSSProperties = {
         borderWidth: config?.cardBorderWidth !== undefined ? `${config.cardBorderWidth}px` : '1px',
-        borderColor: config?.cardBorderColor || undefined,
+        borderColor: hasCustomColor ? config?.cardBorderColor || undefined : undefined,
         borderStyle: config?.cardBorderWidth === 0 ? 'none' : 'solid',
     };
 
