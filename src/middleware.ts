@@ -73,6 +73,18 @@ export function middleware(request: NextRequest) {
     hostname === '127.0.0.1';
 
   if (!isRootDomain) {
+    // Si la solicitud llega por IP directa (ej. 217.216.90.115), dominios de infraestructura o dominios inválidos,
+    // responder 404 inmediato para no enrutar a /t/ ni consultar la base de datos con bots/scanners.
+    const isIpAddress = /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname) || hostname.includes(':');
+    const isInfrastructureHost =
+      hostname.endsWith('r4tlabs.com') ||
+      hostname.endsWith('ono.com') ||
+      !hostname.includes('.');
+
+    if (isIpAddress || isInfrastructureHost) {
+      return new NextResponse('Not found', { status: 404 });
+    }
+
     url.pathname = `/t/${hostname}${pathname === '/' ? '' : pathname}`;
     const response = NextResponse.rewrite(url);
     applyCacheHeaders(response, request);

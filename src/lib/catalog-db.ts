@@ -27,9 +27,9 @@ interface CachedTenantBase {
     subdomain: string;
     custom_domain: string | null;
     custom_domain_enabled?: boolean;
-  };
-  cacheStructure: CacheStructure;
-  config: AppConfig;
+  } | null;
+  cacheStructure?: CacheStructure;
+  config?: AppConfig;
   storefront?: StorefrontConfig;
   mainCatalogAlbum?: any;
   cachedAt: number;
@@ -53,12 +53,11 @@ export function invalidateTenantCatalogCache(tenantIdOrSubdomain?: string) {
   for (const [key, entry] of memoryCatalogCache.entries()) {
     if (
       key === tenantIdOrSubdomain ||
-      entry.tenant.id === tenantIdOrSubdomain ||
-      entry.tenant.subdomain === tenantIdOrSubdomain
+      (entry.tenant && (entry.tenant.id === tenantIdOrSubdomain || entry.tenant.subdomain === tenantIdOrSubdomain))
     ) {
       memoryCatalogCache.delete(key);
-      if (entry.tenant.id) memoryCatalogCache.delete(entry.tenant.id);
-      if (entry.tenant.subdomain) memoryCatalogCache.delete(entry.tenant.subdomain);
+      if (entry.tenant?.id) memoryCatalogCache.delete(entry.tenant.id);
+      if (entry.tenant?.subdomain) memoryCatalogCache.delete(entry.tenant.subdomain);
       console.log(`[Catalog Cache] Memoria caché invalidada para tenant: ${tenantIdOrSubdomain}`);
     }
   }
@@ -156,15 +155,21 @@ export async function fetchAllTenantAlbums(
  */
 async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBase | null> {
   const cached = memoryCatalogCache.get(subdomain);
-  if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
-    return cached;
+  if (cached) {
+    const isNegative = cached.tenant === null;
+    const ttl = isNegative ? 2 * 60 * 1000 : CACHE_TTL_MS; // 2 min para no encontrados, 5 min para válidos
+    if (Date.now() - cached.cachedAt < ttl) {
+      if (isNegative) return null;
+      return cached;
+    }
   }
 
   // Limpieza periódica automática si el Map supera 300 tiendas para mantener la RAM liviana (<100MB)
   if (memoryCatalogCache.size > 300) {
     const now = Date.now();
     for (const [k, v] of memoryCatalogCache.entries()) {
-      if (now - v.cachedAt > CACHE_TTL_MS) {
+      const ttl = v.tenant === null ? 2 * 60 * 1000 : CACHE_TTL_MS;
+      if (now - v.cachedAt > ttl) {
         memoryCatalogCache.delete(k);
       }
     }
@@ -173,6 +178,7 @@ async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBas
   const supabase = createAdminClient();
 
   // 1. Obtener tenant activo por subdominio o custom_domain
+  // Usar .maybeSingle() en lugar de .single() para evitar error PGRST116 (HTTP 406 Not Acceptable) cuando no existe
   const { data: tenant, error: tenantErr } = await supabase
     .from('tenants')
     .select(`
@@ -196,9 +202,14 @@ async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBas
     `)
     .or(`subdomain.eq.${subdomain},custom_domain.eq.${subdomain}`)
     .eq('status', 'active')
-    .single();
+    .maybeSingle();
 
   if (tenantErr || !tenant) {
+    // Cachear resultado negativo por 2 minutos para absorber ráfagas de bots/scanners sin consultar a Supabase
+    memoryCatalogCache.set(subdomain, {
+      tenant: null,
+      cachedAt: Date.now(),
+    });
     return null;
   }
 
@@ -209,6 +220,10 @@ async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBas
     !tenant.custom_domain_enabled
   ) {
     console.warn(`[Catalog DB] Dominio personalizado ${subdomain} no está habilitado para ${tenant.name}`);
+    memoryCatalogCache.set(subdomain, {
+      tenant: null,
+      cachedAt: Date.now(),
+    });
     return null;
   }
 
@@ -399,7 +414,7 @@ export const loadTenantCatalog = cache(async (
   slugs: string[] = []
 ): Promise<TenantCatalogPayload | null> => {
   const base = await loadTenantCatalogBase(subdomain);
-  if (!base) {
+  if (!base || !base.tenant || !base.cacheStructure || !base.config) {
     return null;
   }
 
