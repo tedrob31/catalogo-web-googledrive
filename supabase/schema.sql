@@ -1,28 +1,33 @@
 -- Esquema consolidado de la base del proyecto Supabase `catalogo`.
 --
--- GENERADO desde la base viva (no escrito a mano). Cada objeto cuyo DDL se puede
--- derivar del catalogo usa las funciones autoritativas de PostgreSQL
--- (pg_get_functiondef, pg_get_constraintdef, pg_get_indexdef, pg_get_triggerdef).
+-- GENERADO desde la base viva (no escrito a mano): lo derivable del catalogo sale de las
+-- funciones autoritativas de PostgreSQL (pg_get_functiondef, pg_get_constraintdef,
+-- pg_get_indexdef, pg_get_triggerdef).
 --
--- Esto es un SNAPSHOT, no una migracion: describe como esta la base, y se aplica
--- sobre una base vacia para reconstruirla. Los cambios nuevos van como migracion
--- registrada en supabase/migrations/.
+-- Es un SNAPSHOT, no una migracion: describe como esta la base y se aplica sobre una base
+-- vacia para reconstruirla. Los cambios nuevos van como migracion registrada en migrations/.
 --
--- Las sentencias derivadas del catalogo conservan la forma en MAYUSCULAS que devuelve
--- PostgreSQL; las plantillas escritas a mano van en minusculas.
+-- ORDEN, y no es casual:
+--   1. FUNCIONES antes que POLICIES: 16 de las 24 policies llaman a
+--      private.has_tenant_access() o private.is_superadmin(), y PostgreSQL resuelve la funcion
+--      AL CREAR la policy (si no existe, 42883). Comprobado.
+--   2. ENTRE FUNCIONES, orden topologico: private.has_tenant_access es LANGUAGE sql y llama a
+--      private.is_superadmin, y las funciones sql resuelven sus referencias al crearse
+--      (comprobado: 42883). El orden se calculo desde los cuerpos, porque pg_depend no
+--      registra esa dependencia.
+--   3. TRIGGERS al final: dependen de sus funciones.
 --
--- Verificado contra el catalogo: 11 tablas, 98 columnas (0 faltantes, 0 de mas),
--- 32 constraints, 11 indices, 24 policies, 10 funciones y 2 triggers.
--- Las plantillas escritas a mano se ejercitaron en una transaccion con ROLLBACK
--- (residuo cero verificado). NO se aplico el archivo completo contra una base: eso
--- requiere un entorno aislado (una branch de Supabase), que es la verificacion
--- pendiente de esta tarea.
+-- Las sentencias derivadas del catalogo conservan la forma en MAYUSCULAS de PostgreSQL; las
+-- plantillas escritas a mano van en minusculas.
+--
+-- Verificado contra el catalogo: 11 tablas, 98 columnas (0 faltantes, 0 de mas), 32
+-- constraints, 11 indices, 24 policies, 10 funciones y 2 triggers, y las relaciones de orden.
+-- NO verificado: el archivo completo aplicado contra una base vacia.
 
 create extension if not exists "pgcrypto";
 create extension if not exists "uuid-ossp";
 
 create schema if not exists private;
-
 grant usage, create on schema private to postgres;
 grant usage on schema private to authenticated;
 grant usage on schema private to service_role;
@@ -279,37 +284,7 @@ grant select (last_synced_at) on table public.google_integrations to authenticat
 grant select (updated_at) on table public.google_integrations to authenticated;
 grant select (is_connected) on table public.google_integrations to authenticated;
 
-create policy "Public read albums for active tenants" on public.albums for select to public using ((EXISTS ( SELECT 1
-   FROM tenants t
-  WHERE ((t.id = albums.tenant_id) AND (t.status = 'active'::text)))));
-create policy "Tenant members manage own albums" on public.albums for all to public using (private.has_tenant_access(tenant_id));
-create policy "Tenant members manage google integrations" on public.google_integrations for all to public using (private.has_tenant_access(tenant_id));
-create policy "Public read photos for active tenants" on public.photos for select to public using ((EXISTS ( SELECT 1
-   FROM tenants t
-  WHERE ((t.id = photos.tenant_id) AND (t.status = 'active'::text)))));
-create policy "Tenant members manage own photos" on public.photos for all to public using (private.has_tenant_access(tenant_id));
-create policy "Public read whitelist" on public.platform_whitelist for select to public using (true);
-create policy "Superadmin manage whitelist" on public.platform_whitelist for all to public using (private.is_superadmin());
-create policy "Public read subscription plans" on public.subscription_plans for select to public using (true);
-create policy "Superadmin manage subscription plans" on public.subscription_plans for all to public using (private.is_superadmin());
-create policy "Tenant members manage own sync logs" on public.sync_logs for all to public using (private.has_tenant_access(tenant_id));
-create policy "Public read system settings" on public.system_settings for select to public using (true);
-create policy "Superadmin manage system settings" on public.system_settings for all to public using (private.is_superadmin());
-create policy "Public read active tenant configs" on public.tenant_configs for select to public using ((EXISTS ( SELECT 1
-   FROM tenants t
-  WHERE ((t.id = tenant_configs.tenant_id) AND (t.status = 'active'::text)))));
-create policy "Superadmin manage all configs" on public.tenant_configs for all to public using (private.is_superadmin());
-create policy "Tenant members insert own config" on public.tenant_configs for insert to public with check (private.has_tenant_access(tenant_id));
-create policy "Tenant members update own config" on public.tenant_configs for update to public using (private.has_tenant_access(tenant_id));
-create policy "service_role_manage_metrics" on public.tenant_page_metrics for all to service_role using (true) with check (true);
-create policy "tenant_owners_view_metrics" on public.tenant_page_metrics for select to authenticated using (private.has_tenant_access(tenant_id));
-create policy "Members view own tenant membership" on public.tenant_users for select to public using (private.has_tenant_access(tenant_id));
-create policy "Superadmin manage all tenant users" on public.tenant_users for all to public using (private.is_superadmin());
-create policy "Public read active tenants" on public.tenants for select to public using ((status = 'active'::text));
-create policy "Superadmin manage all tenants" on public.tenants for all to public using (private.is_superadmin());
-create policy "Tenant members select own tenant" on public.tenants for select to public using (private.has_tenant_access(id));
-create policy "Tenant owners update own tenant" on public.tenants for update to public using (private.has_tenant_access(id));
-
+-- Funciones en orden topologico: ver el encabezado. Las que se llaman entre si van primero.
 CREATE OR REPLACE FUNCTION private.create_unique_photos_index()
  RETURNS text
  LANGUAGE plpgsql
@@ -376,24 +351,6 @@ grant execute on function private.get_user_tenant_ids() to postgres;
 grant execute on function private.get_user_tenant_ids() to authenticated;
 grant execute on function private.get_user_tenant_ids() to service_role;
 
-CREATE OR REPLACE FUNCTION private.has_tenant_access(target_tenant_id uuid)
- RETURNS boolean
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO 'public', 'private'
-AS $function$
-  SELECT private.is_superadmin() OR EXISTS (
-    SELECT 1 FROM public.tenant_users
-    WHERE user_id = auth.uid() AND tenant_id = target_tenant_id
-  );
-$function$
-;
-revoke all on function private.has_tenant_access(uuid) from public, anon, authenticated, service_role;
-grant execute on function private.has_tenant_access(uuid) to public;
-grant execute on function private.has_tenant_access(uuid) to postgres;
-grant execute on function private.has_tenant_access(uuid) to authenticated;
-grant execute on function private.has_tenant_access(uuid) to service_role;
-
 CREATE OR REPLACE FUNCTION private.is_superadmin()
  RETURNS boolean
  LANGUAGE sql
@@ -411,90 +368,6 @@ grant execute on function private.is_superadmin() to public;
 grant execute on function private.is_superadmin() to postgres;
 grant execute on function private.is_superadmin() to authenticated;
 grant execute on function private.is_superadmin() to service_role;
-
-CREATE OR REPLACE FUNCTION public.get_tenant_analytics_summary(p_tenant_id uuid, p_start_date date)
- RETURNS jsonb
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-DECLARE
-    v_result JSONB;
-    v_total_views BIGINT := 0;
-    v_total_whatsapp BIGINT := 0;
-    v_daily_trend JSONB;
-    v_top_content JSONB;
-    v_top_page TEXT := 'Ninguna aún';
-BEGIN
-
-    -- Autorizacion: quien llama con identidad de usuario debe pertenecer al tenant
-    -- (o ser superadmin). Las llamadas server-side con service_role no traen JWT de
-    -- usuario y ya fueron autorizadas en la capa de aplicacion.
-    IF auth.uid() IS NOT NULL AND NOT private.has_tenant_access(p_tenant_id) THEN
-        RAISE EXCEPTION 'not authorized for tenant %', p_tenant_id USING ERRCODE = '42501';
-    END IF;
-
-    -- 1. Totales generales
-    SELECT 
-        COALESCE(SUM(views_count), 0),
-        COALESCE(SUM(whatsapp_clicks), 0)
-    INTO 
-        v_total_views,
-        v_total_whatsapp
-    FROM public.tenant_page_metrics
-    WHERE tenant_id = p_tenant_id AND date >= p_start_date;
-
-    -- 2. Tendencia diaria agregada por fecha (orden cronológico)
-    SELECT COALESCE(jsonb_agg(d ORDER BY (d->>'date') ASC), '[]'::jsonb)
-    INTO v_daily_trend
-    FROM (
-        SELECT jsonb_build_object(
-            'date', date::text,
-            'views', COALESCE(SUM(views_count), 0),
-            'whatsapp', COALESCE(SUM(whatsapp_clicks), 0)
-        ) AS d
-        FROM public.tenant_page_metrics
-        WHERE tenant_id = p_tenant_id AND date >= p_start_date
-        GROUP BY date
-    ) sub;
-
-    -- 3. Top 15 contenidos más visitados
-    SELECT COALESCE(jsonb_agg(c), '[]'::jsonb)
-    INTO v_top_content
-    FROM (
-        SELECT jsonb_build_object(
-            'path', path,
-            'title', MAX(title),
-            'views', COALESCE(SUM(views_count), 0),
-            'whatsapp', COALESCE(SUM(whatsapp_clicks), 0)
-        ) AS c
-        FROM public.tenant_page_metrics
-        WHERE tenant_id = p_tenant_id AND date >= p_start_date
-        GROUP BY path
-        ORDER BY SUM(views_count) DESC
-        LIMIT 15
-    ) sub;
-
-    -- Extraer el título de la página más visitada
-    IF jsonb_array_length(v_top_content) > 0 THEN
-        v_top_page := COALESCE(v_top_content->0->>'title', 'Ninguna aún');
-    END IF;
-
-    v_result := jsonb_build_object(
-        'total_views', v_total_views,
-        'total_whatsapp', v_total_whatsapp,
-        'daily_trend', v_daily_trend,
-        'top_content', v_top_content,
-        'top_page', v_top_page
-    );
-
-    RETURN v_result;
-END;
-$function$
-;
-revoke all on function public.get_tenant_analytics_summary(uuid, date) from public, anon, authenticated, service_role;
-grant execute on function public.get_tenant_analytics_summary(uuid, date) to postgres;
-grant execute on function public.get_tenant_analytics_summary(uuid, date) to service_role;
 
 CREATE OR REPLACE FUNCTION public.handle_auto_superadmin()
  RETURNS trigger
@@ -681,6 +554,140 @@ $function$
 revoke all on function public.increment_page_metrics_batch(jsonb) from public, anon, authenticated, service_role;
 grant execute on function public.increment_page_metrics_batch(jsonb) to postgres;
 grant execute on function public.increment_page_metrics_batch(jsonb) to service_role;
+
+CREATE OR REPLACE FUNCTION private.has_tenant_access(target_tenant_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'private'
+AS $function$
+  SELECT private.is_superadmin() OR EXISTS (
+    SELECT 1 FROM public.tenant_users
+    WHERE user_id = auth.uid() AND tenant_id = target_tenant_id
+  );
+$function$
+;
+revoke all on function private.has_tenant_access(uuid) from public, anon, authenticated, service_role;
+grant execute on function private.has_tenant_access(uuid) to public;
+grant execute on function private.has_tenant_access(uuid) to postgres;
+grant execute on function private.has_tenant_access(uuid) to authenticated;
+grant execute on function private.has_tenant_access(uuid) to service_role;
+
+CREATE OR REPLACE FUNCTION public.get_tenant_analytics_summary(p_tenant_id uuid, p_start_date date)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+    v_result JSONB;
+    v_total_views BIGINT := 0;
+    v_total_whatsapp BIGINT := 0;
+    v_daily_trend JSONB;
+    v_top_content JSONB;
+    v_top_page TEXT := 'Ninguna aún';
+BEGIN
+
+    -- Autorizacion: quien llama con identidad de usuario debe pertenecer al tenant
+    -- (o ser superadmin). Las llamadas server-side con service_role no traen JWT de
+    -- usuario y ya fueron autorizadas en la capa de aplicacion.
+    IF auth.uid() IS NOT NULL AND NOT private.has_tenant_access(p_tenant_id) THEN
+        RAISE EXCEPTION 'not authorized for tenant %', p_tenant_id USING ERRCODE = '42501';
+    END IF;
+
+    -- 1. Totales generales
+    SELECT 
+        COALESCE(SUM(views_count), 0),
+        COALESCE(SUM(whatsapp_clicks), 0)
+    INTO 
+        v_total_views,
+        v_total_whatsapp
+    FROM public.tenant_page_metrics
+    WHERE tenant_id = p_tenant_id AND date >= p_start_date;
+
+    -- 2. Tendencia diaria agregada por fecha (orden cronológico)
+    SELECT COALESCE(jsonb_agg(d ORDER BY (d->>'date') ASC), '[]'::jsonb)
+    INTO v_daily_trend
+    FROM (
+        SELECT jsonb_build_object(
+            'date', date::text,
+            'views', COALESCE(SUM(views_count), 0),
+            'whatsapp', COALESCE(SUM(whatsapp_clicks), 0)
+        ) AS d
+        FROM public.tenant_page_metrics
+        WHERE tenant_id = p_tenant_id AND date >= p_start_date
+        GROUP BY date
+    ) sub;
+
+    -- 3. Top 15 contenidos más visitados
+    SELECT COALESCE(jsonb_agg(c), '[]'::jsonb)
+    INTO v_top_content
+    FROM (
+        SELECT jsonb_build_object(
+            'path', path,
+            'title', MAX(title),
+            'views', COALESCE(SUM(views_count), 0),
+            'whatsapp', COALESCE(SUM(whatsapp_clicks), 0)
+        ) AS c
+        FROM public.tenant_page_metrics
+        WHERE tenant_id = p_tenant_id AND date >= p_start_date
+        GROUP BY path
+        ORDER BY SUM(views_count) DESC
+        LIMIT 15
+    ) sub;
+
+    -- Extraer el título de la página más visitada
+    IF jsonb_array_length(v_top_content) > 0 THEN
+        v_top_page := COALESCE(v_top_content->0->>'title', 'Ninguna aún');
+    END IF;
+
+    v_result := jsonb_build_object(
+        'total_views', v_total_views,
+        'total_whatsapp', v_total_whatsapp,
+        'daily_trend', v_daily_trend,
+        'top_content', v_top_content,
+        'top_page', v_top_page
+    );
+
+    RETURN v_result;
+END;
+$function$
+;
+revoke all on function public.get_tenant_analytics_summary(uuid, date) from public, anon, authenticated, service_role;
+grant execute on function public.get_tenant_analytics_summary(uuid, date) to postgres;
+grant execute on function public.get_tenant_analytics_summary(uuid, date) to service_role;
+
+-- Policies DESPUES de las funciones: resuelven sus llamadas al crearse.
+create policy "Public read albums for active tenants" on public.albums for select to public using ((EXISTS ( SELECT 1
+   FROM tenants t
+  WHERE ((t.id = albums.tenant_id) AND (t.status = 'active'::text)))));
+create policy "Tenant members manage own albums" on public.albums for all to public using (private.has_tenant_access(tenant_id));
+create policy "Tenant members manage google integrations" on public.google_integrations for all to public using (private.has_tenant_access(tenant_id));
+create policy "Public read photos for active tenants" on public.photos for select to public using ((EXISTS ( SELECT 1
+   FROM tenants t
+  WHERE ((t.id = photos.tenant_id) AND (t.status = 'active'::text)))));
+create policy "Tenant members manage own photos" on public.photos for all to public using (private.has_tenant_access(tenant_id));
+create policy "Public read whitelist" on public.platform_whitelist for select to public using (true);
+create policy "Superadmin manage whitelist" on public.platform_whitelist for all to public using (private.is_superadmin());
+create policy "Public read subscription plans" on public.subscription_plans for select to public using (true);
+create policy "Superadmin manage subscription plans" on public.subscription_plans for all to public using (private.is_superadmin());
+create policy "Tenant members manage own sync logs" on public.sync_logs for all to public using (private.has_tenant_access(tenant_id));
+create policy "Public read system settings" on public.system_settings for select to public using (true);
+create policy "Superadmin manage system settings" on public.system_settings for all to public using (private.is_superadmin());
+create policy "Public read active tenant configs" on public.tenant_configs for select to public using ((EXISTS ( SELECT 1
+   FROM tenants t
+  WHERE ((t.id = tenant_configs.tenant_id) AND (t.status = 'active'::text)))));
+create policy "Superadmin manage all configs" on public.tenant_configs for all to public using (private.is_superadmin());
+create policy "Tenant members insert own config" on public.tenant_configs for insert to public with check (private.has_tenant_access(tenant_id));
+create policy "Tenant members update own config" on public.tenant_configs for update to public using (private.has_tenant_access(tenant_id));
+create policy "service_role_manage_metrics" on public.tenant_page_metrics for all to service_role using (true) with check (true);
+create policy "tenant_owners_view_metrics" on public.tenant_page_metrics for select to authenticated using (private.has_tenant_access(tenant_id));
+create policy "Members view own tenant membership" on public.tenant_users for select to public using (private.has_tenant_access(tenant_id));
+create policy "Superadmin manage all tenant users" on public.tenant_users for all to public using (private.is_superadmin());
+create policy "Public read active tenants" on public.tenants for select to public using ((status = 'active'::text));
+create policy "Superadmin manage all tenants" on public.tenants for all to public using (private.is_superadmin());
+create policy "Tenant members select own tenant" on public.tenants for select to public using (private.has_tenant_access(id));
+create policy "Tenant owners update own tenant" on public.tenants for update to public using (private.has_tenant_access(id));
 
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 CREATE TRIGGER tr_auto_superadmin AFTER INSERT OR UPDATE ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_auto_superadmin();

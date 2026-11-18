@@ -6,14 +6,32 @@ Snapshot **generado desde la base viva**, no escrito a mano. Describe las 11 tab
 `public`, sus 98 columnas, 32 constraints, 11 índices, las 24 policies, las 10 funciones de
 `public` y `private`, los 2 triggers sobre `auth.users`, los grants y las extensiones.
 
-Aplicado sobre una base vacía, reconstruye el esquema. Todo lo que se puede derivar del
-catálogo usa las funciones autoritativas de PostgreSQL (`pg_get_functiondef`,
+La intención es que, aplicado sobre una base vacía, reconstruya el esquema; **eso todavía no
+está probado de punta a punta** — ver "Verificación" más abajo. Todo lo que se puede derivar
+del catálogo usa las funciones autoritativas de PostgreSQL (`pg_get_functiondef`,
 `pg_get_constraintdef`, `pg_get_indexdef`, `pg_get_triggerdef`).
 
 **Por qué generado y no escrito a mano**: `AUDIT_SCHEMA.sql` (que este archivo reemplaza) era
 un snapshot manual y llegó a documentar una versión **vulnerable** de
 `get_tenant_analytics_summary`, con `GRANT EXECUTE ... TO anon, authenticated, service_role`.
 Un documento de auditoría desactualizado **arma** la vulnerabilidad que dice describir.
+
+## El orden de las sentencias importa, y no es casual
+
+Dos restricciones que se descubrieron al preguntarse si el archivo se puede aplicar de cero.
+Las dos están **comprobadas** contra PostgreSQL:
+
+1. **Las funciones van antes que las policies.** 16 de las 24 policies llaman a
+   `private.has_tenant_access()` o `private.is_superadmin()`, y PostgreSQL resuelve esa función
+   **al crear la policy**: si todavía no existe, falla con `42883 function does not exist`.
+2. **Entre funciones, el orden es topológico.** `private.has_tenant_access` es `LANGUAGE sql`
+   y llama a `private.is_superadmin`; las funciones de lenguaje `sql` resuelven sus referencias
+   al crearse (también `42883`, comprobado). El orden se calcula desde los **cuerpos**, porque
+   `pg_depend` **no** registra esa dependencia.
+3. Los triggers van al final: dependen de sus funciones.
+
+Por eso el archivo se **genera con un orden topológico**, no alfabético. Si se reordena a mano
+hay que respetar esas relaciones.
 
 ## `migrations/` — cambios nuevos, registrados
 
@@ -48,20 +66,37 @@ a `db push`. Las siete primeras no se reconstruyeron: sólo se conoce su efecto 
 original, y tres cambios reales ni siquiera están registrados (ver
 `migrations-archive/README.md`).
 
-## Verificación pendiente
+## Verificación: qué está probado y qué falta
 
-`schema.sql` no se aplicó contra una base completa: no hay un entorno aislado en este repo.
-Lo que sí está verificado:
+**Probado:**
 
-- **Cobertura**: cada objeto vivo (tablas, columnas, constraints, índices, policies, funciones,
-  triggers) aparece en el archivo, contado contra el catálogo.
+- **Cobertura, contra el catálogo**: 11 tablas, 98 columnas (0 faltantes, 0 de más), 32
+  constraints, 11 índices no pertenecientes a constraints, 24 policies, 10 funciones y 2
+  triggers, todos presentes.
 - **Plantillas**: las sentencias escritas a mano (`create table`, `alter table add constraint`,
   `create index`, `create policy`, `revoke`/`grant` de tabla, columna y función) se ejercitaron
   en una transacción con `ROLLBACK`, con residuo cero comprobado.
+- **Relaciones de orden**: las tres del apartado anterior, cada una con su prueba.
 
-La prueba de extremo a extremo es crear una **branch** de Supabase (`create_branch` vía MCP),
-aplicar `schema.sql` ahí, comparar el esquema resultante con el vivo y borrar la branch. No se
-hizo: una branch tiene costo y es una decisión del dueño del proyecto.
+**NO probado — y es la única deuda abierta de este archivo:** el `schema.sql` completo aplicado
+sobre una base vacía, de punta a punta. Es el chequeo que habría atrapado los dos bugs de orden
+que se encontraron razonando (uno de ellos vivió en el archivo hasta que alguien preguntó si
+convenía verificarlo).
+
+Ese chequeo necesita un entorno aislado, y **no hay ninguno disponible desde este repo** (ni
+Docker ni un `psql` local). Las opciones:
+
+- **Gratis, en tu VPS**: correr `schema.sql` contra un Postgres de descarte, por ejemplo
+  `docker run --rm -d --name scratch-postgres -e POSTGRES_PASSWORD=x postgres:17` y después
+  `docker exec -i scratch-postgres psql -U postgres -f - < supabase/schema.sql`. Sirve para
+  comprobar que **aplica entero**; para comparar el esquema resultante con el vivo habría que
+  crear antes los roles `anon`, `authenticated` y `service_role` y el esquema `auth` (los
+  triggers viven en `auth.users`), porque este snapshot es específico de Supabase y **no**
+  aplica sobre un Postgres pelado.
+- **Con costo**: una branch de Supabase (`create_branch` vía MCP), aplicar ahí y borrarla.
+
+Mientras eso no se corra, este archivo es una descripción **fiel** del esquema, pero no está
+garantizado que se aplique de cero en una sola pasada.
 
 ## Verificación manual end-to-end de la resolución de tenant
 
