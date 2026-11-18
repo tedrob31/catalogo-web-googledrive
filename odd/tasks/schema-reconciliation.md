@@ -35,17 +35,17 @@ archivos sin contraparte en el historial vivo que se reintentarían sobre objeto
 
 ## Tasks
 
-- **T1** (S2, S3) — Generar `supabase/schema.sql` desde la base viva: 11 tablas con columnas,
+- [x] **T1** (S2, S3) — Generar `supabase/schema.sql` desde la base viva: 11 tablas con columnas,
   tipos, defaults, PK/FK, índices, RLS y las 24 policies; las 11 funciones de `public` y
   `private` con su definición real (`pg_get_functiondef`), `SECURITY DEFINER` y `search_path`;
   los 2 triggers de `auth.users`; los grants; y las extensiones.
   *Ruta:* inline — los subagentes no tienen `codemode` ni el MCP, comprobado dos veces hoy.
-- **T2** (S4) — Archivar `supabase/migrations/*` en `supabase/migrations-archive/` con un
+- [x] **T2** (S4) — Archivar `supabase/migrations/*` en `supabase/migrations-archive/` con un
   README que explique por qué cada archivo está ahí y que su efecto ya está en la base.
   Verificar antes que el efecto de los 4 archivos realmente exista en la base.
-- **T3** (S1, S4, S5) — Reescribir `supabase/README.md`: `schema.sql` es la fuente de verdad,
+- [x] **T3** (S1, S4, S5) — Reescribir `supabase/README.md`: `schema.sql` es la fuente de verdad,
   `migrations/` queda para cambios nuevos, `migrations-archive/` es histórico.
-- **T4** (S1) — Verificar la cobertura del snapshot: cada objeto vivo (tabla, policy, función,
+- [x] **T4** (S1) — Verificar la cobertura del snapshot: cada objeto vivo (tabla, policy, función,
   trigger, índice) debe aparecer en `schema.sql`, contado contra el catálogo. Y que el archivo
   sea DDL válido y ordenado para poder aplicarse de cero.
 
