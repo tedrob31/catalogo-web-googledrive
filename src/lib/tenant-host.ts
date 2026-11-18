@@ -45,7 +45,7 @@ export function tenantKeyFromHost(rawHost: string | null | undefined): string | 
   if (hostname === 'localhost') return null;
 
   // En desarrollo las tiendas se sirven como <subdominio>.localhost, tal como
-  // middleware.ts las reescribe a /t/<subdominio>. No existe ningun dominio publico
+  // src/proxy.ts las reescribe a /t/<subdominio>. No existe ningun dominio publico
   // terminado en .localhost, asi que esto solo puede afectar al entorno local.
   if (hostname.endsWith('.localhost')) {
     const subdomain = hostname.slice(0, -'.localhost'.length);

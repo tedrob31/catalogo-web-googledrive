@@ -48,7 +48,7 @@ propia unidad, después. Es el enrutador que sirve las 9 tiendas y merece estar 
 tienen entre 9 y 240 filas. Agregar índices sueltos encima sería overhead de escritura para
 un camino ya cubierto.
   Queda como opción de higiene, sin valor medible: borrar `idx_albums_tenant_slug` (0 scans).
-- [ ] **T5** — `src/middleware.ts` → `proxy` (deprecación de Next 16). Diferido a propósito.
+- [x] **T5** — `src/middleware.ts` → `proxy` (deprecación de Next 16). Diferido a propósito.
 
 ## Log
 
@@ -79,3 +79,25 @@ warning de `i` sin usar. `tsc --noEmit` 0, `npm test` 8/8, `npm run build` 0.
 testing-library), así que estos 3 arreglos **no tienen prueba automatizada de comportamiento**.
 Lo que hay es la regla de lint que deja de dispararse, el typecheck y el build. Agregar
 jsdom + testing-library es una dependencia nueva, o sea una decisión aparte.
+
+**L5** (evidencia, T5 hecho): el rename pasa de `src/middleware.ts` a `src/proxy.ts` y el
+export de `middleware` a `proxy`. Verificado: el build ya no emite el aviso de deprecación;
+`.next/server/functions-config-manifest.json` contiene el matcher (en Next 16 el
+`middleware-manifest.json` ya no lo lista); `.next/standalone/.next/server/middleware.js`
+existe, así que la imagen Docker construida desde el standalone **sí incluye el router** — ese
+era el riesgo real; y los 4 hosts sirven 4 rutas distintas y correctas: `juanstore.c4talogo.com`
+→ su tienda (título "juanstore"), `app.c4talogo.com` → superadmin, `c4talogo.com` → landing,
+`catalogodemoda.pe` → la tienda del dominio propio.
+
+**L6** (hallazgo, NO arreglado): `next.config.ts` define `async headers()` con
+`source: '/(.*)'` y **duplica todos** los headers de seguridad que también pone el proxy,
+incluido el CSP idéntico carácter por carácter. Son dos fuentes de verdad para un mismo set:
+actualizar una desincroniza la otra en silencio. Además invalidó mi primera señal de
+verificación: usé `X-Content-Type-Options: nosniff` como marcador de "corrió el proxy", y es
+un default de next.config, así que aparecía también en las rutas excluidas por el matcher.
+Follow-up: dejar los headers en un solo lugar.
+
+**L7** (límite declarado): no pude observar si el matcher **filtra** en runtime, porque la
+duplicación de headers no deja ninguna señal exclusiva del proxy. Lo que sí está verificado:
+el matcher está registrado, es idéntico al de antes del rename (no lo toqué) y el artefacto se
+despliega.

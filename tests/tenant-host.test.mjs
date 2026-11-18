@@ -43,7 +43,7 @@ test('resuelve un dominio propio tal cual, incluido el apex', () => {
   assert.equal(tenantKeyFromHost('www.mitienda.com'), 'www.mitienda.com');
 });
 
-test('en desarrollo respeta <subdominio>.localhost, igual que middleware.ts', () => {
+test('en desarrollo respeta <subdominio>.localhost, igual que src/proxy.ts', () => {
   assert.equal(tenantKeyFromHost('juanstore.localhost'), 'juanstore');
   assert.equal(tenantKeyFromHost('juanstore.localhost:3000'), 'juanstore');
 });

@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+// Next 16 renombro la convencion: middlewares -> proxy, y el export debe llamarse igual
+// (o ser el export default). Este archivo rutea por hostname a los 9 inquilinos.
+export function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   const hostname = request.headers.get('host')?.toLowerCase().split(':')[0] || 'localhost';
   const pathname = url.pathname;

@@ -58,7 +58,7 @@ flowchart TD
 ## ✨ Características Principales
 
 ### 1. Multi-Tenancy & Enrutamiento Dinámico por Subdominios
-- **Aislamiento por Subdominio:** El middleware de Next.js resuelve dinámicamente `subdominio.c4talogo.com` hacia la ruta `/t/[subdomain]` sin recargar la aplicación ni exponer rutas internas.
+- **Aislamiento por Subdominio:** El proxy de Next.js (`src/proxy.ts`, la convención `proxy` de Next 16) resuelve dinámicamente `subdominio.c4talogo.com` hacia la ruta `/t/[subdomain]` sin recargar la aplicación ni exponer rutas internas.
 - **Portal de Clientes Centralizado:** El dominio raíz `c4talogo.com` aloja la landing comercial (`/`), autenticación (`/login`) y el panel de administración de tiendas (`/dashboard`).
 - **Panel Maestro SuperAdmin (`app.c4talogo.com`):** Supervisión global de todas las tiendas, métricas agregadas de almacenamiento, gestión de suscripciones (`subscription_plans`), ampliación de límites y suspensión/reactivación en un clic.
 
@@ -103,7 +103,7 @@ flowchart TD
 │       ├── 20260911_saas_multitenant_core.sql
 │       └── 20260912_security_hardening.sql
 └── src/
-    ├── middleware.ts            # Enrutamiento de subdominios y cabeceras de caché
+    ├── proxy.ts                 # Enrutamiento de subdominios y cabeceras de caché
     ├── app/
     │   ├── page.tsx             # Landing comercial de c4talogo.com
     │   ├── login/page.tsx       # Inicio de sesión / registro con Supabase Auth

@@ -78,7 +78,7 @@ flowchart TB
 
 ## 3. Topología de Enrutamiento y Dominios
 
-El enrutamiento está centralizado en [src/middleware.ts](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/src/middleware.ts):
+El enrutamiento está centralizado en [src/proxy.ts](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/src/proxy.ts) (convención `proxy` de Next 16, antes `middleware`):
 
 | Host / Subdominio | Comportamiento en Middleware | Destino / Vista Renderizada |
 | :--- | :--- | :--- |

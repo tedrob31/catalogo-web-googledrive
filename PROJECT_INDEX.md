@@ -8,7 +8,7 @@ Este documento sirve como el **índice maestro** y mapa de navegación para asis
 
 | Ruta del Archivo | Tipo | Responsabilidad / Descripción | Cuándo Modificar |
 | :--- | :--- | :--- | :--- |
-| `src/middleware.ts` | Edge Middleware | Enrutador maestro multi-tenant. Detecta si el hostname es `app.c4talogo.com` (Superadmin), `subdominio.c4talogo.com` (Storefront), dominio propio, o el dominio raíz. | Para añadir subdominios reservados, cambiar reglas de rewrite o cabeceras de caché Edge. |
+| `src/proxy.ts` | Proxy (ex Edge Middleware) | Enrutador maestro multi-tenant. Detecta si el hostname es `app.c4talogo.com` (Superadmin), `subdominio.c4talogo.com` (Storefront), dominio propio, o el dominio raíz. En Next 16 la convención `middleware` se renombró a `proxy`, y el export debe llamarse `proxy`. | Para añadir subdominios reservados, cambiar reglas de rewrite o cabeceras de caché Edge. |
 | `src/app/page.tsx` | Server Component | Landing page principal de `c4talogo.com`. Presenta la propuesta de valor SaaS, llamada a la acción (CTA) y login/registro. | Para cambiar textos comerciales, precios o diseño de la página de inicio. |
 | `src/app/login/page.tsx` | Client Component | Pantalla unificada de autenticación. Permite inicio de sesión con Google OAuth o Email/Contraseña vía Supabase Auth. | Para modificar el formulario de login, estilos o lógica de redirección post-login. |
 | `src/app/dashboard/page.tsx` | Client Component | Panel de control principal del comerciante / inquilino. Modularizado en pestañas: Google Drive, Diseño, Efectos, Subdominio y Storefront Builder. | Para orquestar nuevas pestañas o métricas en el panel del inquilino. |

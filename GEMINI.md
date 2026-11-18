@@ -50,7 +50,7 @@ Antes de modificar cualquier funcionalidad o proponer cambios, consulta los docu
 * Todas las tablas de `public` deben tener RLS habilitado y usar las funciones de seguridad del esquema `private` (`private.has_tenant_access`, `private.is_superadmin`).
 
 ### 6. Enrutamiento y Dominios
-* Toda la lógica de dominios reside en [src/middleware.ts](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/src/middleware.ts):
+* Toda la lógica de dominios reside en [src/proxy.ts](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/src/proxy.ts) (convención `proxy` de Next 16, antes `middleware`):
   * `app.c4talogo.com` -> `/superadmin`
   * `[subdominio].c4talogo.com` -> `/t/[subdomain]`
   * `c4talogo.com` -> `/`, `/login`, `/dashboard`, `/privacy`, `/terms`
