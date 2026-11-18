@@ -526,6 +526,13 @@ DECLARE
     v_top_content JSONB;
     v_top_page TEXT := 'Ninguna aún';
 BEGIN
+    -- Autorizacion: quien llama con identidad de usuario debe pertenecer al tenant
+    -- (o ser superadmin). Las llamadas server-side con service_role no traen JWT de
+    -- usuario y ya fueron autorizadas en la capa de aplicacion.
+    IF auth.uid() IS NOT NULL AND NOT private.has_tenant_access(p_tenant_id) THEN
+        RAISE EXCEPTION 'not authorized for tenant %', p_tenant_id USING ERRCODE = '42501';
+    END IF;
+
     -- 1. Totales generales
     SELECT 
         COALESCE(SUM(views_count), 0),
@@ -584,4 +591,8 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_tenant_analytics_summary(UUID, DATE) TO anon, authenticated, service_role;
+-- Exposicion minima: el unico consumidor es src/app/api/analytics/route.ts, que la
+-- invoca con el cliente admin (service_role) despues de resolver el tenant desde la
+-- sesion del usuario. Ver la migracion 20261118214001_harden_get_tenant_analytics_summary.
+REVOKE ALL ON FUNCTION public.get_tenant_analytics_summary(UUID, DATE) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_tenant_analytics_summary(UUID, DATE) TO service_role;
