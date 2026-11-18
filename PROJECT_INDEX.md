@@ -35,7 +35,8 @@ Este documento sirve como el **índice maestro** y mapa de navegación para asis
 | `/api/storefront` | `src/app/api/storefront/route.ts` | Guarda y recupera los bloques visuales configurados en el Storefront Builder (`tenant_configs.settings.storefront`). |
 | `/api/image` | `src/app/api/image/route.ts` | Endpoint seguro para generar URLs firmadas de Imgproxy para recursos específicos. |
 | `/api/health` | `src/app/api/health/route.ts` | Healthcheck para Docker, Traefik y monitoreo de uptime (retorna status 200). |
-| `/api/analytics` | `src/app/api/analytics/route.ts` | Registro de visitas y eventos de visualización en catálogos públicos. |
+| `/api/analytics` | `src/app/api/analytics/route.ts` | **GET** con el resumen de métricas del dashboard del inquilino. Invoca el RPC `get_tenant_analytics_summary` con el cliente admin (`service_role`) después de resolver el tenant desde la membresía del usuario autenticado. |
+| `/api/analytics/track` | `src/app/api/analytics/track/route.ts` | **POST anónimo** que recibe los eventos de visita del catálogo público. El tenant se resuelve desde el header `Host` con `resolveTenantIdFromHost` — **nunca** desde el cuerpo del request. Acumula en RAM y `analytics-buffer` vacía el lote contra Supabase con `service_role`. |
 
 ---
 
@@ -51,6 +52,8 @@ Este documento sirve como el **índice maestro** y mapa de navegación para asis
 | `src/lib/cloudflare.ts` | Purga automatizada de caché en Cloudflare CDN por URLs específicas o purga total por Hostname. |
 | `src/lib/types.ts` | Tipos TypeScript principales del dominio: `PhotoItem`, `Album`, `CacheStructure`, `AppConfig`. |
 | `src/lib/utils.ts` | Funciones utilitarias como `slugify` (conversión de títulos a slugs limpios para URLs). |
+| `src/lib/tenant-host.ts` | Traduce un header `Host` a la clave canónica de un tenant (el subdominio, o el hostname completo si es dominio propio). Función pura, sin dependencias. Rechaza el dominio raíz, los subdominios reservados, IPs y dominios de infraestructura. Valida con una regex estricta porque la clave se interpola en un filtro PostgREST. |
+| `src/lib/tenant-resolver.ts` | `resolveTenantIdFromHost`: resuelve el `id` del tenant desde el Host consultando `tenants` por `subdomain` o `custom_domain` con `status = 'active'`. Cachea aciertos **y fallos** en memoria (5 min, máximo 500 entradas) para no golpear la base en cada beacon. |
 | `src/lib/supabase/client.ts` | Cliente Supabase para Browser / React Components (`createBrowserClient`). |
 | `src/lib/supabase/server.ts` | Cliente Supabase para Server Components y Route Handlers (`createServerClient` con cookies). |
 | `src/lib/supabase/admin.ts` | Cliente Supabase con privilegios `service_role` (`createAdminClient`) para operaciones internas del motor de sincronización. |
@@ -90,7 +93,8 @@ Este documento sirve como el **índice maestro** y mapa de navegación para asis
 | :--- | :--- |
 | `docker-compose.yml` | Despliegue en Docker Swarm / Portainer. Define el servicio `backend_api`, red `r4tlabsnet`, límites de recursos (4 CPU, 4GB RAM) y reglas de Traefik v3 (`Host('c4talogo.com') \|\| HostRegexp('.*\\.c4talogo\\.com')`). |
 | `Dockerfile` | Multi-stage build optimizado (`base`, `deps`, `builder`, `manager`) sobre Alpine con soporte para `libc6-compat` y ejecución de Next.js Standalone. |
-| `.github/workflows/docker-publish.yml` | Pipeline de CI/CD en GitHub Actions con `docker/setup-buildx-action@v3` y publicación en GitHub Container Registry (`ghcr.io`). |
+| `.github/workflows/deploy.yml` | Pipeline de CI/CD en GitHub Actions. Se dispara con `push` a `main`, tags `v*` o `workflow_dispatch`. Construye y publica **dos** imágenes en GitHub Container Registry (`ghcr.io`): el target por defecto con tags `latest` + `sha-<hash>`, y `target: manager` con `:manager` + `:<branch>` (o sea `:main`). El `image:` de `docker-compose.yml` consume justamente `:main`, así que **cada push a `main` sobrescribe la imagen que despliega Portainer**. |
+| `tests/tenant-host.test.mjs` | Regresiones de la resolución de tenant por Host. Se ejecuta con `npm test` (Node 22 con `--experimental-strip-types`, sin bundler). Incluye una alarma estática sobre el orden de argumentos de `recordMetricEvent`: si falta el primer argumento, `tsc` y `next build` **no** lo detectan y las métricas se pierden en silencio. |
 
 ---
 
@@ -101,3 +105,5 @@ Este documento sirve como el **índice maestro** y mapa de navegación para asis
 3. **Firmas de Imgproxy solo en el Backend**: `generateSignedImgproxyUrl` solo debe llamarse en Server Components, Server Actions o APIs, nunca exponer `IMGPROXY_KEY` ni `IMGPROXY_SALT` en el cliente.
 4. **Respetar la arquitectura Multi-Tenant**: Cada consulta a la base de datos debe filtrar por `tenant_id` o confiar en las políticas RLS de Supabase.
 5. **Auto-curación en Sincronización**: Al modificar `multitenant-sync.ts`, siempre preservar la pre-carga en memoria (`Map`), la comparación precisa por `md5Checksum` y la auto-recuperación si R2 está vacío.
+6. **El tenant nunca lo declara el cliente**: En cualquier endpoint anónimo, el `tenant_id` se resuelve en el servidor desde el header `Host` (`resolveTenantIdFromHost`), nunca desde el cuerpo del request ni desde un query param. Un `tenant_id` que llega del cliente permite inflar métricas o escribir en la tienda de otro inquilino. Si un endpoint o un RPC recibe el tenant como parámetro, ese parámetro es una vulnerabilidad hasta que se valide contra `private.has_tenant_access`.
+7. **No exponer RPC de Postgres a `anon` sin necesidad**: Antes de dejar `EXECUTE` para `PUBLIC`, `anon` o `authenticated`, verificar quién llama de verdad. En este proyecto el navegador **no** invoca RPCs: todo pasa por rutas de Next.js con el cliente admin (`service_role`). Una función `SECURITY DEFINER` corre como su dueño y **saltea RLS**, así que un grant de más equivale a abrir la tabla.
