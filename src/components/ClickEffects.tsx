@@ -12,6 +12,10 @@ interface Particle {
     x: number;
     y: number;
     emoji: string;
+    // El desplazamiento se sortea AL CREAR la particula, no al renderizarla: Math.random()
+    // durante el render es impuro y haria que el resultado cambie sin control.
+    xOffset: number;
+    yOffset: number;
 }
 
 export default function ClickEffects({ config }: Props) {
@@ -30,7 +34,9 @@ export default function ClickEffects({ config }: Props) {
                     id: Date.now() + i,
                     x: e.clientX,
                     y: e.clientY,
-                    emoji
+                    emoji,
+                    xOffset: (Math.random() - 0.5) * 100,
+                    yOffset: (Math.random() - 0.5) * 100
                 });
             }
 
@@ -50,15 +56,15 @@ export default function ClickEffects({ config }: Props) {
 
     return (
         <div className="fixed inset-0 pointer-events-none z-[100] overflow-hidden">
-            {particles.map((p, i) => (
+            {particles.map((p) => (
                 <div
                     key={p.id}
                     className="absolute text-xl animate-particle"
                     style={{
                         left: p.x,
                         top: p.y,
-                        '--x-offset': `${(Math.random() - 0.5) * 100}px`,
-                        '--y-offset': `${(Math.random() - 0.5) * 100}px`,
+                        '--x-offset': `${p.xOffset}px`,
+                        '--y-offset': `${p.yOffset}px`,
                     } as any}
                 >
                     {p.emoji}

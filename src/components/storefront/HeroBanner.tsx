@@ -21,7 +21,9 @@ export default function HeroBanner({ block, isPreview }: HeroBannerProps) {
     if (block.spacing === 'small') spacingClass = 'my-2';
     if (block.spacing === 'large') spacingClass = 'my-12';
 
-    const Content = () => (
+    // Un elemento JSX, no un componente: definir un componente dentro del render lo recrea
+    // en cada vuelta y le resetea el estado.
+    const content = (
         <div className={`relative w-full ${aspectClass} overflow-hidden rounded-none bg-gray-100 group ${spacingClass}`}>
             {block.aspectRatio === 'intrinsic' ? (
                 <img 
@@ -50,7 +52,7 @@ export default function HeroBanner({ block, isPreview }: HeroBannerProps) {
     );
 
     if (block.linkHref && !isPreview) {
-        return <a href={block.linkHref} className="block w-full"><Content /></a>;
+        return <a href={block.linkHref} className="block w-full">{content}</a>;
     }
-    return <Content />;
+    return content;
 }

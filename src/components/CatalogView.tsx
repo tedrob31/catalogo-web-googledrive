@@ -254,6 +254,12 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
         return () => window.removeEventListener('popstate', handlePopState);
     }, [rootAlbum]);
 
+    // Memoizado y ANTES del return temprano: un hook no puede quedar despues de una salida
+    // anticipada, o el orden de hooks cambia entre renders.
+    const plugins = useMemo(() => {
+        return config.allowPhotoDownload ? [Zoom, Download] : [Zoom];
+    }, [config.allowPhotoDownload]);
+
     if (!rootAlbum) {
         return (
             <div className="flex h-screen items-center justify-center p-8 bg-white dark:bg-black text-black dark:text-white">
@@ -322,10 +328,6 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
     // Lightbox handlers
     const openLightbox = (index: number) => setLightboxPhotoIndex(index);
     const closeLightbox = () => setLightboxPhotoIndex(-1);
-
-    const plugins = useMemo(() => {
-        return config.allowPhotoDownload ? [Zoom, Download] : [Zoom];
-    }, [config.allowPhotoDownload]);
 
     const isWhiteColor = !config.secondaryColor || config.secondaryColor.toLowerCase() === '#ffffff' || config.secondaryColor.toLowerCase() === '#fff';
     const hasCustomBgColor = !isWhiteColor;
