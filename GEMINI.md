@@ -8,7 +8,7 @@ Este archivo define las reglas obligatorias, patrones arquitectónicos y context
 Antes de modificar cualquier funcionalidad o proponer cambios, consulta los documentos maestros del proyecto:
 1. [ARCHITECTURE.md](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/ARCHITECTURE.md): Diagrama global C4, flujo de datos, sincronización espejo y entrega de imágenes.
 2. [PROJECT_INDEX.md](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/PROJECT_INDEX.md): Catálogo exhaustivo de archivos, responsabilidades y guía "qué editar según el requerimiento".
-3. [supabase/AUDIT_SCHEMA.sql](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/supabase/AUDIT_SCHEMA.sql): DDL auditado y consolidado de Supabase (tablas, RLS, triggers y funciones de seguridad).
+3. [supabase/schema.sql](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/supabase/schema.sql): esquema consolidado de Supabase (tablas, RLS, triggers y funciones de seguridad), **generado desde la base viva**, no escrito a mano. Ver `supabase/README.md`.
 
 ---
 

@@ -144,7 +144,7 @@ Ubicación: [src/lib/imgproxy.ts](file:///c:/Users/teddy/Documents/PROYECTO%20GO
 
 ## 6. Modelo de Datos y Roles (Supabase PostgreSQL)
 
-Consulte el DDL completo en [supabase/AUDIT_SCHEMA.sql](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/supabase/AUDIT_SCHEMA.sql).
+Consulte el DDL completo en [supabase/schema.sql](file:///c:/Users/teddy/Documents/PROYECTO%20GOOGLE%20ANTIGRAVITY/supabase/schema.sql), generado desde la base viva. Ver `supabase/README.md` para saber qué es la fuente de verdad del esquema.
 
 ### Jerarquía de Roles en `tenant_users`:
 * **`superadmin`**: Usuario maestro de la plataforma `c4talogo.com`. Acceso total de lectura y modificación a todos los inquilinos, métricas, planes y estados de cuenta en `app.c4talogo.com`.
