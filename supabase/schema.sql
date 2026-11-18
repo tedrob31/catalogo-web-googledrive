@@ -217,7 +217,6 @@ grant insert, select, update, delete, truncate, references, trigger, maintain on
 alter table public.google_integrations enable row level security;
 revoke all on table public.google_integrations from public, anon, authenticated, service_role;
 grant insert, select, update, delete, truncate, references, trigger, maintain on table public.google_integrations to postgres;
-grant select, update, maintain on table public.google_integrations to authenticated;
 grant insert, select, update, delete, truncate, references, trigger, maintain on table public.google_integrations to service_role;
 alter table public.photos enable row level security;
 revoke all on table public.photos from public, anon, authenticated, service_role;
