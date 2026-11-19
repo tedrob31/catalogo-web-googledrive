@@ -1,7 +1,7 @@
 'use client';
 
-import { FaPalette, FaImages, FaCamera, FaTrash, FaPlus, FaDownload, FaCheck } from 'react-icons/fa';
-import { THEME_PRESETS, ThemePreset, findMatchingPresetId } from '@/lib/theme-presets';
+import { FaCheck } from 'react-icons/fa';
+import { THEME_PRESETS, findMatchingPresetId } from '@/lib/theme-presets';
 
 interface DesignTabProps {
   configForm: any;
@@ -12,6 +12,77 @@ interface DesignTabProps {
   hasChanges?: boolean;
 }
 
+/** Interruptor con estado escrito: nunca sólo color. */
+function Switch({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="text-[12px] text-shell-muted tabular-nums">{checked ? 'Sí' : 'No'}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={onChange}
+        className={`flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+          checked ? 'bg-shell-accent' : 'bg-shell-raised border border-shell-line-strong'
+        }`}
+      >
+        <span
+          className={`h-4 w-4 rounded-full bg-white shadow transform transition-transform ${
+            checked ? 'translate-x-4' : 'translate-x-0'
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+/** Fila etiqueta / control, la unidad de densidad de este panel. */
+function Row({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-2 border-b border-shell-line py-3 last:border-b-0 md:grid-cols-[200px_1fr] md:items-center md:gap-4">
+      <div className="text-[13px] text-shell-ink-soft">
+        {label}
+        {hint && <small className="mt-0.5 block text-[11.5px] text-shell-muted">{hint}</small>}
+      </div>
+      <div className="flex flex-wrap items-center gap-3 text-[13.5px]">{children}</div>
+    </div>
+  );
+}
+
+function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
+  return (
+    <section aria-labelledby={id} className="mb-7">
+      <h2
+        id={id}
+        className="mb-1 border-b border-shell-line pb-2 text-[12px] font-bold uppercase tracking-[0.08em] text-shell-muted"
+      >
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+const selectCls =
+  'w-full max-w-xs cursor-pointer rounded-md border border-shell-line-strong bg-shell-raised px-3 py-1.5 text-[13px] text-shell-ink focus:outline-none focus:ring-2 focus:ring-shell-accent/60';
+
 export default function DesignTab({
   configForm,
   setConfigForm,
@@ -20,419 +91,251 @@ export default function DesignTab({
   onOpenMediaSelector,
   hasChanges = false,
 }: DesignTabProps) {
+  const currentPresetId = findMatchingPresetId({
+    primaryColor: configForm.primary_color,
+    secondaryColor: configForm.secondary_color,
+    textColor: configForm.text_color,
+    cardBorderColor: configForm.card_border_color,
+  });
+  const currentPreset = THEME_PRESETS.find((p) => p.id === currentPresetId);
+
+  const set = (patch: Record<string, unknown>) =>
+    setConfigForm((prev: any) => ({ ...prev, ...patch }));
+
   return (
-    <form onSubmit={onSaveConfig} className="space-y-6">
-      <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 space-y-6 shadow-sm">
-        <h2 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-          <FaPalette className="text-amber-400" />
-          <span>Estructura de Grilla y Columnas</span>
-        </h2>
+    <form onSubmit={onSaveConfig}>
+      <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-shell-ink">Diseño</h1>
+      <p className="mb-6 mt-1 max-w-[66ch] text-[13px] text-shell-muted">
+        Elegí un tema y, si querés, ajustá los colores uno por uno. Todo esto lo ve el visitante en
+        tu catálogo público.
+      </p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5">
-              Columnas en Pantallas de Escritorio (Desktop):
-            </label>
-            <select
-              value={configForm.grid_columns}
-              onChange={(e) =>
-                setConfigForm((prev: any) => ({ ...prev, grid_columns: Number(e.target.value) }))
-              }
-              className="w-full bg-zinc-950/80 border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/20 transition-all cursor-pointer"
-            >
-              <option value={2}>2 Columnas (Editorial grande)</option>
-              <option value={3}>3 Columnas</option>
-              <option value={4}>4 Columnas (Estándar)</option>
-              <option value={5}>5 Columnas (Recomendado)</option>
-              <option value={6}>6 Columnas (Compacto)</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5">
-              Columnas en Teléfonos Móviles:
-            </label>
-            <select
-              value={configForm.mobile_grid_columns}
-              onChange={(e) =>
-                setConfigForm((prev: any) => ({ ...prev, mobile_grid_columns: Number(e.target.value) }))
-              }
-              className="w-full bg-zinc-950/80 border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/20 transition-all cursor-pointer"
-            >
-              <option value={1}>1 Columna (Foto completa)</option>
-              <option value={2}>2 Columnas (Estándar tipo Instagram)</option>
-              <option value={3}>3 Columnas (Galería compacta)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Toggle Ocultar Títulos */}
-        <div className="p-4 bg-zinc-950/50 rounded-xl border border-zinc-800/80 flex items-center justify-between gap-4">
-          <div>
-            <div className="text-xs font-semibold text-zinc-200">Ocultar Títulos de Álbumes</div>
-            <div className="text-[11px] text-zinc-500 mt-0.5">
-              Muestra las portadas como banners limpios de catálogo sin texto visible debajo de la foto.
-            </div>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={Boolean(configForm.hide_album_titles)}
-            onClick={() =>
-              setConfigForm((prev: any) => ({ ...prev, hide_album_titles: !prev.hide_album_titles }))
-            }
-            className={`w-11 h-6 flex items-center rounded-full p-0.5 transition-colors cursor-pointer shrink-0 ${
-              configForm.hide_album_titles ? 'bg-amber-500' : 'bg-zinc-800 border border-zinc-700/60'
-            }`}
+      {/* ---------- 1. Grilla ---------- */}
+      <Section id="h-grilla" title="Grilla">
+        <Row label="Columnas en escritorio" hint="Cuántas fotos por fila en pantallas grandes">
+          <select
+            value={configForm.grid_columns}
+            onChange={(e) => set({ grid_columns: Number(e.target.value) })}
+            className={selectCls}
           >
-            <div
-              className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${
-                configForm.hide_album_titles ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
+            <option value={2}>2 · editorial grande</option>
+            <option value={3}>3</option>
+            <option value={4}>4 · estándar</option>
+            <option value={5}>5 · recomendado</option>
+            <option value={6}>6 · compacto</option>
+          </select>
+        </Row>
 
-        <h2 className="text-sm font-semibold text-zinc-100 pt-4 border-t border-zinc-800/80 flex items-center justify-between">
-          <span>Paleta de Colores y Estilo</span>
-        </h2>
+        <Row label="Columnas en celular" hint="Cuántas fotos por fila en el teléfono">
+          <select
+            value={configForm.mobile_grid_columns}
+            onChange={(e) => set({ mobile_grid_columns: Number(e.target.value) })}
+            className={selectCls}
+          >
+            <option value={1}>1 · foto completa</option>
+            <option value={2}>2 · tipo Instagram</option>
+            <option value={3}>3 · galería compacta</option>
+          </select>
+        </Row>
 
-        {/* SELECTOR DE TEMAS PREDEFINIDOS (1-CLIC) */}
-        <div>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-zinc-200">Temas Predefinidos de Tendencia</span>
-                <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-mono border border-amber-500/20">
-                  1 Clic
-                </span>
-              </div>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
-                Aplica combinaciones armónicas inspiradas en las mejores tiendas. Los tonos adaptan fondo, header, letras y tarjetas.
-              </p>
-            </div>
+        <Row label="Títulos de álbum" hint="Si los ocultás, la portada queda como banner limpio">
+          <Switch
+            checked={Boolean(configForm.hide_album_titles)}
+            onChange={() => set({ hide_album_titles: !configForm.hide_album_titles })}
+            label="Ocultar títulos de álbumes"
+          />
+        </Row>
+      </Section>
 
-            {findMatchingPresetId({
-              primaryColor: configForm.primary_color,
-              secondaryColor: configForm.secondary_color,
-              textColor: configForm.text_color,
-              cardBorderColor: configForm.card_border_color,
-            }) ? (
-              <span className="text-[10px] font-mono font-medium px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 self-start sm:self-auto shrink-0 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span>Tema: {THEME_PRESETS.find(p => p.id === findMatchingPresetId({
-                  primaryColor: configForm.primary_color,
-                  secondaryColor: configForm.secondary_color,
-                  textColor: configForm.text_color,
-                  cardBorderColor: configForm.card_border_color,
-                }))?.name}</span>
-              </span>
+      {/* ---------- 2. Tema ---------- */}
+      <Section id="h-tema" title="Tema">
+        <div className="flex flex-wrap items-baseline gap-2 py-3">
+          <span className="text-[13px] text-shell-ink-soft">Empezá por un tema</span>
+          <span className="text-[11.5px] text-shell-muted">
+            aplica fondo, acento, texto y bordes de una sola vez
+          </span>
+          <span className="ml-auto text-[11.5px]">
+            {currentPreset ? (
+              <span className="font-semibold text-shell-accent">Tema: {currentPreset.name}</span>
             ) : (
-              <span className="text-[10px] font-mono font-medium px-2.5 py-1 rounded-md bg-zinc-800/80 text-zinc-400 border border-zinc-700/60 self-start sm:self-auto shrink-0">
-                Personalizado
-              </span>
+              <span className="text-shell-muted">Personalizado · ningún tema coincide</span>
             )}
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {THEME_PRESETS.map((preset) => {
-              const currentId = findMatchingPresetId({
-                primaryColor: configForm.primary_color,
-                secondaryColor: configForm.secondary_color,
-                textColor: configForm.text_color,
-                cardBorderColor: configForm.card_border_color,
-              });
-              const isSelected = currentId === preset.id;
-
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => {
-                    setConfigForm((prev: any) => ({
-                      ...prev,
-                      primary_color: preset.primaryColor,
-                      secondary_color: preset.secondaryColor,
-                      text_color: preset.textColor,
-                      card_border_color: preset.cardBorderColor,
-                      card_border_width: preset.cardBorderWidth,
-                    }));
-                  }}
-                  className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative group flex flex-col justify-between ${
-                    isSelected
-                      ? 'bg-zinc-800/90 border-amber-500 ring-1 ring-amber-500 shadow-md'
-                      : 'bg-zinc-950/60 hover:bg-zinc-900 border-zinc-800 hover:border-zinc-700'
-                  }`}
-                >
-                  <div className="w-full">
-                    {/* Barra de Muestras de Color */}
-                    <div className="h-6 rounded-lg overflow-hidden border border-zinc-700/60 flex mb-2 shadow-inner w-full">
-                      <div
-                        className="flex-1"
-                        style={{ backgroundColor: preset.secondaryColor }}
-                        title="Fondo principal"
-                      />
-                      <div
-                        className="w-5"
-                        style={{ backgroundColor: preset.primaryColor }}
-                        title="Color de acento / botones"
-                      />
-                      <div
-                        className="w-5"
-                        style={{ backgroundColor: preset.textColor }}
-                        title="Color de texto"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-bold text-zinc-200 group-hover:text-white truncate">
-                        {preset.name}
-                      </span>
-                      {isSelected && (
-                        <FaCheck className="text-amber-400 text-[10px] shrink-0" />
-                      )}
-                    </div>
-                    <span className="text-[10px] text-zinc-400 block truncate mt-0.5">
-                      {preset.category}
-                    </span>
-                  </div>
-
-                  <p className="text-[10px] text-zinc-500 mt-2 line-clamp-2 leading-tight">
-                    {preset.description}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
+          </span>
         </div>
 
-        {/* AJUSTE MANUAL FINO DE COLORES */}
-        <div className="pt-4 border-t border-zinc-800/80">
-          <div className="mb-4">
-            <span className="text-xs font-semibold text-zinc-300 block">
-              Ajuste Fino de Colores (Opcional)
-            </span>
-            <span className="text-[11px] text-zinc-500">
-              Modifica tonos específicos si deseas una identidad única a partir del tema base.
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-2">
-                Color Primario (Encabezados/Botones):
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={configForm.primary_color}
-                  onChange={(e) =>
-                    setConfigForm((prev: any) => ({ ...prev, primary_color: e.target.value }))
-                  }
-                  className="w-10 h-10 rounded-xl border border-zinc-700 bg-zinc-900 cursor-pointer p-0.5"
-                />
-                <span className="text-xs font-mono text-zinc-300">{configForm.primary_color}</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-2">
-                Color Secundario (Fondo/Superficies):
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={configForm.secondary_color}
-                  onChange={(e) =>
-                    setConfigForm((prev: any) => ({ ...prev, secondary_color: e.target.value }))
-                  }
-                  className="w-10 h-10 rounded-xl border border-zinc-700 bg-zinc-900 cursor-pointer p-0.5"
-                />
-                <span className="text-xs font-mono text-zinc-300">{configForm.secondary_color}</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-2">Color de Textos:</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={configForm.text_color}
-                  onChange={(e) =>
-                    setConfigForm((prev: any) => ({ ...prev, text_color: e.target.value }))
-                  }
-                  className="w-10 h-10 rounded-xl border border-zinc-700 bg-zinc-900 cursor-pointer p-0.5"
-                />
-                <span className="text-xs font-mono text-zinc-300">{configForm.text_color}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-800/80">
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-1.5">
-              Grosor de Borde de Tarjetas (px):
-            </label>
-            <input
-              type="number"
-              min={0}
-              max={8}
-              value={configForm.card_border_width}
-              onChange={(e) =>
-                setConfigForm((prev: any) => ({ ...prev, card_border_width: Number(e.target.value) }))
-              }
-              className="w-full bg-zinc-950/80 border border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs text-zinc-200 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/20"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-zinc-400 mb-2">
-              Color del Borde de Tarjetas:
-            </label>
-            <div className="flex items-center gap-3">
-              <input
-                type="color"
-                value={configForm.card_border_color}
-                onChange={(e) =>
-                  setConfigForm((prev: any) => ({ ...prev, card_border_color: e.target.value }))
+        <div className="grid grid-cols-2 gap-2 pb-4 sm:grid-cols-4">
+          {THEME_PRESETS.map((preset) => {
+            const isSelected = currentPresetId === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                title={preset.description}
+                aria-pressed={isSelected}
+                onClick={() =>
+                  set({
+                    primary_color: preset.primaryColor,
+                    secondary_color: preset.secondaryColor,
+                    text_color: preset.textColor,
+                    card_border_color: preset.cardBorderColor,
+                    card_border_width: preset.cardBorderWidth,
+                  })
                 }
-                className="w-10 h-10 rounded-xl border border-zinc-700 bg-zinc-900 cursor-pointer p-0.5"
-              />
-              <span className="text-xs font-mono text-zinc-300">{configForm.card_border_color}</span>
-            </div>
-          </div>
+                className={`rounded-md border p-2 text-left transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'border-shell-accent bg-shell-raised'
+                    : 'border-shell-line hover:border-shell-line-strong hover:bg-shell-raised'
+                }`}
+              >
+                <div className="mb-1.5 flex h-4 w-full overflow-hidden rounded-sm border border-shell-line-strong">
+                  <span className="flex-1" style={{ backgroundColor: preset.secondaryColor }} />
+                  <span className="w-3" style={{ backgroundColor: preset.primaryColor }} />
+                  <span className="w-3" style={{ backgroundColor: preset.textColor }} />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="truncate text-[12.5px] font-semibold text-shell-ink">
+                    {preset.name}
+                  </span>
+                  {isSelected && <FaCheck className="shrink-0 text-[9px] text-shell-accent" />}
+                </div>
+                <span className="block truncate text-[11px] text-shell-muted">{preset.category}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Foto de Fondo Fija (Wallpaper) */}
-        <div className="pt-4 border-t border-zinc-800/80 space-y-3">
-          <div>
-            <span className="text-xs font-semibold text-zinc-200 block">Foto de Fondo Fija del Catálogo (Wallpaper)</span>
-            <span className="text-[11px] text-zinc-500">
-              Se mantendrá fija de fondo mientras los visitantes se desplazan por tu tienda.
-            </span>
-          </div>
+        <div className="flex flex-wrap items-baseline gap-2 border-t border-shell-line pt-3">
+          <span className="text-[13px] text-shell-ink-soft">Ajuste fino</span>
+          <span className="text-[11.5px] text-shell-muted">
+            opcional · cada cambio acá te saca del tema elegido
+          </span>
+        </div>
 
+        {[
+          { key: 'primary_color', label: 'Color primario', hint: 'Botones y encabezados' },
+          { key: 'secondary_color', label: 'Color secundario', hint: 'Fondo y superficies' },
+          { key: 'text_color', label: 'Color de texto', hint: 'Títulos y descripciones' },
+        ].map((field) => (
+          <Row key={field.key} label={field.label} hint={field.hint}>
+            <input
+              type="color"
+              aria-label={field.label}
+              value={configForm[field.key]}
+              onChange={(e) => set({ [field.key]: e.target.value })}
+              className="h-8 w-8 cursor-pointer rounded-md border border-shell-line-strong bg-shell-raised p-0.5"
+            />
+            <span className="tabular-nums text-shell-ink-soft">{configForm[field.key]}</span>
+          </Row>
+        ))}
+      </Section>
+
+      {/* ---------- 3. Tarjetas ---------- */}
+      <Section id="h-tarjetas" title="Tarjetas del catálogo">
+        <Row label="Grosor del borde" hint="0 quita el borde por completo">
+          <input
+            type="number"
+            min={0}
+            max={8}
+            aria-label="Grosor de borde en píxeles"
+            value={configForm.card_border_width}
+            onChange={(e) => set({ card_border_width: Number(e.target.value) })}
+            className={`${selectCls} max-w-[6rem] tabular-nums`}
+          />
+          <span className="text-[12px] text-shell-muted">px</span>
+        </Row>
+        <Row label="Color del borde">
+          <input
+            type="color"
+            aria-label="Color del borde de tarjetas"
+            value={configForm.card_border_color}
+            onChange={(e) => set({ card_border_color: e.target.value })}
+            className="h-8 w-8 cursor-pointer rounded-md border border-shell-line-strong bg-shell-raised p-0.5"
+          />
+          <span className="tabular-nums text-shell-ink-soft">{configForm.card_border_color}</span>
+        </Row>
+      </Section>
+
+      {/* ---------- 4. Fondo ---------- */}
+      <Section id="h-fondo" title="Foto de fondo">
+        <Row label="Wallpaper" hint="Queda fija mientras el visitante scrollea">
           {configForm.background_image ? (
-            <div className="p-3.5 bg-zinc-950/60 border border-zinc-800 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5 min-w-0 w-full sm:w-auto">
-                <div className="relative w-24 h-16 rounded-xl overflow-hidden border border-zinc-700/60 bg-zinc-900 shrink-0 shadow-inner">
-                  <img
-                    src={configForm.background_image}
-                    alt="Vista previa fondo"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="min-w-0">
-                  <span className="text-xs font-semibold text-zinc-200 block truncate">Foto de fondo activa</span>
-                  <span className="text-[10px] text-zinc-500 block truncate font-mono">
-                    {configForm.background_image.split('/').pop()?.split('?')[0] || 'Foto seleccionada'}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                {onOpenMediaSelector && (
-                  <button
-                    type="button"
-                    onClick={() => onOpenMediaSelector('__BACKGROUND__')}
-                    className="px-3 py-1.5 rounded-xl text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 transition cursor-pointer flex items-center gap-1.5"
-                  >
-                    <FaCamera className="text-[10px] text-amber-400" />
-                    <span>Cambiar</span>
-                  </button>
-                )}
+            <>
+              <span className="h-10 w-16 shrink-0 overflow-hidden rounded-md border border-shell-line-strong bg-shell-raised">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={configForm.background_image}
+                  alt="Vista previa del fondo"
+                  className="h-full w-full object-cover"
+                />
+              </span>
+              <span className="truncate text-[12px] text-shell-muted">
+                {configForm.background_image.split('/').pop()?.split('?')[0] || 'Foto seleccionada'}
+              </span>
+              {onOpenMediaSelector && (
                 <button
                   type="button"
-                  onClick={() => setConfigForm((prev: any) => ({ ...prev, background_image: '' }))}
-                  className="p-2 rounded-xl text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition cursor-pointer"
-                  title="Quitar foto de fondo"
+                  onClick={() => onOpenMediaSelector('__BACKGROUND__')}
+                  className="cursor-pointer rounded-md border border-shell-line-strong bg-shell-raised px-2.5 py-1 text-[12.5px] font-semibold text-shell-ink hover:border-shell-line-strong"
                 >
-                  <FaTrash className="text-xs" />
+                  Cambiar
                 </button>
-              </div>
-            </div>
-          ) : (
-            <div
-              onClick={() => onOpenMediaSelector && onOpenMediaSelector('__BACKGROUND__')}
-              className="p-5 bg-zinc-950/40 hover:bg-zinc-900/60 border border-dashed border-zinc-800 hover:border-zinc-700 rounded-2xl flex items-center justify-between gap-3 cursor-pointer transition group"
-            >
-              <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 group-hover:text-amber-400 transition">
-                  <FaImages className="text-sm" />
-                </div>
-                <div>
-                  <span className="text-xs font-medium text-zinc-300 group-hover:text-white block transition">
-                    Sin foto de fondo (usa color liso)
-                  </span>
-                  <span className="text-[11px] text-zinc-500">
-                    Haz clic para elegir una imagen de tu carpeta de portadas.
-                  </span>
-                </div>
-              </div>
+              )}
               <button
                 type="button"
-                className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-900 text-zinc-300 border border-zinc-800 group-hover:border-amber-500/40 group-hover:text-amber-400 transition flex items-center gap-1 pointer-events-none"
+                onClick={() => set({ background_image: '' })}
+                className="cursor-pointer rounded-md px-2 py-1 text-[12.5px] text-shell-muted hover:text-shell-danger"
               >
-                <FaPlus className="text-[10px]" />
-                <span>Elegir fondo</span>
+                Quitar
               </button>
-            </div>
+            </>
+          ) : (
+            <>
+              <span className="text-[13px] text-shell-ink-soft">Sin foto · usa color liso</span>
+              <button
+                type="button"
+                onClick={() => onOpenMediaSelector?.( '__BACKGROUND__')}
+                className="cursor-pointer rounded-md border border-shell-line-strong bg-shell-raised px-2.5 py-1 text-[12.5px] font-semibold text-shell-ink"
+              >
+                Elegir fondo
+              </button>
+            </>
           )}
+        </Row>
 
-          <div className="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl text-[11px] text-zinc-400 space-y-1">
-            <span className="font-semibold text-zinc-300 block">📐 Recomendaciones de medida para la foto de fondo:</span>
-            <ul className="list-disc list-inside text-zinc-500 space-y-0.5">
-              <li><strong>1920x1080 px</strong> para pantallas de escritorio (horizontal).</li>
-              <li><strong>1080x1920 px</strong> si tu catálogo es enfocado en celulares (vertical).</li>
-              <li>Formato recomendado: <strong>JPG o WebP</strong> liviano (&lt; 300 kB) para carga instantánea.</li>
-            </ul>
-          </div>
-        </div>
+        <p className="py-3 text-[11.5px] leading-relaxed text-shell-muted">
+          Medidas: <strong className="text-shell-ink-soft">1920×1080</strong> para escritorio,{' '}
+          <strong className="text-shell-ink-soft">1080×1920</strong> si tu catálogo es vertical.
+          JPG o WebP por debajo de <strong className="text-shell-ink-soft">300 kB</strong> para que
+          cargue al instante.
+        </p>
+      </Section>
 
-        {/* Permiso de Descarga de Fotos */}
-        <div className="p-4 bg-zinc-950/50 rounded-xl border border-zinc-800/80 flex items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 shrink-0 mt-0.5">
-              <FaDownload className="text-xs" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-zinc-200">Habilitar Descarga de Fotos para Clientes</div>
-              <div className="text-[11px] text-zinc-500 mt-0.5 leading-relaxed">
-                Muestra un botón de descarga en el visor de fotos en alta resolución. La descarga se procesa directamente desde Cloudflare R2 sin costo de transferencia.
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={Boolean(configForm.allow_photo_download)}
-            onClick={() =>
-              setConfigForm((prev: any) => ({ ...prev, allow_photo_download: !prev.allow_photo_download }))
-            }
-            className={`w-11 h-6 flex items-center rounded-full p-0.5 transition-colors cursor-pointer shrink-0 ml-4 ${
-              configForm.allow_photo_download ? 'bg-amber-500' : 'bg-zinc-800 border border-zinc-700/60'
-            }`}
-          >
-            <div
-              className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${
-                configForm.allow_photo_download ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
-          </button>
-        </div>
+      {/* ---------- 5. Visor ---------- */}
+      <Section id="h-visor" title="Visor de fotos">
+        <Row label="Descarga de fotos" hint="Botón de descarga en alta resolución, servido desde R2">
+          <Switch
+            checked={Boolean(configForm.allow_photo_download)}
+            onChange={() => set({ allow_photo_download: !configForm.allow_photo_download })}
+            label="Permitir descarga de fotos"
+          />
+        </Row>
+      </Section>
 
-        {/* Botón Guardar */}
+      <div className="flex items-center gap-2 border-t border-shell-line pt-4">
         <button
           type="submit"
           disabled={!hasChanges || savingConfig}
-          className={`w-full py-3 font-semibold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 ${
+          className={`rounded-md px-3.5 py-2 text-[12.5px] font-semibold transition ${
             hasChanges && !savingConfig
-              ? 'bg-zinc-100 hover:bg-white text-zinc-950 active:scale-[0.99] cursor-pointer shadow-md'
-              : 'bg-zinc-900/60 text-zinc-600 border border-zinc-800/60 cursor-not-allowed opacity-50'
+              ? 'cursor-pointer border border-shell-accent bg-shell-accent text-shell-accent-ink'
+              : 'cursor-not-allowed border border-shell-line bg-shell-raised text-shell-muted opacity-60'
           }`}
         >
-          {savingConfig ? 'Guardando diseño...' : hasChanges ? 'Guardar Cambios de Diseño' : 'Sin cambios por guardar'}
+          {savingConfig ? 'Guardando…' : 'Guardar cambios'}
         </button>
+        <span className="ml-auto text-[11.5px] text-shell-muted">
+          {hasChanges ? 'Tenés cambios sin guardar' : 'Sin cambios por guardar'}
+        </span>
       </div>
     </form>
   );
