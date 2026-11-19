@@ -229,7 +229,6 @@ grant insert, select, update, delete, truncate, references, trigger, maintain on
 alter table public.platform_whitelist enable row level security;
 revoke all on table public.platform_whitelist from public, anon, authenticated, service_role;
 grant insert, select, update, delete, truncate, references, trigger, maintain on table public.platform_whitelist to postgres;
-grant insert, select, update, delete, truncate, references, trigger, maintain on table public.platform_whitelist to anon;
 grant insert, select, update, delete, truncate, references, trigger, maintain on table public.platform_whitelist to authenticated;
 grant insert, select, update, delete, truncate, references, trigger, maintain on table public.platform_whitelist to service_role;
 alter table public.subscription_plans enable row level security;
@@ -685,7 +684,6 @@ create policy "Public read photos for active tenants" on public.photos for selec
    FROM tenants t
   WHERE ((t.id = photos.tenant_id) AND (t.status = 'active'::text)))));
 create policy "Tenant members manage own photos" on public.photos for all to public using (private.has_tenant_access(tenant_id));
-create policy "Public read whitelist" on public.platform_whitelist for select to public using (true);
 create policy "Superadmin manage whitelist" on public.platform_whitelist for all to public using (private.is_superadmin());
 create policy "Public read subscription plans" on public.subscription_plans for select to public using (true);
 create policy "Superadmin manage subscription plans" on public.subscription_plans for all to public using (private.is_superadmin());
