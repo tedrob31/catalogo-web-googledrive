@@ -67,6 +67,76 @@ interface TreeNode extends AlbumItem {
   totalPhotosRecursive: number;
 }
 
+/** Section heading: uppercase 12px title plus one short sentence of intent. */
+function Section({
+  id,
+  title,
+  note,
+  children,
+}: {
+  id: string;
+  title: string;
+  note?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section aria-labelledby={id} className="mb-8">
+      <h2
+        id={id}
+        className="border-b border-shell-line pb-2 text-[12px] font-bold uppercase tracking-[0.08em] text-shell-muted"
+      >
+        {title}
+      </h2>
+      {note && (
+        <p className="mb-1 mt-2 max-w-[66ch] text-[12.5px] leading-relaxed text-shell-ink-soft">
+          {note}
+        </p>
+      )}
+      {children}
+    </section>
+  );
+}
+
+/** Label / control row: the density unit of this panel. */
+function Row({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-1 gap-2 border-b border-shell-line py-3 last:border-b-0 md:grid-cols-[200px_1fr] md:items-center md:gap-4">
+      <div className="text-[13px] text-shell-ink-soft">
+        {label}
+        {hint && <small className="mt-0.5 block text-[11.5px] text-shell-muted">{hint}</small>}
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-[13.5px]">{children}</div>
+    </div>
+  );
+}
+
+const btn =
+  'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-shell-line-strong bg-shell-raised px-2.5 py-1 text-[12.5px] font-semibold text-shell-ink transition-colors hover:bg-shell-surface disabled:cursor-not-allowed disabled:opacity-50';
+
+const btnPrimary =
+  'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-shell-accent bg-shell-accent px-3 py-1.5 text-[12.5px] font-semibold text-shell-accent-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50';
+
+const btnQuiet =
+  'inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[12.5px] text-shell-muted transition-colors hover:text-shell-danger disabled:cursor-not-allowed disabled:opacity-50';
+
+const inputCls =
+  'w-full rounded-md border border-shell-line-strong bg-shell-raised py-1.5 pl-7 pr-8 text-[13px] text-shell-ink placeholder:text-shell-muted focus:outline-none focus:ring-2 focus:ring-shell-accent/60';
+
+const tagBase =
+  'inline-flex shrink-0 items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] font-semibold leading-none';
+const tagOk = `${tagBase} border-shell-accent/40 bg-shell-accent/10 text-shell-accent`;
+const tagWarn = `${tagBase} border-shell-warn/40 bg-shell-warn/10 text-shell-warn`;
+const tagDanger = `${tagBase} border-shell-danger/40 bg-shell-danger/10 text-shell-danger`;
+const tagOff = `${tagBase} border-shell-line-strong bg-shell-raised text-shell-muted`;
+
 export default function DriveTab({
   integration,
   searchQuery,
@@ -183,35 +253,35 @@ export default function DriveTab({
       <div key={node.id} className="flex flex-col">
         {/* Fila del Álbum */}
         <div
-          className={`py-3 px-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl transition border ${
-            isChanged
-              ? 'bg-amber-500/10 border-amber-500/40 shadow-sm'
-              : 'border-transparent hover:bg-zinc-800/40'
+          className={`flex flex-col gap-2 border-b border-shell-line px-2 py-2.5 transition-colors sm:flex-row sm:items-center sm:justify-between ${
+            isChanged ? 'bg-shell-raised' : 'hover:bg-shell-surface'
           }`}
-          style={{ paddingLeft: `${Math.max(12, node.level * 24 + 12)}px` }}
+          style={{ paddingLeft: `${node.level * 18 + 8}px` }}
         >
           {/* Lado Izquierdo: Toggle, Icono y Datos */}
-          <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
             {/* Botón Expandir/Colapsar si tiene hijos */}
             {hasChildren ? (
               <button
                 type="button"
                 onClick={() => toggleExpand(node.id)}
-                className="w-6 h-6 rounded-lg bg-zinc-800/80 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-100 flex items-center justify-center transition shrink-0 cursor-pointer border border-zinc-700/50"
+                aria-expanded={isExpanded}
+                aria-label={isExpanded ? 'Colapsar subcarpetas' : 'Expandir subcarpetas'}
                 title={isExpanded ? 'Colapsar subcarpetas' : 'Expandir subcarpetas'}
+                className="flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded border border-shell-line-strong bg-shell-raised text-shell-muted transition-colors hover:text-shell-ink focus:outline-none focus:ring-2 focus:ring-shell-accent/60"
               >
                 {isExpanded ? (
-                  <FaChevronDown className="text-[10px]" />
+                  <FaChevronDown className="text-[9px]" aria-hidden />
                 ) : (
-                  <FaChevronRight className="text-[10px]" />
+                  <FaChevronRight className="text-[9px]" aria-hidden />
                 )}
               </button>
             ) : (
-              <div className="w-6 shrink-0" />
+              <div className="w-5 shrink-0" />
             )}
 
             {/* Miniatura de Portada */}
-            <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800/80 shrink-0 flex items-center justify-center shadow-inner">
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-shell-line-strong bg-shell-bg">
               {displayCover ? (
                 <Image
                   src={displayCover}
@@ -221,54 +291,46 @@ export default function DriveTab({
                   className="object-cover"
                 />
               ) : (
-                <FaImages className="text-zinc-600 text-base" />
+                <FaImages className="text-[13px] text-shell-muted" aria-hidden />
               )}
             </div>
 
             {/* Información del Álbum */}
-            <div className="truncate min-w-0">
+            <div className="min-w-0 truncate">
               <div className="flex items-center gap-2">
                 {hasChildren ? (
                   isExpanded ? (
-                    <FaFolderOpen className="text-amber-400 text-xs shrink-0" />
+                    <FaFolderOpen className="shrink-0 text-[11px] text-shell-accent" aria-hidden />
                   ) : (
-                    <FaFolder className="text-amber-400 text-xs shrink-0" />
+                    <FaFolder className="shrink-0 text-[11px] text-shell-accent" aria-hidden />
                   )
                 ) : (
-                  <FaFolder className="text-zinc-500 text-xs shrink-0" />
+                  <FaFolder className="shrink-0 text-[11px] text-shell-muted" aria-hidden />
                 )}
-                <span className="text-xs sm:text-sm font-semibold text-zinc-100 truncate">
+                <span className="truncate text-[13px] font-semibold text-shell-ink">
                   {node.name}
                 </span>
 
                 {/* Badge de Portada */}
                 {customCover ? (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 font-medium border border-amber-500/30 shrink-0">
-                    Personalizada
-                  </span>
+                  <span className={tagWarn}>Personalizada</span>
                 ) : node.photosCount && node.photosCount > 0 ? (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-800 text-zinc-400 font-medium shrink-0 border border-zinc-700/50">
-                    1ra Foto
-                  </span>
+                  <span className={tagOff}>1ra Foto</span>
                 ) : null}
 
-                {isChanged && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-medium border border-rose-500/30 shrink-0 animate-pulse">
-                    Sin guardar
-                  </span>
-                )}
+                {isChanged && <span className={tagDanger}>Sin guardar</span>}
               </div>
 
-              <div className="text-[11px] text-zinc-400 flex items-center gap-2 mt-0.5 truncate">
-                <span className="font-mono text-zinc-500 truncate max-w-xs">{node.path || node.slug}</span>
-                <span>•</span>
-                <span className="text-zinc-300 font-medium shrink-0">
+              <div className="mt-0.5 flex items-center gap-2 truncate text-[11.5px] text-shell-muted">
+                <span className="max-w-xs truncate">{node.path || node.slug}</span>
+                <span aria-hidden>·</span>
+                <span className="shrink-0 tabular-nums text-shell-ink-soft">
                   {node.photosCount || 0} fotos directas
                 </span>
                 {hasChildren && (
                   <>
-                    <span>•</span>
-                    <span className="text-amber-400/90 font-medium shrink-0">
+                    <span aria-hidden>·</span>
+                    <span className="shrink-0 tabular-nums text-shell-accent">
                       {node.children.length} subcarpetas ({node.totalPhotosRecursive} fotos total)
                     </span>
                   </>
@@ -278,14 +340,14 @@ export default function DriveTab({
           </div>
 
           {/* Lado Derecho: Acciones de Portada */}
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto pl-9 sm:pl-0">
+          <div className="flex shrink-0 items-center gap-1.5 self-end pl-8 sm:self-auto sm:pl-0">
             <button
               type="button"
               onClick={() => onOpenCoverSelector(node.id)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/70 text-zinc-100 rounded-lg text-xs font-medium transition cursor-pointer shadow-sm"
+              className={btn}
             >
-              <FaEdit className="text-[10px]" />
-              <span>{customCover ? 'Cambiar Portada' : 'Elegir Portada'}</span>
+              <FaEdit className="text-[9px]" aria-hidden />
+              <span>{customCover ? 'Cambiar portada' : 'Elegir portada'}</span>
             </button>
 
             {customCover && (
@@ -293,9 +355,9 @@ export default function DriveTab({
                 type="button"
                 onClick={() => onResetCover(node.id)}
                 title="Restablecer a la primera foto del álbum"
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg text-xs font-medium transition cursor-pointer"
+                className={btnQuiet}
               >
-                <FaUndo className="text-[10px]" />
+                <FaUndo className="text-[9px]" aria-hidden />
                 <span>Por defecto</span>
               </button>
             )}
@@ -304,7 +366,7 @@ export default function DriveTab({
 
         {/* Hijos Anidados (si está expandido) */}
         {hasChildren && isExpanded && (
-          <div className="border-l border-zinc-800/80 ml-6 pl-2 my-0.5 space-y-1">
+          <div className="ml-3 border-l border-shell-line pl-1">
             {node.children.map((child) => renderTreeNode(child))}
           </div>
         )}
@@ -313,199 +375,237 @@ export default function DriveTab({
   }
 
   return (
-    <div className="space-y-6">
-      {/* PASO 1: VINCULAR CUENTA DE GOOGLE DRIVE */}
-      <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 shadow-sm">
-        <h2 className="text-base font-bold text-zinc-100 mb-2 flex items-center gap-2">
-          <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 text-amber-400 flex items-center justify-center text-xs font-mono font-bold shadow-sm">
-            1
-          </span>
-          <span>Vincular Cuenta de Google Drive</span>
-        </h2>
-        <p className="text-xs text-zinc-400 mb-4">
-          Autoriza a c4talogo.com a leer tus carpetas y fotos de Google Drive en modo de solo lectura. Puedes usar una cuenta de Google diferente a la de inicio de sesión.
-        </p>
+    <div>
+      <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-shell-ink">Drive</h1>
+      <p className="mb-7 mt-1 max-w-[66ch] text-[13px] leading-relaxed text-shell-muted">
+        Dos carpetas y listo. Elegís la carpeta del catálogo y la de portadas: el catálogo se arma
+        solo con la jerarquía que ya tenés en tu Drive, donde cada carpeta es un álbum y cada foto un
+        ítem. No hay productos ni descripciones que cargar.
+      </p>
 
+      {/* ---------- 1. Conectar Google Drive ---------- */}
+      <Section
+        id="h-cuenta"
+        title="1 · Conectar Google Drive"
+        note="Damos acceso de solo lectura a tus carpetas y fotos: c4talogo nunca modifica nada en tu Drive."
+      >
         {integration?.is_connected ? (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs">
-            <div className="flex items-center gap-2 font-medium">
-              <FaCheckCircle className="text-emerald-400 text-sm shrink-0" />
-              <span>
-                Cuenta Drive vinculada: <strong className="text-white font-semibold">{integration.google_email}</strong>
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <a
-                href="/api/auth/google"
-                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/80 text-zinc-100 rounded-lg transition font-medium text-xs shadow-sm"
+          <Row label="Cuenta conectada" hint="Podés usar una cuenta de Google distinta a la del login">
+            <span className="inline-flex min-w-0 items-center gap-1.5 text-shell-ink">
+              <FaCheckCircle className="shrink-0 text-[11px] text-shell-accent" aria-hidden />
+              <span className="truncate">{integration.google_email}</span>
+            </span>
+            <span className={tagOk}>Vinculada</span>
+            <a href="/api/auth/google" className={btn}>
+              Cambiar cuenta
+            </a>
+            {onDisconnectDrive && (
+              <button
+                type="button"
+                onClick={onDisconnectDrive}
+                disabled={disconnectingDrive}
+                className={btnQuiet}
+                title="Revocar acceso en los servidores de Google y desvincular cuenta"
               >
-                Cambiar cuenta
-              </a>
-              {onDisconnectDrive && (
-                <button
-                  type="button"
-                  onClick={onDisconnectDrive}
-                  disabled={disconnectingDrive}
-                  className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 rounded-lg transition font-medium text-xs flex items-center gap-1.5 disabled:opacity-50"
-                  title="Revocar acceso en los servidores de Google y desvincular cuenta"
-                >
-                  <FaUnlink className="text-xs" />
-                  <span>{disconnectingDrive ? 'Desvinculando...' : 'Desvincular'}</span>
-                </button>
-              )}
-            </div>
-          </div>
+                <FaUnlink className="text-[9px]" aria-hidden />
+                <span>{disconnectingDrive ? 'Desvinculando...' : 'Desvincular'}</span>
+              </button>
+            )}
+          </Row>
         ) : (
-          <a
-            href="/api/auth/google"
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-zinc-100 text-zinc-900 hover:bg-white font-semibold text-xs rounded-xl transition shadow-sm"
-          >
-            <FaGoogle className="text-red-500" />
-            <span>Conectar con Google Drive</span>
-          </a>
+          <Row label="Cuenta de Google" hint="Todavía no vinculaste ninguna cuenta">
+            <a href="/api/auth/google" className={btnPrimary}>
+              <FaGoogle className="text-[11px]" aria-hidden />
+              <span>Conectar con Google Drive</span>
+            </a>
+          </Row>
         )}
-      </div>
+      </Section>
 
-      {/* PASO 2: SELECCIONAR CARPETAS */}
-      <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 shadow-sm">
-        <h2 className="text-base font-bold text-zinc-100 mb-2 flex items-center gap-2">
-          <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 text-amber-400 flex items-center justify-center text-xs font-mono font-bold shadow-sm">
-            2
-          </span>
-          <span>Seleccionar Carpetas de Catálogo y Portadas</span>
-        </h2>
-        <p className="text-xs text-zinc-400 mb-4">
-          Busca en tu Google Drive la carpeta principal donde tienes organizados tus álbumes o fotos.
-        </p>
-
-        <div className="flex gap-2 mb-4">
-          <div className="relative flex-1">
-            <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 text-xs" />
+      {/* ---------- 2. Carpeta del catálogo ---------- */}
+      <Section
+        id="h-catalogo"
+        title="2 · Elegir la carpeta del catálogo"
+        note="Es la carpeta que ya tenés ordenada: cada subcarpeta se vuelve un álbum de tu catálogo."
+      >
+        <Row label="Buscar en tu Drive" hint="Nombre de la carpeta principal (ej. Catálogo 2026)">
+          <div className="relative w-full max-w-sm">
+            <FaSearch
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-shell-muted"
+              aria-hidden
+            />
             <input
               type="text"
-              placeholder="Escribe el nombre de tu carpeta en Drive (ej. Catálogo 2026)"
+              aria-label="Buscar carpeta en Google Drive"
+              placeholder="Nombre de tu carpeta en Drive"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && onSearchFolders()}
-              className="w-full pl-9 pr-4 py-2 bg-zinc-950/70 border border-zinc-800 rounded-xl text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 transition"
+              className={inputCls}
             />
           </div>
           <button
+            type="button"
             onClick={onSearchFolders}
             disabled={searchingFolders}
-            className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 font-medium text-xs rounded-xl border border-zinc-700/70 transition disabled:opacity-50 cursor-pointer shadow-sm"
+            className={btn}
           >
             {searchingFolders ? 'Buscando...' : 'Buscar en Drive'}
           </button>
-        </div>
+        </Row>
 
+        <Row label="Carpeta del catálogo" hint="Se guarda al final del paso 3">
+          {selectedCatalogFolder ? (
+            <>
+              <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-shell-ink">
+                <FaFolder className="shrink-0 text-[11px] text-shell-accent" aria-hidden />
+                <span className="truncate font-semibold">{selectedCatalogFolder.name}</span>
+              </span>
+              <span className="text-[11.5px] tabular-nums text-shell-muted">
+                {selectedCatalogFolder.id.slice(0, 8)}...
+              </span>
+            </>
+          ) : (
+            <span className="text-[13px] text-shell-muted">Ninguna todavía</span>
+          )}
+        </Row>
+
+        {/* Resultados de la búsqueda: desde acá se eligen las dos carpetas */}
         {folders.length > 0 && (
-          <div className="space-y-2 max-h-48 overflow-y-auto mb-6 pr-1">
-            <div className="text-xs font-medium text-zinc-400 mb-1">Resultados de búsqueda en Google Drive:</div>
-            {folders.map((f) => (
-              <div
-                key={f.id}
-                className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-950/40 hover:bg-zinc-800/40 border border-zinc-800/60 transition text-xs"
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <FaFolder className="text-amber-400 shrink-0" />
-                  <span className="truncate text-zinc-200 font-medium">{f.name}</span>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => setSelectedCatalogFolder(f)}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
-                      selectedCatalogFolder?.id === f.id
-                        ? 'bg-amber-500 text-zinc-950 font-semibold shadow-sm'
-                        : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/60'
-                    }`}
+          <div className="mt-3">
+            <div className="flex flex-wrap items-baseline gap-2 pb-1.5">
+              <span className="text-[12px] font-semibold text-shell-ink-soft">
+                Resultados en tu Drive
+              </span>
+              <span className="text-[11.5px] text-shell-muted">
+                de esta misma lista salen las dos carpetas: catálogo y portadas
+              </span>
+            </div>
+            <div className="max-h-48 overflow-y-auto rounded-md border border-shell-line">
+              {folders.map((f) => {
+                const isCatalog = selectedCatalogFolder?.id === f.id;
+                const isCover = selectedCoverFolder?.id === f.id;
+
+                return (
+                  <div
+                    key={f.id}
+                    className="flex flex-col gap-2 border-b border-shell-line px-2.5 py-2 transition-colors last:border-b-0 hover:bg-shell-surface sm:flex-row sm:items-center sm:justify-between"
                   >
-                    {selectedCatalogFolder?.id === f.id ? 'Catálogo Seleccionado' : 'Elegir como Catálogo'}
-                  </button>
-                  <button
-                    onClick={() => setSelectedCoverFolder(f)}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
-                      selectedCoverFolder?.id === f.id
-                        ? 'bg-rose-500 text-white font-semibold shadow-sm'
-                        : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/60'
-                    }`}
-                  >
-                    {selectedCoverFolder?.id === f.id ? 'Portadas Seleccionadas' : 'Elegir Portadas'}
-                  </button>
-                </div>
-              </div>
-            ))}
+                    <div className="flex min-w-0 items-center gap-2">
+                      <FaFolder
+                        className={`shrink-0 text-[11px] ${isCatalog || isCover ? 'text-shell-accent' : 'text-shell-muted'}`}
+                        aria-hidden
+                      />
+                      <span className="truncate text-[13px] text-shell-ink">{f.name}</span>
+                      {isCatalog && <span className={tagOk}>catálogo</span>}
+                      {isCover && <span className={tagWarn}>portadas</span>}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCatalogFolder(f)}
+                        aria-pressed={isCatalog}
+                        className={
+                          isCatalog
+                            ? `${btn} border-shell-accent bg-shell-accent text-shell-accent-ink`
+                            : btn
+                        }
+                      >
+                        {isCatalog ? 'Es el catálogo' : 'Elegir como catálogo'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCoverFolder(f)}
+                        aria-pressed={isCover}
+                        className={
+                          isCover
+                            ? `${btn} border-shell-warn bg-shell-warn text-shell-bg`
+                            : btn
+                        }
+                      >
+                        {isCover ? 'Son las portadas' : 'Elegir portadas'}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
+      </Section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-zinc-800/80">
-          <div>
-            <label className="text-xs font-medium text-zinc-400 block mb-1">Carpeta Principal del Catálogo:</label>
-            <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl text-xs flex items-center justify-between">
-              <span className="font-semibold text-amber-400 truncate">
-                {selectedCatalogFolder ? selectedCatalogFolder.name : 'Ninguna seleccionada'}
+      {/* ---------- 3. Carpeta de portadas ---------- */}
+      <Section
+        id="h-portadas"
+        title="3 · Elegir la carpeta de portadas"
+        note="Opcional: si no la elegís, cada álbum muestra su primera foto como portada."
+      >
+        <Row label="Carpeta de portadas" hint="Se marca con «Elegir portadas» en la lista del paso 2">
+          {selectedCoverFolder ? (
+            <>
+              <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-shell-ink">
+                <span className="truncate font-semibold">{selectedCoverFolder.name}</span>
               </span>
-              {selectedCatalogFolder && (
-                <span className="text-[10px] font-mono text-zinc-500">{selectedCatalogFolder.id.slice(0, 8)}...</span>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-zinc-400 block mb-1">Carpeta de Portadas (Opcional):</label>
-            <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl text-xs flex items-center justify-between">
-              <span className="font-semibold text-rose-400 truncate">
-                {selectedCoverFolder ? selectedCoverFolder.name : 'Ninguna (usará primera foto del álbum)'}
+              <span className="text-[11.5px] tabular-nums text-shell-muted">
+                {selectedCoverFolder.id.slice(0, 8)}...
               </span>
-              {selectedCoverFolder && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono text-zinc-500">{selectedCoverFolder.id.slice(0, 8)}...</span>
-                  <button
-                    onClick={() => setSelectedCoverFolder(null)}
-                    className="text-[10px] text-red-400 hover:underline cursor-pointer"
-                  >
-                    Quitar
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCoverFolder(null)}
+                className={btnQuiet}
+                aria-label="Quitar la carpeta de portadas"
+              >
+                Quitar
+              </button>
+            </>
+          ) : (
+            <span className="text-[13px] text-shell-muted">
+              Ninguna · se usará la primera foto de cada álbum
+            </span>
+          )}
+        </Row>
 
-        <button
-          onClick={onSaveFolders}
-          disabled={savingFolders || !selectedCatalogFolder}
-          className="mt-6 w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded-xl transition disabled:opacity-50 cursor-pointer shadow-sm active:scale-[0.99]"
-        >
-          {savingFolders ? 'Guardando configuración...' : 'Guardar Selección de Carpetas'}
-        </button>
-      </div>
+        <Row label="Guardar carpetas" hint="Guarda el catálogo y las portadas de una sola vez">
+          <button
+            type="button"
+            onClick={onSaveFolders}
+            disabled={savingFolders || !selectedCatalogFolder}
+            className={btnPrimary}
+          >
+            {savingFolders ? 'Guardando configuración...' : 'Guardar selección de carpetas'}
+          </button>
+          {!selectedCatalogFolder && (
+            <span className="text-[11.5px] text-shell-muted">
+              Elegí primero la carpeta del catálogo
+            </span>
+          )}
+        </Row>
+      </Section>
 
-      {/* PASO 3: NAVEGACIÓN JERÁRQUICA DE ÁLBUMES Y ASIGNACIÓN DE PORTADAS */}
-      <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 relative shadow-sm">
+      {/* ---------- 4. Portada de cada álbum ---------- */}
+      <Section
+        id="h-albumes"
+        title="4 · Asignar una portada a cada álbum"
+        note="Opcional. La portada la resuelve tu carpeta de portadas; acá podés cambiarla álbum por álbum."
+      >
         {/* Banner Sticky de Cambios Pendientes */}
         {hasPendingChanges && (
-          <div className="sticky top-20 z-20 mb-6 p-4 rounded-xl bg-[#18181b] border border-amber-500/40 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-500 text-zinc-950 flex items-center justify-center font-bold text-sm shrink-0 shadow-sm">
-                {pendingCount}
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-zinc-100 flex items-center gap-2">
-                  <span>Tienes {pendingCount} cambio(s) de portada pendientes</span>
-                </h4>
-                <p className="text-[11px] text-zinc-400 mt-0.5">
-                  Guarda tus cambios cuando termines para actualizar tu tienda y purgar el CDN de una sola vez.
-                </p>
-              </div>
+          <div className="sticky top-20 z-20 mb-3 flex flex-col gap-2 rounded-md border border-shell-warn/40 bg-shell-raised px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-2">
+              <FaLayerGroup className="shrink-0 text-[11px] text-shell-warn" aria-hidden />
+              <span className="text-[12.5px] font-semibold text-shell-ink">
+                {pendingCount} cambio(s) de portada sin guardar
+              </span>
+              <span className="hidden truncate text-[11.5px] text-shell-muted sm:inline">
+                se aplican a tu tienda de una sola vez
+              </span>
             </div>
-
-            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+            <div className="flex shrink-0 items-center gap-1.5">
               <button
                 type="button"
                 onClick={onDiscardCoverChanges}
                 disabled={savingCovers}
-                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/80 rounded-lg text-xs font-medium transition cursor-pointer"
+                className={btn}
               >
                 Descartar
               </button>
@@ -513,274 +613,202 @@ export default function DriveTab({
                 type="button"
                 onClick={onSaveCoverChanges}
                 disabled={savingCovers}
-                className="flex items-center gap-1.5 px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-lg text-xs font-bold transition shadow-sm cursor-pointer disabled:opacity-50"
+                className={btnPrimary}
               >
-                <FaSave className="text-xs" />
-                <span>{savingCovers ? 'Guardando...' : 'Guardar Cambios de Portadas'}</span>
+                <FaSave className="text-[10px]" aria-hidden />
+                <span>{savingCovers ? 'Guardando...' : 'Guardar cambios'}</span>
               </button>
             </div>
           </div>
         )}
 
-        {/* Encabezado del Paso 3 */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div>
-            <h2 className="text-base font-bold text-zinc-100 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-lg bg-zinc-800 border border-zinc-700/80 text-amber-400 flex items-center justify-center text-xs font-mono font-bold shadow-sm">
-                3
-              </span>
-              <span>Álbumes Encontrados y Asignación de Portadas</span>
-            </h2>
-            <p className="text-xs text-zinc-400 mt-1">
-              Explora las carpetas por jerarquía o usa el buscador rápido para personalizar las portadas de cualquier categoría o producto.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-            <span className="text-xs px-2.5 py-1.5 rounded-lg bg-zinc-800/80 text-zinc-300 font-mono border border-zinc-700/60">
-              {albums.length} carpetas
+        {/* Estado del listado de portadas */}
+        <Row label="Portadas del catálogo" hint={`${albums.length} carpetas en tu Drive`}>
+          {hasPendingChanges ? (
+            <button
+              type="button"
+              onClick={onSaveCoverChanges}
+              disabled={savingCovers}
+              className={btnPrimary}
+              title="Guardar todos los cambios de portadas en la base de datos"
+            >
+              <FaSave className="text-[10px]" aria-hidden />
+              <span>{savingCovers ? 'Guardando...' : `Guardar cambios (${pendingCount})`}</span>
+            </button>
+          ) : (
+            <span className={tagOk}>
+              <FaCheckCircle className="text-[9px]" aria-hidden />
+              Portadas al día
             </span>
-
-            {/* BOTÓN PRINCIPAL EN CABECERA: Siempre visible */}
-            {hasPendingChanges ? (
-              <button
-                type="button"
-                onClick={onSaveCoverChanges}
-                disabled={savingCovers}
-                className="flex items-center gap-2 px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded-xl transition shadow-sm cursor-pointer"
-                title="Guardar todos los cambios de portadas en la base de datos"
-              >
-                <FaSave className="text-xs" />
-                <span>{savingCovers ? 'Guardando...' : `Guardar Cambios (${pendingCount})`}</span>
-              </button>
-            ) : (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
-                <FaCheckCircle className="text-xs" />
-                <span>Portadas al día</span>
-              </div>
-            )}
-          </div>
-        </div>
+          )}
+        </Row>
 
         {/* Mini Buscador y Acciones de Expansión */}
         {albums.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center gap-3 mb-4 pb-4 border-b border-zinc-800/80">
-            {/* Mini Buscador de Álbum */}
-            <div className="relative flex-1 w-full">
-              <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 text-xs" />
+          <Row label="Buscar álbum" hint="Filtra por nombre, ruta o slug">
+            <div className="relative w-full max-w-sm">
+              <FaSearch
+                className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-shell-muted"
+                aria-hidden
+              />
               <input
                 type="text"
-                placeholder="🔍 Filtrar álbum por nombre o subcarpeta (ej: Blusas, Jeans, Zapatillas...)"
+                aria-label="Filtrar álbum por nombre o subcarpeta"
+                placeholder="Filtrar álbum por nombre o subcarpeta"
                 value={albumFilter}
                 onChange={(e) => setAlbumFilter(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 bg-zinc-950/70 border border-zinc-800 rounded-xl text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 transition"
+                className={inputCls}
               />
               {albumFilter && (
                 <button
                   type="button"
                   onClick={() => setAlbumFilter('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white text-xs cursor-pointer"
+                  aria-label="Limpiar filtro de álbumes"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer text-[11px] text-shell-muted transition-colors hover:text-shell-ink focus:outline-none focus:ring-2 focus:ring-shell-accent/60"
                 >
-                  <FaTimesCircle />
+                  <FaTimesCircle aria-hidden />
                 </button>
               )}
             </div>
 
-            {/* Acciones de Árbol y Botones de Guardado Rápido */}
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-              {!albumFilter && (
-                <>
-                  <button
-                    type="button"
-                    onClick={expandAll}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700/60 text-zinc-300 rounded-lg text-xs font-medium transition cursor-pointer"
-                    title="Expandir todas las carpetas"
-                  >
-                    <FaExpandArrowsAlt className="text-[10px]" />
-                    <span>Expandir todo</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={collapseAll}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-zinc-800/80 hover:bg-zinc-700 border border-zinc-700/60 text-zinc-300 rounded-lg text-xs font-medium transition cursor-pointer"
-                    title="Colapsar todas las carpetas"
-                  >
-                    <FaCompressArrowsAlt className="text-[10px]" />
-                    <span>Colapsar todo</span>
-                  </button>
-                </>
-              )}
-
-              {hasPendingChanges && (
-                <>
-                  <button
-                    type="button"
-                    onClick={onDiscardCoverChanges}
-                    disabled={savingCovers}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/80 text-zinc-300 rounded-lg text-xs font-semibold transition cursor-pointer"
-                    title="Descartar cambios no guardados"
-                  >
-                    <FaTimesCircle className="text-[10px]" />
-                    <span>Descartar</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onSaveCoverChanges}
-                    disabled={savingCovers}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded-lg transition shadow-sm cursor-pointer"
-                  >
-                    <FaSave className="text-[10px]" />
-                    <span>{savingCovers ? 'Guardando...' : `Guardar (${pendingCount})`}</span>
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
+            {!albumFilter && (
+              <>
+                <button
+                  type="button"
+                  onClick={expandAll}
+                  className={btn}
+                  title="Expandir todas las carpetas"
+                >
+                  <FaExpandArrowsAlt className="text-[9px]" aria-hidden />
+                  <span>Expandir todo</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={collapseAll}
+                  className={btn}
+                  title="Colapsar todas las carpetas"
+                >
+                  <FaCompressArrowsAlt className="text-[9px]" aria-hidden />
+                  <span>Colapsar todo</span>
+                </button>
+              </>
+            )}
+          </Row>
         )}
 
         {/* Contenido: Si no hay álbumes */}
         {albums.length === 0 ? (
-          <div className="text-center py-12 px-4 rounded-xl border border-dashed border-zinc-800 bg-zinc-950/30">
-            <FaFolderOpen className="text-3xl text-zinc-600 mx-auto mb-2" />
-            <p className="text-xs text-zinc-300 font-medium">Aún no se han cargado álbumes</p>
-            <p className="text-[11px] text-zinc-500 mt-1">
-              Selecciona tu carpeta principal arriba y presiona el botón <strong>&quot;Sincronizar Catálogo&quot;</strong> para importar la estructura de carpetas y fotos.
+          <div className="mt-3 rounded-md border border-dashed border-shell-line px-4 py-10 text-center">
+            <FaFolderOpen className="mx-auto mb-2 text-2xl text-shell-muted" aria-hidden />
+            <p className="text-[12.5px] font-semibold text-shell-ink">
+              Aún no se han cargado álbumes
+            </p>
+            <p className="mx-auto mt-1 max-w-[56ch] text-[11.5px] leading-relaxed text-shell-muted">
+              Elegí tu carpeta principal en el paso 2 y presioná{' '}
+              <strong className="text-shell-ink-soft">&quot;Sincronizar Catálogo&quot;</strong> para
+              importar la estructura de carpetas y fotos.
             </p>
           </div>
         ) : searchResults ? (
           /* VISTA 1: Resultados del Buscador Rápido */
-          <div className="space-y-2 max-h-[550px] overflow-y-auto pr-1">
-            <div className="text-xs text-zinc-400 mb-2">
-              Coincidencias encontradas: <strong className="text-white">{searchResults.length}</strong>
+          <div className="mt-3">
+            <div className="flex items-baseline gap-2 pb-1.5">
+              <span className="text-[12px] font-semibold text-shell-ink-soft">Coincidencias</span>
+              <span className="text-[11.5px] tabular-nums text-shell-muted">
+                {searchResults.length} de {albums.length}
+              </span>
             </div>
 
             {searchResults.length === 0 ? (
-              <div className="text-center py-8 text-zinc-500 text-xs">
+              <div className="rounded-md border border-dashed border-shell-line px-4 py-8 text-center text-[12px] text-shell-muted">
                 No hay álbumes que coincidan con &quot;{albumFilter}&quot;.
               </div>
             ) : (
-              searchResults.map((album) => {
-                const customCover = folderCovers[album.id];
-                const isChanged = folderCovers[album.id] !== savedFolderCovers[album.id];
-                const displayCover = customCover || album.coverPhotoUrl || album.firstPhotoThumb;
+              <div className="max-h-[550px] overflow-y-auto rounded-md border border-shell-line">
+                {searchResults.map((album) => {
+                  const customCover = folderCovers[album.id];
+                  const isChanged = folderCovers[album.id] !== savedFolderCovers[album.id];
+                  const displayCover = customCover || album.coverPhotoUrl || album.firstPhotoThumb;
 
-                return (
-                  <div
-                    key={album.id}
-                    className={`py-3 px-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl transition border ${
-                      isChanged
-                        ? 'bg-amber-500/10 border-amber-500/40 shadow-sm'
-                        : 'bg-zinc-950/40 hover:bg-zinc-800/40 border-zinc-800/60'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800/80 shrink-0 flex items-center justify-center">
-                        {displayCover ? (
-                          <Image
-                            src={displayCover}
-                            alt={album.name}
-                            fill
-                            unoptimized
-                            className="object-cover"
-                          />
-                        ) : (
-                          <FaImages className="text-zinc-600 text-base" />
-                        )}
-                      </div>
-
-                      <div className="truncate">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-zinc-100 truncate">
-                            {album.name}
-                          </span>
-                          {customCover ? (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 font-medium border border-amber-500/30">
-                              Personalizada
-                            </span>
+                  return (
+                    <div
+                      key={album.id}
+                      className={`flex flex-col gap-2 border-b border-shell-line px-2.5 py-2.5 transition-colors last:border-b-0 sm:flex-row sm:items-center sm:justify-between ${
+                        isChanged ? 'bg-shell-raised' : 'hover:bg-shell-surface'
+                      }`}
+                    >
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-shell-line-strong bg-shell-bg">
+                          {displayCover ? (
+                            <Image
+                              src={displayCover}
+                              alt={album.name}
+                              fill
+                              unoptimized
+                              className="object-cover"
+                            />
                           ) : (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-zinc-800 text-zinc-400 font-medium border border-zinc-700/50">
-                              1ra Foto
-                            </span>
-                          )}
-
-                          {isChanged && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-medium border border-rose-500/30 shrink-0 animate-pulse">
-                              Sin guardar
-                            </span>
+                            <FaImages className="text-[13px] text-shell-muted" aria-hidden />
                           )}
                         </div>
-                        <div className="text-[11px] text-zinc-400 flex items-center gap-2 mt-0.5">
-                          <span className="font-mono text-amber-400/80">{album.path || album.slug}</span>
-                          <span>•</span>
-                          <span className="text-zinc-300 font-medium">
-                            {album.photosCount ?? 0} fotos
-                          </span>
+
+                        <div className="min-w-0 truncate">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-[13px] font-semibold text-shell-ink">
+                              {album.name}
+                            </span>
+                            {customCover ? (
+                              <span className={tagWarn}>Personalizada</span>
+                            ) : (
+                              <span className={tagOff}>1ra Foto</span>
+                            )}
+                            {isChanged && <span className={tagDanger}>Sin guardar</span>}
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-2 text-[11.5px] text-shell-muted">
+                            <span className="truncate">{album.path || album.slug}</span>
+                            <span aria-hidden>·</span>
+                            <span className="shrink-0 tabular-nums text-shell-ink-soft">
+                              {album.photosCount ?? 0} fotos
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-                      <button
-                        type="button"
-                        onClick={() => onOpenCoverSelector(album.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/80 text-zinc-100 rounded-lg text-xs font-semibold transition cursor-pointer shadow-sm"
-                      >
-                        <FaEdit className="text-[10px]" />
-                        <span>{customCover ? 'Cambiar Portada' : 'Elegir Portada'}</span>
-                      </button>
-
-                      {customCover && (
+                      <div className="flex shrink-0 items-center gap-1.5 self-end sm:self-auto">
                         <button
                           type="button"
-                          onClick={() => onResetCover(album.id)}
-                          className="flex items-center gap-1 px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg text-xs font-medium transition cursor-pointer"
+                          onClick={() => onOpenCoverSelector(album.id)}
+                          className={btn}
                         >
-                          <FaUndo className="text-[10px]" />
-                          <span>Por defecto</span>
+                          <FaEdit className="text-[9px]" aria-hidden />
+                          <span>{customCover ? 'Cambiar portada' : 'Elegir portada'}</span>
                         </button>
-                      )}
+
+                        {customCover && (
+                          <button
+                            type="button"
+                            onClick={() => onResetCover(album.id)}
+                            title="Restablecer a la primera foto del álbum"
+                            className={btnQuiet}
+                          >
+                            <FaUndo className="text-[9px]" aria-hidden />
+                            <span>Por defecto</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
           </div>
         ) : (
           /* VISTA 2: Navegación por Árbol Jerárquico de Carpetas */
-          <div className="space-y-1.5 max-h-[550px] overflow-y-auto pr-1">
+          <div className="mt-3 max-h-[550px] overflow-y-auto rounded-md border border-shell-line">
             {rootNodes.map((root) => renderTreeNode(root))}
           </div>
         )}
-
-        {/* Botón flotante al pie si hay cambios */}
-        {hasPendingChanges && (
-          <div className="mt-6 pt-4 border-t border-zinc-800/80 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="text-xs text-amber-400 font-medium flex items-center gap-2">
-              <FaLayerGroup />
-              <span>{pendingCount} cambio(s) de portada sin guardar en la base de datos</span>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              <button
-                type="button"
-                onClick={onDiscardCoverChanges}
-                disabled={savingCovers}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/80 text-zinc-300 rounded-xl text-xs font-semibold transition cursor-pointer"
-              >
-                Descartar Cambios
-              </button>
-              <button
-                type="button"
-                onClick={onSaveCoverChanges}
-                disabled={savingCovers}
-                className="flex items-center gap-2 px-5 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded-xl transition shadow-sm cursor-pointer disabled:opacity-50"
-              >
-                <FaSave />
-                <span>{savingCovers ? 'Guardando en Supabase...' : 'Guardar Cambios de Portadas'}</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      </Section>
     </div>
   );
 }
