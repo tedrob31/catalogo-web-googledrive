@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Panel del inquilino — Dirección 2: Tienda en vivo</title>
+<style>
+  :root{
+    --bg:#101314; --panel:#161a1b; --panel-2:#1c2123; --line:#252b2d; --line-2:#323a3d;
+    --ink:#e9edee; --ink-2:#b3bdc0; --muted:#8b979a;
+    --accent:#3fbfa8; --accent-ink:#06221d;
+    --radius:9px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);color:var(--ink);
+    font:14.5px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;overflow:hidden;
+  }
+  .app{display:grid;grid-template-columns:232px 1fr 340px;height:100vh}
+
+  /* ---------- rail ---------- */
+  .rail{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column}
+  .rail-top{padding:16px;border-bottom:1px solid var(--line)}
+  .sys{display:flex;align-items:center;gap:9px}
+  .sys-mark{width:26px;height:26px;border-radius:7px;background:var(--accent);color:var(--accent-ink);
+    display:grid;place-items:center;font-weight:700;font-size:12px}
+  .sys-name{font-weight:600;font-size:13.5px}
+  .sys-host{font-size:11.5px;color:var(--muted)}
+  .rail-nav{padding:10px 8px;overflow-y:auto;flex:1}
+  .grp{font-size:10.5px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);padding:12px 8px 4px}
+  .rail-item{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:7px;
+    font-size:13.5px;color:var(--ink-2);text-decoration:none}
+  .rail-item:hover{background:var(--panel-2);color:var(--ink)}
+  .rail-item[aria-current="page"]{background:var(--panel-2);color:var(--accent);font-weight:600;
+    box-shadow:inset 2px 0 0 var(--accent)}
+  .rail-item .k{margin-left:auto;font-size:11px;color:var(--muted)}
+  .rail-foot{padding:12px 16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted)}
+
+  /* ---------- canvas de la tienda ---------- */
+  .stage{display:flex;flex-direction:column;min-width:0}
+  .stage-bar{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid var(--line);
+    background:var(--panel)}
+  .stage-title{font-size:13.5px;font-weight:600}
+  .stage-url{font-size:12px;color:var(--muted);background:var(--bg);border:1px solid var(--line);
+    border-radius:999px;padding:4px 11px}
+  .seg{margin-left:auto;display:flex;gap:2px;background:var(--bg);border:1px solid var(--line);
+    border-radius:7px;padding:2px}
+  .seg button{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;
+    padding:4px 10px;border-radius:5px;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--panel-2);color:var(--ink)}
+
+  .viewport{flex:1;overflow-y:auto;padding:22px;display:flex;justify-content:center}
+  .phone{width:360px;background:#0a0c0c;border:1px solid var(--line-2);border-radius:18px;
+    overflow:hidden;align-self:flex-start;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+  .phone-head{padding:14px 16px;border-bottom:1px solid #1c2123;display:flex;align-items:center;
+    justify-content:space-between;background:#0e1111}
+  .phone-name{font-size:13px;font-weight:600;letter-spacing:.01em}
+  .phone-wa{font-size:11px;color:var(--accent);border:1px solid #1f3f38;background:#0d1a17;
+    border-radius:999px;padding:3px 9px}
+  .hero{height:150px;background:
+     radial-gradient(120% 90% at 20% 0%, #2a3f3a 0%, #16201e 55%, #0d1413 100%);
+     display:grid;place-items:center;position:relative}
+  .hero-t{font-size:19px;font-weight:600;letter-spacing:-.01em;text-align:center;padding:0 20px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:12px}
+  .tile{aspect-ratio:1/1;border-radius:6px;background:linear-gradient(145deg,#232b2c,#161c1d);
+    display:flex;align-items:flex-end;padding:7px}
+  .tile span{font-size:10.5px;color:var(--ink-2);background:rgba(0,0,0,.45);
+    border-radius:4px;padding:2px 6px}
+  .sel{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+  /* ---------- inspector contextual ---------- */
+  .insp{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column}
+  .insp-head{padding:14px 18px;border-bottom:1px solid var(--line)}
+  .insp-head .eyebrow{font-size:10.5px;font-weight:650;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--accent)}
+  .insp-head h2{margin:5px 0 0;font-size:15px;font-weight:620}
+  .insp-body{padding:16px 18px;overflow-y:auto;flex:1}
+  .field{margin-bottom:18px}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:6px}
+  .field .help{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.45}
+  .swatches{display:flex;gap:7px}
+  .sw{width:26px;height:26px;border-radius:50%;border:1px solid var(--line-2);cursor:pointer}
+  .sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--panel),0 0 0 4px var(--accent)}
+  .row{display:flex;gap:8px}
+  .chip{border:1px solid var(--line-2);background:var(--bg);color:var(--ink-2);font:inherit;
+    font-size:12px;padding:5px 11px;border-radius:7px;cursor:pointer}
+  .chip[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:#0d1a17}
+  .insp-foot{border-top:1px solid var(--line);padding:12px 18px;display:flex;gap:8px}
+  .btn{font:inherit;font-size:13px;font-weight:600;padding:8px 13px;border-radius:7px;
+    border:1px solid var(--line-2);background:var(--panel-2);color:var(--ink);cursor:pointer}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .note{font-size:11.5px;color:var(--muted);margin:0 0 16px;padding:9px 11px;
+    border:1px solid var(--line);border-radius:7px;background:var(--bg);line-height:1.45}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  @media (max-width:1100px){
+    body{overflow:auto}
+    .app{grid-template-columns:1fr;height:auto}
+    .rail{position:static}
+    .rail-nav{display:flex;gap:4px;overflow-x:auto}
+    .grp{display:none}
+    .insp{border-left:0;border-top:1px solid var(--line)}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="rail">
+    <div class="rail-top">
+      <div class="sys">
+        <div class="sys-mark">JS</div>
+        <div>
+          <div class="sys-name">Juan Store</div>
+          <div class="sys-host">juanstore.c4talogo.com</div>
+        </div>
+      </div>
+    </div>
+    <nav class="rail-nav" aria-label="Secciones del panel">
+      <div class="grp">Mi tienda</div>
+      <a class="rail-item" href="#"><span class="k">3/3</span>Google Drive</a>
+      <a class="rail-item" href="#">Marca</a>
+      <a class="rail-item" href="#" aria-current="page">Diseño</a>
+      <a class="rail-item" href="#">Bloques de inicio</a>
+      <a class="rail-item" href="#">Efectos</a>
+      <div class="grp">Actividad</div>
+      <a class="rail-item" href="#">Analíticas</a>
+      <a class="rail-item" href="#">Historial</a>
+    </nav>
+    <div class="rail-foot">412 fotos · 12 álbumes</div>
+  </aside>
+
+  <div class="stage">
+    <div class="stage-bar">
+      <span class="stage-title">Vista previa</span>
+      <span class="stage-url">juanstore.c4talogo.com</span>
+      <div class="seg" role="group" aria-label="Ancho de la vista previa">
+        <button aria-pressed="true">Celular</button>
+        <button aria-pressed="false">Escritorio</button>
+      </div>
+    </div>
+
+    <div class="viewport">
+      <div class="phone" aria-label="Vista previa de la tienda">
+        <div class="phone-head">
+          <span class="phone-name">Juan Store</span>
+          <span class="phone-wa">WhatsApp</span>
+        </div>
+        <div class="hero sel"><span class="hero-t">Colección Verano 2026</span></div>
+        <div class="grid2">
+          <div class="tile"><span>Abrigos</span></div>
+          <div class="tile"><span>Jeans</span></div>
+          <div class="tile"><span>Vestidos</span></div>
+          <div class="tile"><span>Zapatillas</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="insp">
+    <div class="insp-head">
+      <div class="eyebrow">Seleccionado</div>
+      <h2>Portada de la tienda</h2>
+    </div>
+    <div class="insp-body">
+      <p class="note">Estás editando el bloque resaltado. Los cambios se ven acá al instante;
+        se publican cuando guardás.</p>
+
+      <div class="field">
+        <label id="lbl-tema">Color de acento</label>
+        <div class="swatches" role="group" aria-labelledby="lbl-tema">
+          <button class="sw" style="background:#3fbfa8" aria-pressed="true" aria-label="Verde agua"></button>
+          <button class="sw" style="background:#c8a35a" aria-pressed="false" aria-label="Ocre"></button>
+          <button class="sw" style="background:#a8555f" aria-pressed="false" aria-label="Burdeos"></button>
+          <button class="sw" style="background:#5b7fc7" aria-pressed="false" aria-label="Azul"></button>
+        </div>
+        <p class="help">Rige botones, enlaces y el precio destacado.</p>
+      </div>
+
+      <div class="field">
+        <label id="lbl-fondo">Fondo del encabezado</label>
+        <div class="row" role="group" aria-labelledby="lbl-fondo">
+          <button class="chip" aria-pressed="true">Oscuro</button>
+          <button class="chip" aria-pressed="false">Claro</button>
+          <button class="chip" aria-pressed="false">Foto</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label id="lbl-fuente">Tipografía</label>
+        <div class="row" role="group" aria-labelledby="lbl-fuente">
+          <button class="chip" aria-pressed="true">Sans</button>
+          <button class="chip" aria-pressed="false">Serif</button>
+        </div>
+        <p class="help">Serif da un aire más editorial; sans es más neutra.</p>
+      </div>
+
+      <div class="field">
+        <label id="lbl-grid">Fotos por fila en celular</label>
+        <div class="row" role="group" aria-labelledby="lbl-grid">
+          <button class="chip" aria-pressed="true">2</button>
+          <button class="chip" aria-pressed="false">3</button>
+        </div>
+      </div>
+    </div>
+    <div class="insp-foot">
+      <button class="btn btn-primary">Guardar</button>
+      <button class="btn" disabled>Descartar</button>
+    </div>
+  </aside>
+</div>
+</body>
+</html>

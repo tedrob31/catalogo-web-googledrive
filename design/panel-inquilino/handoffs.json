@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "chosen": "03-consola-densa.html",
+  "handoffs": {
+    "03-consola-densa.html": {
+      "status": "in_progress",
+      "queued": false,
+      "sentAt": "2026-11-19T23:29:53.075Z",
+      "startedAt": "2026-11-19T23:30:04.782Z",
+      "implementedAt": null,
+      "note": "Implementando el shell modular: tokens + sidebar persistente + barra superior con Sincronizar siempre visible. Las 7 pestañas se montan adentro; el componente de cada pestaña se restiliza después, una por una."
+    }
+  }
+}

@@ -1,5 +1,29 @@
 @import "tailwindcss";
 
+/*
+ * Tokens del panel del inquilino.
+ *
+ * Antes de esto no habia ningun token: todo el panel eran clases sueltas con hex
+ * hardcodeados, y por eso cada pestana se resolvio por su cuenta. Estos valores salen del
+ * artboard elegido (design/panel-inquilino/03-consola-densa.html) y son la unica fuente de
+ * color para el panel de administracion. El catalogo publico NO usa estos tokens: mantiene
+ * el tema configurable por inquilino.
+ */
+@theme {
+  --color-shell-bg: #0b0b0c;
+  --color-shell-surface: #121213;
+  --color-shell-raised: #18181a;
+  --color-shell-line: #232326;
+  --color-shell-line-strong: #2e2e32;
+  --color-shell-ink: #ececee;
+  --color-shell-ink-soft: #a8a8b0;
+  --color-shell-muted: #7d7d86;
+  --color-shell-accent: #b6e04a;
+  --color-shell-accent-ink: #101403;
+  --color-shell-warn: #e0a458;
+  --color-shell-danger: #e06a5a;
+}
+
 .dynamic-catalog-grid {
     grid-template-columns: repeat(var(--grid-cols-mobile, 2), minmax(0, 1fr));
 }

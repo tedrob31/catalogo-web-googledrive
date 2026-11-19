@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Panel del inquilino — Dirección 1: Puesta en marcha</title>
+<style>
+  :root{
+    --paper:#faf9f7; --card:#fff; --line:#e4e1da; --line-strong:#d3cfc5;
+    --ink:#1c1b19; --ink-2:#4a4741; --muted:#6f6a61;
+    --accent:#9a5b1f; --accent-soft:#f6ede1; --ok:#2f6b4f; --ok-soft:#e6f0ea;
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--paper); color:var(--ink);
+    font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit}
+  .app{display:grid;grid-template-columns:264px 1fr;min-height:100vh}
+
+  /* ---------- sidebar persistente ---------- */
+  .side{
+    border-right:1px solid var(--line); background:var(--card);
+    display:flex;flex-direction:column;position:sticky;top:0;height:100vh;
+  }
+  .brand{display:flex;align-items:center;gap:10px;padding:20px 20px 16px}
+  .brand-mark{
+    width:30px;height:30px;border-radius:8px;background:var(--ink);color:#fff;
+    display:grid;place-items:center;font-weight:650;font-size:13px;letter-spacing:.02em;
+  }
+  .brand-name{font-weight:600;font-size:14px}
+  .brand-host{font-size:12px;color:var(--muted);margin-top:1px}
+
+  .nav{padding:6px 12px 16px;overflow-y:auto;flex:1}
+  .nav-group{margin:14px 0 2px;padding:0 8px;font-size:11px;font-weight:650;
+    letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+  .nav-item{
+    display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
+    font-size:14px;color:var(--ink-2);text-decoration:none;margin-top:2px;
+  }
+  .nav-item:hover{background:#f3f1ec;color:var(--ink)}
+  .nav-item[aria-current="page"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .nav-item .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.45}
+  .nav-item[aria-current="page"] .dot{opacity:1}
+  .nav-badge{margin-left:auto;font-size:11px;font-weight:600;color:var(--ok);
+    background:var(--ok-soft);border-radius:999px;padding:2px 7px}
+
+  .side-foot{border-top:1px solid var(--line);padding:12px 16px;font-size:12px;color:var(--muted)}
+  .side-foot strong{color:var(--ink-2);font-weight:600}
+
+  /* ---------- contenido ---------- */
+  main{padding:32px 40px 64px;max-width:980px}
+  .eyebrow{font-size:12px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--accent)}
+  h1{font-size:26px;line-height:1.2;margin:8px 0 6px;letter-spacing:-.01em;font-weight:640}
+  .lede{color:var(--ink-2);max-width:62ch;margin:0 0 28px}
+
+  /* ---------- espina de puesta en marcha ---------- */
+  .spine{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);
+    padding:6px 22px 18px;margin-bottom:28px}
+  .spine-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    padding:16px 0 14px;border-bottom:1px solid var(--line)}
+  .spine-head h2{font-size:15px;margin:0;font-weight:640}
+  .progress{font-size:13px;color:var(--muted)}
+  .progress b{color:var(--ink);font-weight:650}
+
+  ol.steps{list-style:none;margin:0;padding:0;counter-reset:s}
+  ol.steps li{display:grid;grid-template-columns:34px 1fr auto;gap:14px;align-items:start;
+    padding:18px 0;border-bottom:1px solid var(--line)}
+  ol.steps li:last-child{border-bottom:0}
+  .num{
+    width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+    font-size:12px;font-weight:650;border:1px solid var(--line-strong);color:var(--muted);
+  }
+  li.done .num{background:var(--ok);border-color:var(--ok);color:#fff}
+  li.now .num{background:var(--accent);border-color:var(--accent);color:#fff}
+  .step-t{font-weight:600;margin:2px 0 3px;font-size:14.5px}
+  .step-d{color:var(--muted);font-size:13.5px;margin:0;max-width:54ch}
+  li.now .step-t{color:var(--accent)}
+  .step-meta{font-size:12.5px;color:var(--muted);text-align:right;white-space:nowrap;padding-top:3px}
+
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;border-radius:8px;padding:8px 14px;
+    font-size:13.5px;font-weight:600;text-decoration:none;border:1px solid var(--line-strong);
+    background:var(--card);color:var(--ink);cursor:pointer;
+  }
+  .btn:hover{background:#f3f1ec}
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn-primary:hover{background:#87501a}
+  .btn-ghost{border-color:transparent;background:transparent;color:var(--muted)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---------- estado actual ---------- */
+  .status{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .status div{background:var(--card);padding:14px 18px}
+  .status dt{font-size:12px;color:var(--muted);margin:0 0 3px}
+  .status dd{margin:0;font-size:15px;font-weight:640;letter-spacing:-.01em}
+  .status dd span{font-weight:400;color:var(--muted);font-size:13px}
+  .hint{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+
+  @media (max-width:900px){
+    .app{grid-template-columns:1fr}
+    .side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}
+    .nav{display:flex;gap:4px;overflow-x:auto;padding:8px 12px}
+    .nav-group{display:none}
+    main{padding:22px 18px 48px}
+    .status{grid-template-columns:1fr}
+    ol.steps li{grid-template-columns:28px 1fr;row-gap:8px}
+    .step-meta{grid-column:2;text-align:left;padding-top:4px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">JS</div>
+      <div>
+        <div class="brand-name">Juan Store</div>
+        <div class="brand-host">juanstore.c4talogo.com</div>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Secciones del panel">
+      <div class="nav-group">Puesta en marcha</div>
+      <a class="nav-item" href="#" aria-current="page"><span class="dot"></span>Google Drive<span class="nav-badge">3/3</span></a>
+
+      <div class="nav-group">Mi tienda</div>
+      <a class="nav-item" href="#"><span class="dot"></span>Marca</a>
+      <a class="nav-item" href="#"><span class="dot"></span>Diseño</a>
+      <a class="nav-item" href="#"><span class="dot"></span>Bloques de inicio</a>
+      <a class="nav-item" href="#"><span class="dot"></span>Efectos</a>
+
+      <div class="nav-group">Actividad</div>
+      <a class="nav-item" href="#"><span class="dot"></span>Analíticas</a>
+      <a class="nav-item" href="#"><span class="dot"></span>Historial</a>
+    </nav>
+
+    <div class="side-foot">Plan <strong>Pro</strong> · 412 de 2.000 fotos</div>
+  </aside>
+
+  <main>
+    <div class="eyebrow">Google Drive</div>
+    <h1>Tu catálogo sale de Drive</h1>
+    <p class="lede">No cargás productos ni descripciones. Elegís dos carpetas y el catálogo se arma
+      solo: cada carpeta es un álbum y cada foto es un ítem, respetando tu jerarquía.</p>
+
+    <section class="spine" aria-labelledby="spine-h">
+      <div class="spine-head">
+        <h2 id="spine-h">Puesta en marcha</h2>
+        <div class="progress"><b>3 de 3</b> completos · última sincronización hace 2 h</div>
+      </div>
+
+      <ol class="steps">
+        <li class="done">
+          <span class="num" aria-hidden="true">✓</span>
+          <div>
+            <p class="step-t">Conectar Google Drive</p>
+            <p class="step-d">Acceso de sólo lectura a tu Drive. No modificamos ni borramos nada tuyo.</p>
+          </div>
+          <div class="step-meta">juan@correo.com</div>
+        </li>
+
+        <li class="done">
+          <span class="num" aria-hidden="true">✓</span>
+          <div>
+            <p class="step-t">Carpeta del catálogo</p>
+            <p class="step-d">De acá salen tus álbumes y fotos. Las subcarpetas se vuelven subálbumes.</p>
+          </div>
+          <div class="step-meta">Verano 2026</div>
+        </li>
+
+        <li class="done">
+          <span class="num" aria-hidden="true">✓</span>
+          <div>
+            <p class="step-t">Carpeta de portadas</p>
+            <p class="step-d">Las fotos que querés como tapa de cada álbum. Si falta alguna, se usa la primera del álbum.</p>
+          </div>
+          <div class="step-meta">Portadas</div>
+        </li>
+      </ol>
+    </section>
+
+    <section aria-labelledby="status-h">
+      <h2 id="status-h" style="font-size:15px;margin:0 0 10px;font-weight:640">Estado</h2>
+      <dl class="status">
+        <div><dt>Fotos publicadas</dt><dd>412 <span>en 12 álbumes</span></dd></div>
+        <div><dt>Última sincronización</dt><dd>2 h <span>· sin errores</span></dd></div>
+        <div><dt>Almacenamiento</dt><dd>961 MB <span>de 4 GB</span></dd></div>
+      </dl>
+      <p class="hint">La sincronización es manual: se dispara cuando guardás una carpeta nueva o
+        cuando tocás <strong>Sincronizar ahora</strong> en Marca.</p>
+      <div style="display:flex;gap:8px;margin-top:18px">
+        <button class="btn btn-primary">Sincronizar ahora</button>
+        <button class="btn">Cambiar carpeta del catálogo</button>
+        <button class="btn btn-ghost">Ver historial</button>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>

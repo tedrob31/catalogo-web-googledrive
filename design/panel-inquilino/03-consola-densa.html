@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Panel del inquilino — Dirección 3: Consola densa</title>
+<style>
+  :root{
+    --bg:#0b0b0c; --surf:#121213; --surf-2:#18181a; --line:#232326; --line-2:#2e2e32;
+    --ink:#ececee; --ink-2:#a8a8b0; --muted:#7d7d86;
+    --accent:#b6e04a; --accent-ink:#101403; --warn:#e0a458; --bad:#e06a5a;
+    --radius:6px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);color:var(--ink);
+    font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{display:grid;grid-template-columns:212px 1fr;min-height:100vh}
+
+  /* ---------- sidebar compacta ---------- */
+  .side{background:var(--surf);border-right:1px solid var(--line);position:sticky;top:0;height:100vh;
+    display:flex;flex-direction:column}
+  .top{padding:14px;border-bottom:1px solid var(--line)}
+  .who{display:flex;align-items:center;gap:8px}
+  .av{width:24px;height:24px;border-radius:5px;background:var(--surf-2);border:1px solid var(--line-2);
+    display:grid;place-items:center;font-size:11px;font-weight:700;color:var(--accent)}
+  .who b{font-size:13px;font-weight:600}
+  .who span{display:block;font-size:11px;color:var(--muted)}
+  .nav{padding:8px 6px;overflow-y:auto;flex:1}
+  .g{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+    padding:11px 8px 3px}
+  .it{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;
+    font-size:13px;color:var(--ink-2);text-decoration:none}
+  .it:hover{background:var(--surf-2);color:var(--ink)}
+  .it[aria-current="page"]{background:var(--surf-2);color:var(--ink);font-weight:600}
+  .it[aria-current="page"]::before{content:"";width:2px;height:14px;background:var(--accent);
+    border-radius:2px;margin-left:-8px;margin-right:6px}
+  .it .n{margin-left:auto;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .side-foot{padding:10px 14px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+
+  /* ---------- una sola superficie ---------- */
+  main{padding:0}
+  .strip{display:flex;align-items:center;gap:18px;padding:11px 26px;border-bottom:1px solid var(--line);
+    background:var(--surf);position:sticky;top:0;z-index:2}
+  .strip .k{font-size:11px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+  .stat{display:flex;align-items:baseline;gap:6px;font-size:13px}
+  .stat b{font-weight:650;font-variant-numeric:tabular-nums}
+  .stat i{font-style:normal;color:var(--muted);font-size:11.5px}
+  .ok{color:var(--accent)}
+  .strip .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+
+  .body{padding:26px 26px 60px;max-width:1040px}
+  h1{font-size:20px;margin:0 0 4px;font-weight:640;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:13px;margin:0 0 26px;max-width:66ch}
+
+  section{margin-bottom:30px}
+  h2{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+    margin:0 0 2px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+
+  .row{display:grid;grid-template-columns:200px 1fr auto;gap:16px;align-items:center;
+    padding:11px 0;border-bottom:1px solid var(--line)}
+  .row:last-of-type{border-bottom:0}
+  .row .lbl{font-size:13px;color:var(--ink-2)}
+  .row .lbl small{display:block;color:var(--muted);font-size:11.5px;margin-top:2px}
+  .val{font-size:13.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .val code{font:inherit;font-size:13px;background:var(--surf-2);border:1px solid var(--line);
+    border-radius:4px;padding:2px 7px}
+  .tag{font-size:11px;font-weight:650;border-radius:4px;padding:2px 7px;letter-spacing:.02em}
+  .tag-ok{color:var(--accent);background:#1a2210;border:1px solid #2c3a18}
+  .tag-warn{color:var(--warn);background:#221b10;border:1px solid #3a2e18}
+  .tag-off{color:var(--muted);background:var(--surf-2);border:1px solid var(--line-2)}
+
+  .btn{font:inherit;font-size:12.5px;font-weight:600;padding:5px 10px;border-radius:5px;
+    border:1px solid var(--line-2);background:var(--surf-2);color:var(--ink);cursor:pointer}
+  .btn:hover{border-color:#3d3d43}
+  .btn-p{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  .btn-t{border-color:transparent;background:transparent;color:var(--muted)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .foot{display:flex;gap:8px;align-items:center;padding-top:16px;border-top:1px solid var(--line);
+    margin-top:6px}
+  .foot .hint{font-size:11.5px;color:var(--muted);margin-left:auto}
+
+  @media (max-width:900px){
+    .app{grid-template-columns:1fr}
+    .side{position:static;height:auto}
+    .nav{display:flex;gap:4px;overflow-x:auto}
+    .g{display:none}
+    .strip{position:static;flex-wrap:wrap;gap:10px;padding:10px 16px}
+    .body{padding:20px 16px 48px}
+    .row{grid-template-columns:1fr;gap:6px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="side">
+    <div class="top">
+      <div class="who">
+        <div class="av">JS</div>
+        <div><b>Juan Store</b><span>juanstore.c4talogo.com</span></div>
+      </div>
+    </div>
+    <nav class="nav" aria-label="Secciones del panel">
+      <div class="g">Fuente</div>
+      <a class="it" href="#" aria-current="page">Google Drive<span class="n">3/3</span></a>
+      <div class="g">Tienda</div>
+      <a class="it" href="#">Marca</a>
+      <a class="it" href="#">Diseño</a>
+      <a class="it" href="#">Bloques<span class="n">4</span></a>
+      <a class="it" href="#">Efectos</a>
+      <div class="g">Actividad</div>
+      <a class="it" href="#">Analíticas</a>
+      <a class="it" href="#">Historial<span class="n">18</span></a>
+    </nav>
+    <div class="side-foot">Plan Pro · 412 / 2.000 fotos</div>
+  </aside>
+
+  <main>
+    <div class="strip">
+      <span class="k">Drive</span>
+      <span class="stat"><b class="ok">Conectado</b></span>
+      <span class="stat"><i>sync</i><b>hace 2 h</b></span>
+      <span class="stat"><i>fotos</i><b>412</b></span>
+      <span class="stat"><i>álbumes</i><b>12</b></span>
+      <div class="right">
+        <button class="btn btn-t">Editar carpetas</button>
+        <button class="btn btn-p">Sincronizar</button>
+      </div>
+    </div>
+
+    <div class="body">
+      <h1>Google Drive</h1>
+      <p class="sub">Dos carpetas y listo. Cada carpeta es un álbum, cada foto un ítem.
+        No hay productos ni descripciones que cargar.</p>
+
+      <section aria-labelledby="h-cuentas">
+        <h2 id="h-cuentas">Cuenta</h2>
+        <div class="row">
+          <div class="lbl">Cuenta conectada</div>
+          <div class="val"><code>juan@correo.com</code> <span class="tag tag-ok">sólo lectura</span></div>
+          <button class="btn">Reconectar</button>
+        </div>
+        <div class="row">
+          <div class="lbl">Permiso</div>
+          <div class="val">drive.readonly <small style="color:var(--muted)">No se modifica nada en tu Drive</small></div>
+          <button class="btn btn-t">Detalles</button>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-carpetas">
+        <h2 id="h-carpetas">Carpetas</h2>
+        <div class="row">
+          <div class="lbl">Catálogo<small>álbumes y fotos</small></div>
+          <div class="val"><code>Verano 2026</code> <span class="tag tag-ok">12 álbumes</span></div>
+          <button class="btn">Cambiar</button>
+        </div>
+        <div class="row">
+          <div class="lbl">Portadas<small>tapa de cada álbum</small></div>
+          <div class="val"><code>Portadas</code> <span class="tag tag-warn">3 álbumes sin portada</span></div>
+          <button class="btn">Cambiar</button>
+        </div>
+        <div class="row">
+          <div class="lbl">Orden</div>
+          <div class="val">Natural, respetando el prefijo numérico de tus carpetas</div>
+          <button class="btn btn-t">Ver reglas</button>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-sync">
+        <h2 id="h-sync">Sincronización</h2>
+        <div class="row">
+          <div class="lbl">Modo</div>
+          <div class="val">Manual <span class="tag tag-off">sin automático</span></div>
+          <button class="btn btn-t">Por qué</button>
+        </div>
+        <div class="row">
+          <div class="lbl">Último resultado</div>
+          <div class="val"><span class="tag tag-ok">sin errores</span> 412 procesadas · 0 eliminadas</div>
+          <button class="btn">Ver historial</button>
+        </div>
+        <div class="row">
+          <div class="lbl">Almacenamiento</div>
+          <div class="val">961 MB <small style="color:var(--muted)">de 4 GB del plan Pro</small></div>
+          <button class="btn btn-t">Ampliar</button>
+        </div>
+      </section>
+
+      <div class="foot">
+        <button class="btn btn-p">Sincronizar ahora</button>
+        <button class="btn">Guardar cambios</button>
+        <span class="hint">Los cambios de carpeta borran y reconstruyen el catálogo.</span>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

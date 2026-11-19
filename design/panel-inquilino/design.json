@@ -1,0 +1,27 @@
+{
+  "title": "Panel del inquilino — navegación y claridad de puesta en marcha",
+  "brief": "Rediseño del panel de administración del inquilino (no del catálogo público). Hoy la navegación es una barra de 7 pestañas que se pierde al scrollear y la pestaña de Diseño no deja ver los pasos. El producto no es e-commerce: el comerciante vincula Drive, elige carpeta de catálogo y carpeta de portadas, y el catálogo se arma solo por jerarquía de carpetas. Sin funcionalidades nuevas: sólo navegación persistente, jerarquía clara y una estética menos genérica.",
+  "artboards": [
+    {
+      "file": "01-puesta-en-marcha.html",
+      "title": "Puesta en marcha",
+      "tradeoff": "Los 3 pasos se leen de un vistazo y el primerizo no se pierde; contra: el uso diario queda un paso abajo del panel, y la configuración avanzada vive en otras secciones.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "02-tienda-en-vivo.html",
+      "title": "Tienda en vivo",
+      "tradeoff": "Ver el resultado mientras se toca un control elimina la ambigüedad de Diseño; contra: pide más ancho de pantalla y en el celular el inspector pasa a ocupar la mitad inferior.",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "file": "03-consola-densa.html",
+      "title": "Consola densa",
+      "tradeoff": "Todo el estado de Drive en una superficie, sin tarjetas anidadas: el más rápido para repetir una tarea; contra: menos amable en la primera visita, quien nunca sincronizó necesita leer más.",
+      "width": 1440,
+      "height": 900
+    }
+  ]
+}

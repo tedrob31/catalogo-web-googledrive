@@ -3,20 +3,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import {
-  FaGoogle,
-  FaPalette,
-  FaMagic,
-  FaShareAlt,
-  FaStore,
-  FaSync,
-  FaCheckCircle,
-  FaLock,
-  FaChartLine,
-} from 'react-icons/fa';
+import { FaGoogle, FaSync, FaCheckCircle, FaLock } from 'react-icons/fa';
 
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
+import DashboardSidebar from '@/components/dashboard/DashboardSidebar';
+import DashboardStatusStrip from '@/components/dashboard/DashboardStatusStrip';
 import DriveTab, { AlbumItem } from '@/components/dashboard/DriveTab';
 import DesignTab from '@/components/dashboard/DesignTab';
 import EffectsTab from '@/components/dashboard/EffectsTab';
@@ -53,7 +44,6 @@ export default function TenantDashboard() {
   const [selectedCoverFolder, setSelectedCoverFolder] = useState<{ id: string; name: string } | null>(null);
   const [savingFolders, setSavingFolders] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  const [syncLiveStatus, setSyncLiveStatus] = useState<any>(null);
   const [authExpiredModalOpen, setAuthExpiredModalOpen] = useState(false);
   const [securityModalOpen, setSecurityModalOpen] = useState(false);
 
@@ -449,17 +439,14 @@ export default function TenantDashboard() {
         const res = await fetch(`/api/sync/?logId=${logId}`);
         const data = await res.json();
         if (data.success && data.log) {
-          setSyncLiveStatus(data.log);
           if (data.log.status === 'completed') {
             clearInterval(interval);
             setSyncing(false);
-            setSyncLiveStatus(null);
             alert(`¡Sincronización completada! Se procesaron ${data.log.items_processed || 0} fotos nuevas.`);
             loadDashboardData();
           } else if (data.log.status === 'failed') {
             clearInterval(interval);
             setSyncing(false);
-            setSyncLiveStatus(null);
 
             const errMsg = String(data.log.error_message || '');
             const isAuthExpired =
@@ -485,7 +472,6 @@ export default function TenantDashboard() {
 
   async function handleSyncNow() {
     setSyncing(true);
-    setSyncLiveStatus(null);
     try {
       const res = await fetch('/api/sync/', { method: 'POST' });
       const data = await res.json();
@@ -861,7 +847,16 @@ export default function TenantDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans selection:bg-amber-500/20 selection:text-amber-200">
+    <div className="min-h-screen bg-shell-bg text-shell-ink flex flex-col font-sans lg:pl-[212px]">
+      {/* 0. Navegación persistente: las secciones ya no se van con el scroll */}
+      <DashboardSidebar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        tenantName={tenant?.name || 'Mi tienda'}
+        tenantHost={tenant?.subdomain ? `${tenant.subdomain}.${baseDomain}` : baseDomain}
+        driveConnected={integration ? Boolean(integration.is_connected) : null}
+        badge={<>{plan?.name || 'Plan'} · {albums.length} álbumes</>}
+      />
       {/* 1. Header Global */}
       <DashboardHeader
         tenant={tenant}
@@ -873,98 +868,16 @@ export default function TenantDashboard() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
-        {/* 2. Métricas Modulares */}
-        <DashboardMetrics
-          tenant={tenant}
-          plan={plan}
-          integration={integration}
+        {/* 2. Franja de estado: la acción del día a día queda siempre a la vista */}
+        <DashboardStatusStrip
+          driveConnected={integration ? Boolean(integration.is_connected) : null}
           syncing={syncing}
-          syncLiveStatus={syncLiveStatus}
           onSyncNow={handleSyncNow}
+          lastSyncAt={integration?.last_synced_at ?? null}
+          photosCount={albums.reduce((n, a) => n + (a.photosCount || 0), 0)}
+          albumsCount={albums.length}
         />
 
-        {/* 3. Navegación de Pestañas Segmentada (Alta Velocidad 60-120fps) */}
-        <div className="mb-8">
-          <div className="inline-flex p-1 bg-[#121215] border border-zinc-800 rounded-2xl gap-1 overflow-x-auto max-w-full scrollbar-none shadow-sm">
-            <button
-              onClick={() => setActiveTab('drive')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
-                activeTab === 'drive'
-                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-              }`}
-            >
-              <FaGoogle className={activeTab === 'drive' ? 'text-amber-400' : 'text-zinc-500'} />
-              <span>Google Drive</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('design')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
-                activeTab === 'design'
-                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-              }`}
-            >
-              <FaPalette className={activeTab === 'design' ? 'text-amber-400' : 'text-zinc-500'} />
-              <span>Diseño y Grilla</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('effects')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
-                activeTab === 'effects'
-                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-              }`}
-            >
-              <FaMagic className={activeTab === 'effects' ? 'text-amber-400' : 'text-zinc-500'} />
-              <span>Efectos Interactivos</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('branding')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
-                activeTab === 'branding'
-                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-              }`}
-            >
-              <FaShareAlt className={activeTab === 'branding' ? 'text-amber-400' : 'text-zinc-500'} />
-              <span>Subdominio y SEO</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('storefront')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
-                activeTab === 'storefront'
-                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-              }`}
-            >
-              <FaStore className={activeTab === 'storefront' ? 'text-amber-400' : 'text-zinc-500'} />
-              <span>Creador Storefront</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('analytics')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
-                activeTab === 'analytics'
-                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-              }`}
-            >
-              <FaChartLine className={activeTab === 'analytics' ? 'text-amber-400' : 'text-zinc-500'} />
-              <span>Métricas y Visitas</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-medium flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer ${
-                activeTab === 'history'
-                  ? 'bg-zinc-800 text-white shadow-sm font-semibold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-              }`}
-            >
-              <FaSync className={activeTab === 'history' ? 'text-amber-400' : 'text-zinc-500'} />
-              <span>Historial</span>
-            </button>
-          </div>
-        </div>
 
         {/* 4. Contenido Modular de Cada Pestaña */}
         {activeTab === 'drive' && (
