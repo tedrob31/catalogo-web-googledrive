@@ -22,6 +22,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Gate de vulnerabilidades. La gestion de vulnerabilidades es un area explicita del control
+      # ADA-CASA, y hasta ahora las dependencias solo se miraban a mano. Corre antes de construir,
+      # asi una dependencia vulnerable no llega a publicar la imagen.
+      # `--package-lock-only` audita el lockfile sin instalar node_modules: segundos, no minutos.
+      # Verificado en las dos direcciones: con una vulnerabilidad high en el lockfile sale con
+      # codigo 1; con el lockfile actual, que tiene 0, sale con 0.
+      - name: Audit dependencies for known vulnerabilities
+        run: npm audit --package-lock-only --audit-level=high
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
