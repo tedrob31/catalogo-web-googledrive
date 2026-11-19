@@ -867,7 +867,7 @@ export default function TenantDashboard() {
       />
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-1">
+      <main className="w-full flex-1">
         {/* 2. Franja de estado: la acción del día a día queda siempre a la vista */}
         <DashboardStatusStrip
           driveConnected={integration ? Boolean(integration.is_connected) : null}
@@ -877,6 +877,9 @@ export default function TenantDashboard() {
           photosCount={albums.reduce((n, a) => n + (a.photosCount || 0), 0)}
           albumsCount={albums.length}
         />
+
+        {/* Contenido: ancho acotado y padding propio, para que la franja quede de borde a borde */}
+        <div className="mx-auto max-w-[1040px] px-5 py-6">
 
 
         {/* 4. Contenido Modular de Cada Pestaña */}
@@ -955,6 +958,7 @@ export default function TenantDashboard() {
         {activeTab === 'analytics' && <AnalyticsDashboard />}
 
         {activeTab === 'history' && <HistoryTab logs={logs} />}
+        </div>
       </main>
 
       {/* 5. Modal Reutilizable de Selección de Portadas */}
