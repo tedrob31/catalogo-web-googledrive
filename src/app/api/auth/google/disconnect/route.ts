@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getOAuth2Client } from '@/lib/google-auth';
 import { invalidateTenantCatalogCache } from '@/lib/catalog-db';
+import { decryptToken } from '@/lib/token-crypto';
 
 /**
  * POST /api/auth/google/disconnect
@@ -41,7 +42,16 @@ export async function POST(request: NextRequest) {
       .eq('tenant_id', tenantId)
       .single();
 
-    const tokenToRevoke = integration?.refresh_token || integration?.access_token;
+    // Los tokens viven cifrados; se descifran solo para pasarselos a Google.
+    // Si el descifrado falla (valor manipulado o clave rotada), seguimos con la limpieza local:
+    // es preferible dejar la fila limpia que abortar la desconexion.
+    let tokenToRevoke: string | undefined;
+    try {
+      const almacenado = integration?.refresh_token || integration?.access_token;
+      tokenToRevoke = almacenado ? decryptToken(almacenado) : undefined;
+    } catch (decryptErr) {
+      console.warn('[Google OAuth] No se pudo descifrar el token para revocarlo ante Google:', decryptErr);
+    }
 
     // 1. Revocar token ante Google
     if (tokenToRevoke) {

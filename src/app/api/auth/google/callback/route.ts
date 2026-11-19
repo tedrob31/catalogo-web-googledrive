@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { getOAuth2Client } from '@/lib/google-auth';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { encryptToken } from '@/lib/token-crypto';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -50,14 +51,24 @@ export async function GET(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    const updatePayload: Record<string, any> = {
-      access_token: tokens.access_token,
+    // Se guardan cifrados (AES-256-GCM): la base nunca recibe el token en claro.
+    const updatePayload: {
+      token_expires_at: string | null;
+      updated_at: string;
+      access_token?: string;
+      refresh_token?: string;
+      google_email?: string | null;
+    } = {
       token_expires_at: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
       updated_at: new Date().toISOString(),
     };
 
+    if (tokens.access_token) {
+      updatePayload.access_token = encryptToken(tokens.access_token);
+    }
+
     if (tokens.refresh_token) {
-      updatePayload.refresh_token = tokens.refresh_token;
+      updatePayload.refresh_token = encryptToken(tokens.refresh_token);
     }
 
     if (googleEmail) {
@@ -77,8 +88,9 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.redirect(`${appUrl}/dashboard?tab=drive&connected=true`);
-  } catch (err: any) {
+  } catch (err) {
     console.error('Error procesando callback de Google:', err);
-    return NextResponse.redirect(`${appUrl}/dashboard?tab=drive&error=${encodeURIComponent(err.message || 'unknown')}`);
+    const mensaje = err instanceof Error ? err.message : 'unknown';
+    return NextResponse.redirect(`${appUrl}/dashboard?tab=drive&error=${encodeURIComponent(mensaje)}`);
   }
 }

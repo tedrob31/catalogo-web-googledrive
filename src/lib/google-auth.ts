@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { encryptToken, decryptToken } from '@/lib/token-crypto';
 
 const SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
@@ -45,24 +46,43 @@ export async function getDriveClientForTenant(tenantId: string) {
     throw new Error(`El inquilino no tiene una cuenta de Google Drive vinculada o falta el refresh_token.`);
   }
 
+  // Los tokens viven cifrados en la base (AES-256-GCM); se descifran solo en memoria. Un valor
+  // sin el prefijo de version es legado en texto plano y `decryptToken` lo devuelve tal cual.
+  const refreshToken = decryptToken(integration.refresh_token);
+  const accessToken = integration.access_token ? decryptToken(integration.access_token) : undefined;
+
   const oauth2Client = getOAuth2Client();
   oauth2Client.setCredentials({
-    refresh_token: integration.refresh_token,
-    access_token: integration.access_token || undefined,
+    refresh_token: refreshToken,
+    access_token: accessToken,
   });
 
-  // Listener para actualizar access_token si Google lo renueva automáticamente
+  // Listener para actualizar access_token si Google lo renueva automáticamente.
+  // Se re-cifra al escribir, asi que cada tenant migra a cifrado la proxima vez que sincroniza.
+  // Va envuelto en try/catch: es asincrono y no debe tumbar el proceso si el guardado falla.
   oauth2Client.on('tokens', async (tokens) => {
-    if (tokens.access_token || tokens.refresh_token) {
+    if (!tokens.access_token && !tokens.refresh_token) return;
+
+    try {
+      const nextAccess = tokens.access_token || accessToken;
+      const nextRefresh = tokens.refresh_token || refreshToken;
+      const encryptedAccess = nextAccess ? encryptToken(nextAccess) : undefined;
+      const encryptedRefresh = nextRefresh ? encryptToken(nextRefresh) : undefined;
+
       await supabase
         .from('google_integrations')
         .update({
-          access_token: tokens.access_token || integration.access_token,
-          refresh_token: tokens.refresh_token || integration.refresh_token,
+          ...(encryptedAccess ? { access_token: encryptedAccess } : {}),
+          ...(encryptedRefresh ? { refresh_token: encryptedRefresh } : {}),
           token_expires_at: tokens.expiry_date ? new Date(tokens.expiry_date).toISOString() : null,
           updated_at: new Date().toISOString(),
         })
         .eq('tenant_id', tenantId);
+    } catch (persistErr) {
+      console.error(
+        `[Google Auth] No se pudieron persistir los tokens renovados del tenant ${tenantId}:`,
+        persistErr
+      );
     }
   });
 
