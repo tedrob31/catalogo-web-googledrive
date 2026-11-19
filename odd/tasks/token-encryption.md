@@ -64,10 +64,14 @@ desde el repo: requiere una cuenta de Google y el consentimiento OAuth.
 Degrada de forma **visible**, no silenciosa:
 
 - Leer un token heredado en texto plano: **funciona** (no necesita clave).
-- Conectar Drive (callback OAuth): **falla con error 500 visible**, porque `encryptToken`
-  lanza en lugar de guardar en claro.
+- Conectar Drive (callback OAuth): la ruta **no** devuelve 500. El error de `encryptToken` lo
+  captura su `catch` y **redirige a `/dashboard?tab=drive&error=...`**, asi que el fallo se ve
+  como un mensaje de error en el panel, no como una pagina de error.
 - Renovación de token durante un sync: el error se registra y los tokens no se persisten, sin
-tumbar el proceso.
+  tumbar el proceso.
+- **Desconectar Drive: devuelve `502`** y **no** limpia la fila. Si no se puede descifrar, la
+  revocacion en Google es imposible; borrar la fila dejaria un grant vivo alla y sin forma de
+  reintentar.
 
 ### Migración progresiva
 
@@ -77,11 +81,15 @@ de camino. Para confirmar que no quedó ninguna en claro:
 
 ```sql
 select count(*) from public.google_integrations
-where coalesce(refresh_token,'') not like 'v1:%'
-   or coalesce(access_token,'')  not like 'v1:%';
+where (refresh_token is not null and refresh_token not like 'v1:%')
+   or (access_token  is not null and access_token  not like 'v1:%');
 ```
 
-(`0` = todas cifradas. Las que estén en `NULL` no cuentan como exposición.)
+(`0` = todas las que tienen token estan cifradas.)
+
+**Ojo con el `coalesce`**: `coalesce(refresh_token,'') not like 'v1:%'` da verdadero para un
+`NULL`, asi que una consulta escrita asi cuenta las filas desconectadas como si tuvieran el
+token en claro. Hay que preguntar `is not null` de forma explicita, como arriba.
 
 ## Log
 

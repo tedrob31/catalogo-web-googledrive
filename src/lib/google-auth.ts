@@ -48,8 +48,22 @@ export async function getDriveClientForTenant(tenantId: string) {
 
   // Los tokens viven cifrados en la base (AES-256-GCM); se descifran solo en memoria. Un valor
   // sin el prefijo de version es legado en texto plano y `decryptToken` lo devuelve tal cual.
+  //
+  // El refresh_token es imprescindible: si no se puede descifrar, no hay forma de sincronizar y
+  // el error debe ser visible. El access_token es desechable: Google lo renueva a partir del
+  // refresh, asi que si su cifrado esta dañado se descarta en vez de tumbar el sync.
   const refreshToken = decryptToken(integration.refresh_token);
-  const accessToken = integration.access_token ? decryptToken(integration.access_token) : undefined;
+  let accessToken: string | undefined;
+  if (integration.access_token) {
+    try {
+      accessToken = decryptToken(integration.access_token);
+    } catch (accessErr) {
+      console.warn(
+        `[Google Auth] El access_token del tenant ${tenantId} no se pudo descifrar; se descarta y se renueva con el refresh_token.`,
+        accessErr
+      );
+    }
+  }
 
   const oauth2Client = getOAuth2Client();
   oauth2Client.setCredentials({

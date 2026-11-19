@@ -53,6 +53,14 @@ test('un valor manipulado se rechaza en vez de devolver basura', () => {
   });
 });
 
+test('el ida y vuelta es total, incluido el texto vacio', () => {
+  withKey(() => {
+    // Borde: un texto vacio cifrado mide exactamente IV+TAG, sin ciphertext. Si el limite se
+    // compara con <=, este caso se rechaza y el ida y vuelta deja de ser total.
+    assert.equal(decryptToken(encryptToken('')), '');
+  });
+});
+
 test('un valor heredado sin prefijo se devuelve tal cual', () => {
   withKey(() => {
     // Las filas que todavia no pasaron por una escritura siguen en texto plano.

@@ -42,15 +42,37 @@ export async function POST(request: NextRequest) {
       .eq('tenant_id', tenantId)
       .single();
 
-    // Los tokens viven cifrados; se descifran solo para pasarselos a Google.
-    // Si el descifrado falla (valor manipulado o clave rotada), seguimos con la limpieza local:
-    // es preferible dejar la fila limpia que abortar la desconexion.
+    // Los tokens viven cifrados; se descifran solo para pasarselos a Google. Se intenta el
+    // refresh y despues el access, por si solo uno de los dos esta dañado.
+    const candidatos = [integration?.refresh_token, integration?.access_token].filter(
+      (valor): valor is string => typeof valor === 'string' && valor.length > 0
+    );
+
     let tokenToRevoke: string | undefined;
-    try {
-      const almacenado = integration?.refresh_token || integration?.access_token;
-      tokenToRevoke = almacenado ? decryptToken(almacenado) : undefined;
-    } catch (decryptErr) {
-      console.warn('[Google OAuth] No se pudo descifrar el token para revocarlo ante Google:', decryptErr);
+    let errorDescifrado: unknown = null;
+    for (const guardado of candidatos) {
+      try {
+        tokenToRevoke = decryptToken(guardado);
+        break;
+      } catch (descifradoErr) {
+        errorDescifrado = descifradoErr;
+      }
+    }
+
+    // Si hay token guardado pero ninguno se puede descifrar, la revocacion en Google es
+    // IMPOSIBLE. No se limpia la fila ni se responde exito: dejar el grant vivo en Google y
+    // decirle al usuario que se desconecto seria mentirle, y borrar la fila impediria reintentar
+    // una vez corregida la clave. Se corta con un error explicito.
+    if (candidatos.length > 0 && !tokenToRevoke) {
+      console.error('[Google OAuth] Ningun token descifrable para revocar ante Google:', errorDescifrado);
+      return NextResponse.json(
+        {
+          error:
+            'No se pudo revocar el acceso en Google porque los tokens guardados no se pueden descifrar. ' +
+            'Revisa TOKEN_ENCRYPTION_KEY. La cuenta sigue vinculada para poder reintentar la desconexion.',
+        },
+        { status: 502 }
+      );
     }
 
     // 1. Revocar token ante Google

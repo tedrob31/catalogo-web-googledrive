@@ -68,7 +68,9 @@ export function decryptToken(stored: string): string {
   if (!isEncrypted(stored)) return stored;
 
   const payload = Buffer.from(stored.slice(PREFIX.length), 'base64');
-  if (payload.length <= IV_BYTES + TAG_BYTES) {
+  // Debe ser ESTRICTAMENTE menor: un texto vacio cifrado produce exactamente IV+TAG bytes y
+  // tiene que poder descifrarse, o el ida y vuelta no es total.
+  if (payload.length < IV_BYTES + TAG_BYTES) {
     throw new Error('Token cifrado con formato invalido.');
   }
 
