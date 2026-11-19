@@ -24,7 +24,12 @@
 --   service_role queda intacto (la app escribe con el cliente admin).
 --
 -- ROLLBACK
---   grant select, update, maintain on table public.google_integrations to authenticated;
+--   NO EXISTE UN ROLLBACK SEGURO, y no es un descuido: el estado ANTERIOR era la
+--   vulnerabilidad. Reponerlo (grant select, update, maintain on table
+--   public.google_integrations to authenticated) vuelve a exponer refresh_token y access_token
+--   a cualquier miembro del tenant via PostgREST, exactamente lo que esta migracion cierra.
+--   Si hace falta revertir por otro motivo, hacelo sabiendo eso y con un control
+--   compensatorio; no es una operacion de rutina. (Hallazgo R4-001 de la review nativa.)
 
 revoke select, update, maintain on table public.google_integrations from authenticated;
 

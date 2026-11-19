@@ -99,7 +99,9 @@ flowchart TD
 ├── docker-compose.yml           # Configuración de producción para Docker
 ├── package.json                 # Dependencias (Next.js 15, Supabase, Googleapis, AWS SDK R2)
 ├── supabase/
-│   └── migrations/              # Migraciones SQL para Supabase (Tablas, RLS, Esquema Private)
+│   ├── schema.sql               # Esquema consolidado, GENERADO desde la base viva (fuente de verdad)
+│   ├── migrations/              # Migraciones registradas (Tablas, RLS, Esquema Private)
+│   └── migrations-archive/      # Migraciones historicas sin registro en el historial vivo
 │       ├── 20260911_saas_multitenant_core.sql
 │       └── 20260912_security_hardening.sql
 └── src/

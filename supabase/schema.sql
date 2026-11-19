@@ -26,6 +26,8 @@
 
 create extension if not exists "pgcrypto";
 create extension if not exists "uuid-ossp";
+create extension if not exists "pg_stat_statements";
+create extension if not exists "supabase_vault";
 
 create schema if not exists private;
 grant usage, create on schema private to postgres;
@@ -282,6 +284,23 @@ grant select (cover_folder_name) on table public.google_integrations to authenti
 grant select (last_synced_at) on table public.google_integrations to authenticated;
 grant select (updated_at) on table public.google_integrations to authenticated;
 grant select (is_connected) on table public.google_integrations to authenticated;
+
+-- DATOS SEMILLA
+-- Sin esto, una base reconstruida desde este archivo NO funciona: handle_new_user lee
+-- system_settings.closed_beta_enabled y, si la fila falta, asume true y devuelve sin crear el
+-- tenant; y sin subscription_plans no hay plan por defecto para las tiendas nuevas.
+-- (Hallazgo R4-002 de la review nativa.)
+--
+-- platform_whitelist se deja VACIA a proposito: en la base viva tiene emails reales y este
+-- repositorio es publico. La carga el operador (ver supabase/README.md).
+insert into public.system_settings (key, value) values
+  ('active_landing', to_jsonb('minimal'::text)),
+  ('closed_beta_enabled', to_jsonb(true));
+
+insert into public.subscription_plans (id, name, slug, max_photos, max_storage_mb, price_monthly, is_active) values
+  ('16c794e5-e761-4a08-a331-f05e54448c85', 'Básico',  'free',        300,   512,    0.00, true),
+  ('55bde727-8fd6-442c-8b58-dd8703531712', 'Premium', 'enterprise', 15000, 20480,  99.00, true),
+  ('7729f397-d590-4d11-8b40-504f37f4f1a2', 'Pro',     'pro',         2000,  4096,  19.99, true);
 
 -- Funciones en orden topologico: ver el encabezado. Las que se llaman entre si van primero.
 CREATE OR REPLACE FUNCTION private.create_unique_photos_index()
