@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { encryptToken, decryptToken } from '@/lib/token-crypto';
+import { encryptToken, decryptToken, isEncrypted } from '@/lib/token-crypto';
 
 const SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
@@ -62,6 +62,23 @@ export async function getDriveClientForTenant(tenantId: string) {
         `[Google Auth] El access_token del tenant ${tenantId} no se pudo descifrar; se descarta y se renueva con el refresh_token.`,
         accessErr
       );
+    }
+  }
+
+  // Migracion oportunista: si la fila todavia tiene un token heredado en texto plano, se cifra
+  // ahora. Sin esto la fila se cifraria recien cuando Google rote el token, y para un inquilino
+  // inactivo eso puede no pasar nunca. Cualquier sincronizacion la migra.
+  if (!isEncrypted(integration.refresh_token)) {
+    try {
+      const migracion: { refresh_token: string; updated_at: string; access_token?: string } = {
+        refresh_token: encryptToken(refreshToken),
+        updated_at: new Date().toISOString(),
+      };
+      if (accessToken) migracion.access_token = encryptToken(accessToken);
+      await supabase.from('google_integrations').update(migracion).eq('tenant_id', tenantId);
+    } catch (migracionErr) {
+      // No bloquea el sync: se reintenta en la proxima.
+      console.warn(`[Google Auth] No se pudo cifrar la fila heredada del tenant ${tenantId}:`, migracionErr);
     }
   }
 
