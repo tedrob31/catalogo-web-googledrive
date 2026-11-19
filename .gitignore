@@ -48,3 +48,9 @@ yarn-error.log*
 credentials.json
 credential.json
 google-credentials.json
+
+# logs y artefactos de diagnostico (no van al repo)
+*.log
+
+# script de desarrollo que usa credenciales locales
+test-drive.js

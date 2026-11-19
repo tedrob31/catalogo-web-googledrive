@@ -6,3 +6,23 @@ README.md
 .next
 .git
 .env
+
+# Secretos y credenciales: NUNCA dentro de la imagen.
+# El stage `manager` hace `COPY . .` y es el que se publica como :main, o sea el que corre
+# en produccion. Sin estas lineas, credentials.json (una llave privada de service account de
+# Google) quedaba dentro de la imagen y en sus capas en ghcr.io.
+credentials.json
+google-credentials.json
+service-account*.json
+*.pem
+*.p12
+.key
+
+# Variantes de entorno. La configuracion entra por ARG/ENV en el Dockerfile, no por archivo.
+.env.*
+
+# Logs y artefactos de diagnostico.
+*.log
+
+# Scripts de desarrollo: usan credenciales locales y no se ejecutan en runtime.
+test-drive.js
