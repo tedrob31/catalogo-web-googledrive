@@ -20,9 +20,10 @@ const nextConfig: NextConfig = {
   },
   // metadataBase removed to prevent config error
 
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // El build falla si hay un error de tipos. Estaba en `true`, que hacia que `next build`
+  // terminara en verde con errores de tipos, y como el workflow de CI construye y publica la
+  // imagen, un error de tipos podia llegar a produccion sin que nadie lo viera.
+  // Se activo en 2026-11-19 con `tsc --noEmit` en 0 y el build verificado.
 
   async headers() {
     const cspDirectives = [
