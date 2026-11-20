@@ -4,24 +4,13 @@ import { useEffect, useState } from 'react';
 import {
   AreaChart,
   Area,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
-import {
-  FaEye,
-  FaWhatsapp,
-  FaChartLine,
-  FaFolder,
-  FaSyncAlt,
-  FaCalendarAlt,
-  FaArrowUp,
-  FaPercent,
-} from 'react-icons/fa';
+import { FaEye, FaWhatsapp, FaFolder, FaSyncAlt } from 'react-icons/fa';
 
 export default function AnalyticsDashboard() {
   const [data, setData] = useState<any>(null);
@@ -54,20 +43,24 @@ export default function AnalyticsDashboard() {
 
   if (loading) {
     return (
-      <div className="bg-slate-900/40 border border-white/10 rounded-2xl p-12 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
-        <FaSyncAlt className="animate-spin text-2xl text-amber-500" />
-        <span className="text-sm font-medium">Cargando métricas de tu catálogo...</span>
+      <div className="flex flex-col items-center justify-center gap-3 border border-shell-line px-4 py-12 text-center">
+        <FaSyncAlt aria-hidden="true" className="animate-spin text-2xl text-shell-accent" />
+        <span className="text-[13px] font-medium text-shell-muted">
+          Cargando métricas de tu catálogo...
+        </span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6 text-center text-red-400 space-y-3">
-        <p className="text-sm font-semibold">No se pudieron cargar las analíticas: {error}</p>
+      <div role="alert" className="space-y-3 border border-shell-danger/40 px-4 py-6 text-center">
+        <p className="text-[13px] font-semibold text-shell-danger">
+          No se pudieron cargar las analíticas: {error}
+        </p>
         <button
           onClick={fetchAnalytics}
-          className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+          className="cursor-pointer rounded-md border border-shell-danger/40 px-3 py-1.5 text-[12.5px] font-semibold text-shell-danger transition hover:bg-shell-danger/10"
         >
           Reintentar
         </button>
@@ -86,255 +79,257 @@ export default function AnalyticsDashboard() {
   const topContent = data?.topContent || [];
   const maxViewsInTop = Math.max(...topContent.map((c: any) => c.views), 1);
 
+  const cellLabelCls = 'text-[11px] font-semibold uppercase tracking-[0.08em] text-shell-muted';
+  const cellValueCls = 'mt-1 text-[18px] font-semibold tabular-nums text-shell-ink';
+
   return (
     <div className="space-y-6">
-      {/* 1. Header con control de recarga */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/50 border border-white/10 rounded-2xl p-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <FaChartLine className="text-amber-400 text-lg" />
-            <h2 className="text-base font-bold text-white">Rendimiento de tu Catálogo</h2>
-          </div>
-          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
-            <FaCalendarAlt className="text-slate-500 text-[11px]" />
-            <span>Métricas reales y agregadas de los últimos <strong>30 días</strong></span>
+      {/* 1. Encabezado con control de recarga */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-shell-ink">
+            Rendimiento de tu catálogo
+          </h1>
+          <p className="mt-1 max-w-[66ch] text-[13px] text-shell-muted">
+            Métricas reales y agregadas de los últimos 30 días.
           </p>
         </div>
 
         <button
           onClick={fetchAnalytics}
           disabled={refreshing}
-          className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-semibold text-slate-200 transition disabled:opacity-50 cursor-pointer self-start sm:self-auto"
+          className="flex shrink-0 cursor-pointer items-center gap-2 rounded-md border border-shell-line-strong bg-shell-raised px-3 py-1.5 text-[12.5px] font-semibold text-shell-ink transition hover:bg-shell-surface disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <FaSyncAlt className={`text-xs ${refreshing ? 'animate-spin text-amber-400' : 'text-slate-400'}`} />
-          <span>{refreshing ? 'Actualizando...' : 'Actualizar Métricas'}</span>
+          <FaSyncAlt
+            aria-hidden="true"
+            className={`text-xs ${refreshing ? 'animate-spin text-shell-accent' : 'text-shell-muted'}`}
+          />
+          <span>{refreshing ? 'Actualizando...' : 'Actualizar métricas'}</span>
         </button>
       </div>
 
-      {/* 2. Tarjetas de Métricas Clave */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Visitas */}
-        <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-5 relative overflow-hidden">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
-            <span>Visitas al Catálogo</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-              <FaEye />
-            </div>
-          </div>
-          <div className="text-3xl font-black text-white">{summary.totalViews.toLocaleString()}</div>
-          <div className="text-[11px] text-slate-500 font-medium mt-1">Últimos 30 días</div>
+      {/* 2. Franja única de métricas clave */}
+      <div className="grid grid-cols-1 divide-y divide-shell-line border border-shell-line sm:grid-cols-4 sm:divide-x sm:divide-y-0">
+        <div className="px-4 py-3">
+          <div className={cellLabelCls}>Visitas al catálogo</div>
+          <div className={cellValueCls}>{summary.totalViews.toLocaleString()}</div>
         </div>
 
-        {/* Clics a WhatsApp */}
-        <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-5 relative overflow-hidden">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
-            <span>Pedidos por WhatsApp</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <FaWhatsapp />
-            </div>
-          </div>
-          <div className="text-3xl font-black text-emerald-400">{summary.totalWhatsapp.toLocaleString()}</div>
-          <div className="text-[11px] text-emerald-500/80 font-medium mt-1">Clics en botón WhatsApp</div>
+        <div className="px-4 py-3">
+          <div className={cellLabelCls}>Pedidos por WhatsApp</div>
+          <div className={cellValueCls}>{summary.totalWhatsapp.toLocaleString()}</div>
         </div>
 
-        {/* Tasa de Conversión */}
-        <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-5 relative overflow-hidden">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
-            <span>Tasa de Conversión</span>
-            <div className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
-              <FaPercent className="text-xs" />
-            </div>
-          </div>
-          <div className="text-3xl font-black text-white">{summary.conversionRate}%</div>
-          <div className="text-[11px] text-slate-500 font-medium mt-1">Visitas convertidas a pedido</div>
+        <div className="px-4 py-3">
+          <div className={cellLabelCls}>Tasa de conversión</div>
+          <div className={cellValueCls}>{summary.conversionRate}%</div>
         </div>
 
-        {/* Sección más popular */}
-        <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-5 relative overflow-hidden">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
-            <span>Sección Más Visitada</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-              <FaFolder className="text-xs" />
-            </div>
-          </div>
-          <div className="text-lg font-black text-white truncate" title={summary.topPage}>
+        <div className="px-4 py-3">
+          <div className={cellLabelCls}>Sección más visitada</div>
+          <div className={`${cellValueCls} truncate`} title={summary.topPage}>
             {summary.topPage}
           </div>
-          <div className="text-[11px] text-blue-400 font-medium mt-2">Mayor interés de clientes</div>
         </div>
       </div>
 
-      {/* 3. Gráfica Interactiva de Tendencia Diaria */}
-      <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      {/* 3. Tendencia diaria */}
+      <section aria-labelledby="h-tendencia">
+        <div className="mb-2 flex flex-col gap-2 border-b border-shell-line pb-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-sm font-bold text-white">Evolución de Tráfico Diario</h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Fluctuación de interacciones por día en tu tienda
+            <h2
+              id="h-tendencia"
+              className="text-[12px] font-bold uppercase tracking-[0.08em] text-shell-muted"
+            >
+              Evolución de tráfico diario
+            </h2>
+            <p className="mt-0.5 text-[11.5px] text-shell-muted">
+              Fluctuación de interacciones por día en tu tienda.
             </p>
           </div>
 
           {/* Toggle entre Visitas y WhatsApp */}
-          <div className="inline-flex rounded-xl bg-slate-950 p-1 border border-white/10 self-start sm:self-auto">
+          <div className="inline-flex shrink-0 self-start rounded-md border border-shell-line bg-shell-raised p-0.5 sm:self-auto">
             <button
               onClick={() => setChartView('views')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+              aria-pressed={chartView === 'views'}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-[4px] px-2.5 py-1 text-[11.5px] font-semibold transition ${
                 chartView === 'views'
-                  ? 'bg-amber-500 text-black shadow-md'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-shell-accent text-shell-accent-ink'
+                  : 'text-shell-muted hover:text-shell-ink'
               }`}
             >
-              <FaEye className="text-[10px]" />
+              <FaEye aria-hidden="true" className="text-[10px]" />
               <span>Visitas</span>
             </button>
             <button
               onClick={() => setChartView('whatsapp')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+              aria-pressed={chartView === 'whatsapp'}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-[4px] px-2.5 py-1 text-[11.5px] font-semibold transition ${
                 chartView === 'whatsapp'
-                  ? 'bg-emerald-500 text-black shadow-md'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-shell-accent text-shell-accent-ink'
+                  : 'text-shell-muted hover:text-shell-ink'
               }`}
             >
-              <FaWhatsapp className="text-[10px]" />
+              <FaWhatsapp aria-hidden="true" className="text-[10px]" />
               <span>WhatsApp</span>
             </button>
           </div>
         </div>
 
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={dailyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.0} />
-                </linearGradient>
-                <linearGradient id="whatsappGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
-              <XAxis
-                dataKey="shortDate"
-                stroke="#64748b"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="#64748b"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-                allowDecimals={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#090d16',
-                  borderColor: '#ffffff20',
-                  borderRadius: '12px',
-                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
-                  fontSize: '12px',
-                }}
-                labelStyle={{ color: '#94a3b8', fontWeight: 'bold' }}
-                itemStyle={{ color: chartView === 'views' ? '#f59e0b' : '#10b981' }}
-              />
-              {chartView === 'views' ? (
-                <Area
-                  type="monotone"
-                  dataKey="views"
-                  name="Visitas"
-                  stroke="#f59e0b"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#viewsGradient)"
+        <div className="border border-shell-line px-2 py-3">
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={dailyTrend} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-shell-accent)" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="var(--color-shell-accent)" stopOpacity={0.0} />
+                  </linearGradient>
+                  <linearGradient id="whatsappGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-shell-warn)" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="var(--color-shell-warn)" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="var(--color-shell-line)"
+                  vertical={false}
                 />
-              ) : (
-                <Area
-                  type="monotone"
-                  dataKey="whatsapp"
-                  name="Pedidos WhatsApp"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#whatsappGradient)"
+                <XAxis
+                  dataKey="shortDate"
+                  stroke="var(--color-shell-muted)"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
                 />
-              )}
-            </AreaChart>
-          </ResponsiveContainer>
+                <YAxis
+                  stroke="var(--color-shell-muted)"
+                  fontSize={11}
+                  tickLine={false}
+                  axisLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-shell-surface)',
+                    borderColor: 'var(--color-shell-line)',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                  }}
+                  labelStyle={{ color: 'var(--color-shell-ink-soft)', fontWeight: 'bold' }}
+                  itemStyle={{
+                    color:
+                      chartView === 'views'
+                        ? 'var(--color-shell-accent)'
+                        : 'var(--color-shell-warn)',
+                  }}
+                />
+                {chartView === 'views' ? (
+                  <Area
+                    type="monotone"
+                    dataKey="views"
+                    name="Visitas"
+                    stroke="var(--color-shell-accent)"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#viewsGradient)"
+                  />
+                ) : (
+                  <Area
+                    type="monotone"
+                    dataKey="whatsapp"
+                    name="Pedidos WhatsApp"
+                    stroke="var(--color-shell-warn)"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#whatsappGradient)"
+                  />
+                )}
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* 4. Tabla de Secciones / Álbumes Más Vistos */}
-      <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6 shadow-xl">
-        <div className="mb-4">
-          <h3 className="text-sm font-bold text-white">Secciones y Álbumes Más Visitados</h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Descubre qué productos o categorías generan mayor interés y conversión
+      {/* 4. Secciones y álbumes más visitados */}
+      <section aria-labelledby="h-secciones">
+        <div className="mb-2 border-b border-shell-line pb-2">
+          <h2
+            id="h-secciones"
+            className="text-[12px] font-bold uppercase tracking-[0.08em] text-shell-muted"
+          >
+            Secciones y álbumes más visitados
+          </h2>
+          <p className="mt-0.5 text-[11.5px] text-shell-muted">
+            Descubre qué productos o categorías generan mayor interés y conversión.
           </p>
         </div>
 
-        {topContent.length === 0 ? (
-          <div className="py-8 text-center text-slate-500 text-xs">
-            Aún no se registran visitas en este período. Comienza a compartir tu enlace de catálogo con tus clientes.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/60 text-slate-400 border-b border-white/5 font-medium">
-                <tr>
-                  <th className="py-3 px-4 w-12 text-center">#</th>
-                  <th className="py-3 px-4">Sección / Álbum</th>
-                  <th className="py-3 px-4 w-1/3">Popularidad</th>
-                  <th className="py-3 px-4 text-center">Visitas</th>
-                  <th className="py-3 px-4 text-center">WhatsApp</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {topContent.map((item: any, idx: number) => {
-                  const percentage = Math.round((item.views / maxViewsInTop) * 100);
-                  return (
-                    <tr key={idx} className="hover:bg-white/[0.02] transition text-slate-300">
-                      <td className="py-3 px-4 text-center font-bold text-slate-500">
-                        {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
-                      </td>
-                      <td className="py-3 px-4 font-semibold text-white">
-                        <div className="flex items-center gap-2">
-                          <FaFolder className="text-amber-500/70 text-xs" />
-                          <span>{item.title}</span>
-                          <span className="text-[10px] text-slate-500 font-mono">({item.path})</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
-                          <div
-                            className="bg-gradient-to-r from-amber-500 to-rose-500 h-2 rounded-full transition-all duration-500"
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-center font-bold text-white">
-                        {item.views.toLocaleString()}
-                      </td>
-                      <td className="py-3 px-4 text-center font-bold text-emerald-400">
-                        {item.whatsapp > 0 ? (
-                          <span className="inline-flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                            <FaWhatsapp className="text-[10px]" />
-                            <span>{item.whatsapp}</span>
-                          </span>
-                        ) : (
-                          <span className="text-slate-600">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+        <div className="border border-shell-line">
+          {topContent.length === 0 ? (
+            <p className="px-4 py-8 text-center text-[12.5px] text-shell-muted">
+              Todavía no hay visitas en este período.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[12.5px]">
+                <thead className="border-b border-shell-line text-[11px] uppercase tracking-[0.06em] text-shell-muted">
+                  <tr>
+                    <th className="w-12 px-3 py-2 text-center font-semibold">#</th>
+                    <th className="px-3 py-2 font-semibold">Sección / Álbum</th>
+                    <th className="w-1/3 px-3 py-2 font-semibold">Popularidad</th>
+                    <th className="px-3 py-2 text-center font-semibold">Visitas</th>
+                    <th className="px-3 py-2 text-center font-semibold">WhatsApp</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-shell-line">
+                  {topContent.map((item: any, idx: number) => {
+                    const percentage = Math.round((item.views / maxViewsInTop) * 100);
+                    return (
+                      <tr key={idx} className="text-shell-ink-soft transition hover:bg-shell-raised">
+                        <td className="px-3 py-2 text-center font-semibold tabular-nums text-shell-muted">
+                          {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <FaFolder aria-hidden="true" className="text-xs text-shell-muted" />
+                            <span className="font-semibold text-shell-ink">{item.title}</span>
+                            <span className="font-mono text-[10.5px] text-shell-muted">
+                              ({item.path})
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-shell-line">
+                            <div
+                              className="h-1.5 rounded-full bg-shell-accent transition-all duration-500"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-center font-semibold tabular-nums text-shell-ink">
+                          {item.views.toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2 text-center font-semibold tabular-nums">
+                          {item.whatsapp > 0 ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-shell-line bg-shell-raised px-2 py-0.5 text-shell-ink-soft">
+                              <FaWhatsapp aria-hidden="true" className="text-[10px]" />
+                              <span>{item.whatsapp}</span>
+                            </span>
+                          ) : (
+                            <span className="text-shell-muted">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
