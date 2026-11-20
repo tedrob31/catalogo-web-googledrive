@@ -15,11 +15,142 @@ interface StorefrontBuilderProps {
     allAlbumUrls: string[];
 }
 
+type Spacing = NonNullable<StorefrontBlock['spacing']>;
+type AspectRatio = NonNullable<StorefrontBlock['aspectRatio']>;
+type TextSize = NonNullable<StorefrontBlock['textSize']>;
+type TextAlignment = NonNullable<StorefrontBlock['textAlignment']>;
+type TextFont = NonNullable<StorefrontBlock['textFont']>;
+type TextWeight = NonNullable<StorefrontBlock['textWeight']>;
+
+/** Orden fijo de los tipos de bloque en los menús de alta. */
+const BLOCK_TYPES: BlockType[] = [
+    'hero_banner',
+    'category_carousel',
+    'promo_grid',
+    'classic_grid',
+    'rich_text',
+];
+
+/** Nombres para el comerciante: los tipos internos son en inglés. */
+const BLOCK_LABELS: Record<BlockType, string> = {
+    hero_banner: 'Héroe banner',
+    category_carousel: 'Carrusel',
+    promo_grid: 'Grilla promo',
+    classic_grid: 'Grilla simple',
+    rich_text: 'Texto libre',
+};
+
+const fieldCls =
+    'w-full rounded-md border border-shell-line-strong bg-shell-raised px-2.5 py-1.5 text-[13px] text-shell-ink placeholder:text-shell-muted focus:outline-none focus:ring-2 focus:ring-shell-accent/60';
+
+const selectCls = `${fieldCls} max-w-xs cursor-pointer`;
+
+const btn =
+    'inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-shell-line-strong bg-shell-raised px-2.5 py-1 text-[12.5px] font-semibold text-shell-ink transition-colors hover:bg-shell-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60 disabled:cursor-not-allowed disabled:opacity-40';
+
+const btnQuiet =
+    'inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-2 py-1 text-[12.5px] text-shell-muted transition-colors hover:text-shell-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-shell-muted';
+
+const btnPrimary =
+    'inline-flex w-full cursor-pointer items-center justify-center rounded-md border border-shell-accent bg-shell-accent px-3 py-2 text-[12.5px] font-semibold text-shell-accent-ink transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60 disabled:cursor-not-allowed disabled:opacity-50';
+
+const chip =
+    'inline-flex shrink-0 cursor-pointer items-center gap-1 rounded border border-shell-line bg-shell-surface px-1.5 py-0.5 text-[11px] text-shell-muted transition-colors hover:border-shell-line-strong hover:text-shell-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60';
+
+const tagCls =
+    'inline-flex shrink-0 items-center rounded border border-shell-accent/40 bg-shell-accent/10 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-shell-accent';
+
+/** Interruptor con el estado escrito: nunca sólo color. */
+function Switch({
+    checked,
+    onChange,
+    label,
+}: {
+    checked: boolean;
+    onChange: (next: boolean) => void;
+    label: string;
+}) {
+    return (
+        <div className="flex items-center gap-2.5">
+            <span className="text-[12px] text-shell-muted tabular-nums">{checked ? 'Sí' : 'No'}</span>
+            <button
+                type="button"
+                role="switch"
+                aria-checked={checked}
+                aria-label={label}
+                onClick={() => onChange(!checked)}
+                className={`flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60 ${
+                    checked ? 'bg-shell-accent' : 'border border-shell-line-strong bg-shell-raised'
+                }`}
+            >
+                <span
+                    className={`h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                        checked ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                />
+            </button>
+        </div>
+    );
+}
+
+/** Fila etiqueta / control: la unidad de densidad de este panel. */
+function Row({
+    label,
+    hint,
+    children,
+}: {
+    label: string;
+    hint?: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <div className="grid grid-cols-1 gap-2 border-b border-shell-line py-3 last:border-b-0 md:grid-cols-[200px_1fr] md:items-center md:gap-4">
+            <div className="text-[13px] text-shell-ink-soft">
+                {label}
+                {hint && <small className="mt-0.5 block text-[11.5px] text-shell-muted">{hint}</small>}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-[13.5px]">{children}</div>
+        </div>
+    );
+}
+
+/** Encabezado de sección: título de 12px en mayúsculas y una frase de intención. */
+function Section({
+    id,
+    title,
+    note,
+    children,
+}: {
+    id: string;
+    title: string;
+    note?: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <section aria-labelledby={id} className="mb-8">
+            <h2
+                id={id}
+                className="border-b border-shell-line pb-2 text-[12px] font-bold uppercase tracking-[0.08em] text-shell-muted"
+            >
+                {title}
+            </h2>
+            {note && (
+                <p className="mb-1 mt-2 max-w-[66ch] text-[12.5px] leading-relaxed text-shell-ink-soft">
+                    {note}
+                </p>
+            )}
+            {children}
+        </section>
+    );
+}
+
 export default function StorefrontBuilder({ availableCovers, allAlbums, allAlbumUrls }: StorefrontBuilderProps) {
     const [config, setConfig] = useState<StorefrontConfig | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [showCoverSelector, setShowCoverSelector] = useState<{ blockId: string, itemIdx?: number } | null>(null);
+    /* Sólo presentación: qué bloque está abierto en el editor. */
+    const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
 
     useEffect(() => {
         fetch('/api/storefront')
@@ -56,14 +187,16 @@ export default function StorefrontBuilder({ availableCovers, allAlbums, allAlbum
     const handleAddBlock = (type: BlockType, insertIndex?: number) => {
         if (!config) return;
         const newBlock: StorefrontBlock = {
+            // Only ever reached from a click handler: never during render.
+            // eslint-disable-next-line react-hooks/purity
             id: `blk_${Date.now()}`,
             type,
             title: '',
             aspectRatio: 'auto',
             items: type === 'category_carousel' || type === 'promo_grid' || type === 'classic_grid' ? [] : undefined
         };
-        
-        let newBlocks = [...config.blocks];
+
+        const newBlocks = [...config.blocks];
         if (insertIndex !== undefined) {
             newBlocks.splice(insertIndex, 0, newBlock);
         } else {
@@ -71,6 +204,7 @@ export default function StorefrontBuilder({ availableCovers, allAlbums, allAlbum
         }
 
         setConfig({ ...config, blocks: newBlocks });
+        setSelectedBlockId(newBlock.id);
     };
 
     const handleRemoveBlock = (id: string) => {
@@ -117,392 +251,549 @@ export default function StorefrontBuilder({ availableCovers, allAlbums, allAlbum
         setShowCoverSelector(null);
     };
 
-    if (loading) return <div>Cargando Creador...</div>;
-    if (!config) return <div>Error cargando datos.</div>;
+    if (loading) return <div className="p-6 text-[13px] text-shell-muted">Cargando Creador...</div>;
+    if (!config) return <div className="p-6 text-[13px] text-shell-danger">Error cargando datos.</div>;
+
+    const selectedIndex = selectedBlockId ? config.blocks.findIndex(b => b.id === selectedBlockId) : -1;
+    const selectedBlock = selectedIndex >= 0 ? config.blocks[selectedIndex] : null;
 
     return (
-        <div className="bg-white p-6 rounded shadow">
+        <div className="text-shell-ink">
             <datalist id="album-urls">
                 {allAlbumUrls.map((url, i) => (
                     <option key={i} value={url} />
                 ))}
             </datalist>
 
-            <div className="flex justify-between items-center bg-gray-50 p-4 border rounded mb-6">
-                <div>
-                    <h2 className="text-xl font-bold">Activar Storefront Personalizado</h2>
-                    <p className="text-sm text-gray-500">
-                        Si está activado, la página de inicio usará este diseño de bloques en lugar de mostrar las carpetas crudas de Google Drive.
-                    </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                        type="checkbox"
-                        className="sr-only peer"
+            <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-shell-ink">
+                Portada de la tienda
+            </h1>
+            <p className="mb-6 mt-1 max-w-[66ch] text-[13px] text-shell-muted">
+                Ordená los bloques de tu página de inicio y editá uno por vez. Si está activado, los
+                visitantes ven este diseño en lugar de las carpetas crudas de Google Drive.
+            </p>
+
+            {/* ---------- 1. Estado ---------- */}
+            <Section
+                id="h-estado"
+                title="Estado"
+                note="Si está desactivado, la página de inicio vuelve a mostrar las carpetas de Drive."
+            >
+                <Row
+                    label="Storefront personalizado"
+                    hint="Reemplaza las carpetas crudas por estos bloques"
+                >
+                    <Switch
                         checked={config.enabled}
-                        onChange={(e) => startTransition(() => setConfig({ ...config, enabled: e.target.checked }))}
+                        onChange={(next) => startTransition(() => setConfig({ ...config, enabled: next }))}
+                        label="Activar Storefront Personalizado"
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
-            </div>
+                </Row>
+            </Section>
 
             {config.enabled && (
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                    {/* Left Panel: Builder Controls */}
-                    <div className="lg:col-span-3 space-y-6 flex flex-col">
-                        <h3 className="text-lg font-semibold border-b pb-2">Bloques de la Tienda</h3>
-                        
-                        {config.blocks.length === 0 ? (
-                            <p className="text-gray-500 italic text-center py-8">No has añadido ningún bloque. Comienza añadiendo un Héroe Banner o un Carrusel abajo.</p>
-                        ) : (
-                            <div className="space-y-4">
-                                {config.blocks.map((block, index) => (
-                                    <div key={block.id} className="relative group/block-wrapper">
-                                        <div className="border p-4 rounded bg-white shadow-sm hover:border-blue-300 transition-colors">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <div className="flex items-center gap-2">
-                                                <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded tracking-widest uppercase">
-                                                    {block.type.replace('_', ' ')}
+                <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+                    {/* ---------- Columnas 1-3: lista y editor ---------- */}
+                    <div className="flex flex-col lg:col-span-3">
+                        {/* ---------- 2. Lista de bloques ---------- */}
+                        <Section
+                            id="h-bloques"
+                            title="Bloques en orden"
+                            note="De arriba hacia abajo, tal como los ve el visitante. Elegí uno para editarlo."
+                        >
+                            {config.blocks.length === 0 ? (
+                                <p className="py-6 text-[12.5px] text-shell-muted">
+                                    No has añadido ningún bloque todavía. Agregá un Héroe Banner o un
+                                    Carrusel al final de la lista.
+                                </p>
+                            ) : (
+                                <ul className="list-none p-0">
+                                    {config.blocks.map((block, index) => {
+                                        const isSelected = block.id === selectedBlockId;
+                                        return (
+                                            <li
+                                                key={block.id}
+                                                className={`grid grid-cols-[1.75rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-shell-line py-2 last:border-b-0 ${
+                                                    isSelected ? 'bg-shell-raised' : ''
+                                                }`}
+                                            >
+                                                <span className="text-right text-[11.5px] tabular-nums text-shell-muted">
+                                                    {index + 1}
                                                 </span>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <div className="flex bg-gray-100 rounded-lg p-1 gap-1 border">
-                                                    <button onClick={() => moveBlock(index, 'up')} disabled={index === 0} title="Subir (Mover Arriba)" className="p-1.5 text-gray-600 hover:text-black hover:bg-white rounded shadow-sm disabled:opacity-30 disabled:shadow-none transition-all"><FiArrowUp size={16} /></button>
-                                                    <button onClick={() => moveBlock(index, 'down')} disabled={index === config.blocks.length - 1} title="Bajar (Mover Abajo)" className="p-1.5 text-gray-600 hover:text-black hover:bg-white rounded shadow-sm disabled:opacity-30 disabled:shadow-none transition-all"><FiArrowDown size={16} /></button>
-                                                </div>
-                                                <button onClick={() => handleRemoveBlock(block.id)} title="Eliminar Bloque" className="p-2 ml-2 text-red-500 hover:text-white border border-red-200 hover:bg-red-500 hover:border-red-500 rounded-lg transition-all"><FiTrash2 size={16}/></button>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-3">
-                                            <div>
-                                                <label className="block text-xs font-medium text-gray-500">Título Opcional (se muestra arriba del bloque)</label>
-                                                <input 
-                                                    className="w-full border p-2 rounded text-sm" 
-                                                    value={block.title || ''} 
-                                                    placeholder="Ej: Nueva Colección Verano"
-                                                    onChange={e => updateBlock(index, { title: e.target.value })} 
-                                                />
-                                            </div>
-
-                                            {/* Common Layout Controls */}
-                                            <div className="bg-gray-50 border-t border-b py-2 px-3 mt-4 mb-2 -mx-4 flex gap-4">
-                                                <div className="flex-1">
-                                                    <label className="block text-xs font-bold text-gray-700 mb-1">Espaciado Vertical</label>
-                                                    <select 
-                                                        className="w-full border p-1 rounded text-xs"
-                                                        value={block.spacing || 'medium'}
-                                                        onChange={e => updateBlock(index, { spacing: e.target.value as any })}
+                                                <button
+                                                    type="button"
+                                                    aria-current={isSelected ? 'true' : undefined}
+                                                    onClick={() => setSelectedBlockId(block.id)}
+                                                    className="min-w-0 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60"
+                                                >
+                                                    <span className="flex items-center gap-2 text-[13px] text-shell-ink">
+                                                        {BLOCK_LABELS[block.type]}
+                                                        {isSelected && <span className={tagCls}>Editando</span>}
+                                                    </span>
+                                                    <span className="block truncate text-[11.5px] text-shell-muted">
+                                                        {block.title || 'Sin título'}
+                                                    </span>
+                                                </button>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => moveBlock(index, 'up')}
+                                                        disabled={index === 0}
+                                                        aria-label={`Subir ${BLOCK_LABELS[block.type]}${block.title ? ` "${block.title}"` : ''}`}
+                                                        title="Subir (Mover Arriba)"
+                                                        className={btnQuiet}
                                                     >
-                                                        <option value="none">Sin Espaciado</option>
-                                                        <option value="small">Pequeño</option>
-                                                        <option value="medium">Normal (Default)</option>
-                                                        <option value="large">Grande</option>
-                                                    </select>
+                                                        <FiArrowUp size={15} aria-hidden="true" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => moveBlock(index, 'down')}
+                                                        disabled={index === config.blocks.length - 1}
+                                                        aria-label={`Bajar ${BLOCK_LABELS[block.type]}${block.title ? ` "${block.title}"` : ''}`}
+                                                        title="Bajar (Mover Abajo)"
+                                                        className={btnQuiet}
+                                                    >
+                                                        <FiArrowDown size={15} aria-hidden="true" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveBlock(block.id)}
+                                                        aria-label={`Eliminar ${BLOCK_LABELS[block.type]}${block.title ? ` "${block.title}"` : ''}`}
+                                                        title="Eliminar Bloque"
+                                                        className={btnQuiet}
+                                                    >
+                                                        <FiTrash2 size={15} aria-hidden="true" />
+                                                    </button>
                                                 </div>
-                                            </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
 
-                                            {/* Single Image Blocks (Hero) */}
-                                            {block.type === 'hero_banner' && (
-                                                <div className="grid grid-cols-2 gap-4 pt-1">
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-500">Imagen</label>
-                                                        <div className="flex gap-2 mt-1">
-                                                            {block.imageUrl ? (
-                                                                <div className="relative w-16 h-16 bg-gray-100 border rounded cursor-pointer" onClick={() => setShowCoverSelector({ blockId: block.id })}>
-                                                                    <Image src={block.imageUrl} alt="preview" fill className="object-cover rounded" />
-                                                                </div>
-                                                            ) : (
-                                                                <button onClick={() => setShowCoverSelector({ blockId: block.id })} className="w-16 h-16 border rounded border-dashed flex items-center justify-center text-xs text-blue-600 hover:bg-blue-50">Elegir</button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-500">Ruta de Destino (Link)</label>
-                                                        <input 
-                                                            className="w-full border p-2 rounded text-sm mt-1" 
-                                                            value={block.linkHref || ''} 
-                                                            placeholder="Ej: /moda-hombre"
-                                                            list="album-urls"
-                                                            onChange={e => updateBlock(index, { linkHref: e.target.value })} 
-                                                        />
-                                                    </div>
-                                                    <div className="col-span-2">
-                                                        <label className="block text-xs font-medium text-gray-500">Forma (Aspect Ratio)</label>
-                                                        <select 
-                                                            className="w-full border p-2 rounded text-sm mt-1"
-                                                            value={block.aspectRatio || 'auto'}
-                                                            onChange={e => updateBlock(index, { aspectRatio: e.target.value as any })}
-                                                        >
-                                                            <option value="auto">Paisaje Ancho (16:9)</option>
-                                                            <option value="portrait">Vertical Stories (4:5)</option>
-                                                            <option value="square">Cuadrado (1:1)</option>
-                                                            <option value="full">Pantalla Completa (Full Bleed)</option>
-                                                            <option value="intrinsic">Adaptable a la Imagen (Natural)</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Rich Text Block Settings */}
-                                            {block.type === 'rich_text' && (
-                                                <div className="grid grid-cols-2 gap-4 pt-1">
-                                                    <div className="col-span-2">
-                                                        <label className="block text-xs font-medium text-gray-500">Contenido del Texto</label>
-                                                        <textarea 
-                                                            className="w-full border p-2 rounded text-sm mt-1 h-24"
-                                                            value={block.textContent || ''}
-                                                            placeholder="Escribe tu título o texto libre aquí..."
-                                                            onChange={e => updateBlock(index, { textContent: e.target.value })}
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-500">Tamaño de Letra</label>
-                                                        <select 
-                                                            className="w-full border p-2 rounded text-sm mt-1"
-                                                            value={block.textSize || 'medium'}
-                                                            onChange={e => updateBlock(index, { textSize: e.target.value as any })}
-                                                        >
-                                                            <option value="small">Pequeño (Etiqueta)</option>
-                                                            <option value="medium">Normal (Párrafo)</option>
-                                                            <option value="large">Grande (Subtítulo)</option>
-                                                            <option value="xlarge">Extra Grande</option>
-                                                            <option value="title">Gigante (Título Principal)</option>
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-500">Alineación</label>
-                                                        <select 
-                                                            className="w-full border p-2 rounded text-sm mt-1"
-                                                            value={block.textAlignment || 'center'}
-                                                            onChange={e => updateBlock(index, { textAlignment: e.target.value as any })}
-                                                        >
-                                                            <option value="left">Izquierda</option>
-                                                            <option value="center">Centro</option>
-                                                            <option value="right">Derecha</option>
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-500">Fuente (Tipografía)</label>
-                                                        <select 
-                                                            className="w-full border p-2 rounded text-sm mt-1"
-                                                            value={block.textFont || 'sans'}
-                                                            onChange={e => updateBlock(index, { textFont: e.target.value as any })}
-                                                        >
-                                                            <option value="sans">Moderna (Sans-serif)</option>
-                                                            <option value="serif">Elegante (Serif)</option>
-                                                            <option value="mono">Máquina de Escribir (Mono)</option>
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-500">Grosor (Peso)</label>
-                                                        <select 
-                                                            className="w-full border p-2 rounded text-sm mt-1"
-                                                            value={block.textWeight || 'normal'}
-                                                            onChange={e => updateBlock(index, { textWeight: e.target.value as any })}
-                                                        >
-                                                            <option value="light">Fino (Light)</option>
-                                                            <option value="normal">Normal</option>
-                                                            <option value="bold">Grueso (Negrita)</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Classic Grid Settings */}
-                                            {block.type === 'classic_grid' && (
-                                                <div className="grid grid-cols-2 gap-4 pt-1">
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-500">Columnas en Computadora</label>
-                                                        <select 
-                                                            className="w-full border p-2 rounded text-sm mt-1"
-                                                            value={block.gridColumnsDesktop || 5}
-                                                            onChange={e => updateBlock(index, { gridColumnsDesktop: parseInt(e.target.value) })}
-                                                        >
-                                                            <option value="2">2 Columnas</option>
-                                                            <option value="3">3 Columnas</option>
-                                                            <option value="4">4 Columnas</option>
-                                                            <option value="5">5 Columnas (Default)</option>
-                                                            <option value="6">6 Columnas</option>
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-gray-500">Columnas en Celular</label>
-                                                        <select 
-                                                            className="w-full border p-2 rounded text-sm mt-1"
-                                                            value={block.gridColumnsMobile || 2}
-                                                            onChange={e => updateBlock(index, { gridColumnsMobile: parseInt(e.target.value) })}
-                                                        >
-                                                            <option value="1">1 Columna (Lista)</option>
-                                                            <option value="2">2 Columnas (Default)</option>
-                                                            <option value="3">3 Columnas</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Multi Item Blocks (Carousel / Promo Grid / Classic Grid) */}
-                                            {(block.type === 'category_carousel' || block.type === 'promo_grid' || block.type === 'classic_grid') && (
-                                                <div>
-                                                    <div className="flex justify-between items-center mb-2">
-                                                        <label className="block text-xs font-medium text-gray-500">Elementos del {block.type === 'category_carousel' ? 'Carrusel' : 'Grid'}</label>
-                                                        <button 
-                                                            onClick={() => {
-                                                                const newItems = [...(block.items || []), { imageUrl: '', linkHref: '', title: '' }];
-                                                                updateBlock(index, { items: newItems });
-                                                            }}
-                                                            className="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 flex items-center gap-1"
-                                                        >
-                                                            <FiPlus /> Añadir Elemento
-                                                        </button>
-                                                    </div>
-                                                    <div className="space-y-2 border-l-2 pl-3 ml-2 border-gray-200">
-                                                        {block.items?.map((item, itemIdx) => (
-                                                            <div key={itemIdx} className="flex gap-2 items-start bg-gray-50 p-2 rounded">
-                                                                {item.imageUrl ? (
-                                                                    <div className="relative w-12 h-12 bg-gray-200 border rounded cursor-pointer flex-shrink-0" onClick={() => setShowCoverSelector({ blockId: block.id, itemIdx })}>
-                                                                        <Image src={item.imageUrl} alt="item" fill className="object-cover rounded" />
-                                                                    </div>
-                                                                ) : (
-                                                                    <button onClick={() => setShowCoverSelector({ blockId: block.id, itemIdx })} className="w-12 h-12 flex-shrink-0 border rounded border-dashed flex items-center justify-center text-xs text-blue-600 hover:bg-blue-100">+</button>
-                                                                )}
-                                                                <div className="flex-grow space-y-1">
-                                                                    <input 
-                                                                        className="w-full border p-1 rounded text-xs" 
-                                                                        value={item.title || ''} 
-                                                                        placeholder="Título (opcional)"
-                                                                        onChange={e => {
-                                                                            const newItems = [...(block.items || [])];
-                                                                            newItems[itemIdx] = { ...newItems[itemIdx], title: e.target.value };
-                                                                            updateBlock(index, { items: newItems });
-                                                                        }} 
-                                                                    />
-                                                                    <input 
-                                                                        className="w-full border p-1 rounded text-xs" 
-                                                                        value={item.linkHref || ''} 
-                                                                        placeholder="URL destino"
-                                                                        list="album-urls"
-                                                                        onChange={e => {
-                                                                            const newItems = [...(block.items || [])];
-                                                                            newItems[itemIdx] = { ...newItems[itemIdx], linkHref: e.target.value };
-                                                                            updateBlock(index, { items: newItems });
-                                                                        }} 
-                                                                    />
-                                                                </div>
-                                                                <button 
-                                                                    onClick={() => {
-                                                                        const newItems = [...(block.items || [])];
-                                                                        newItems.splice(itemIdx, 1);
-                                                                        updateBlock(index, { items: newItems });
-                                                                    }}
-                                                                    className="text-gray-400 hover:text-red-500 p-1"
-                                                                >
-                                                                    <FiTrash2 size={14} />
-                                                                </button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                    
-                                                    <div className="mt-3">
-                                                        <label className="block text-xs font-medium text-gray-500">Forma de las Fotos (Aspect Ratio)</label>
-                                                        <select 
-                                                            className="w-full border p-2 rounded text-sm mt-1"
-                                                            value={block.aspectRatio || 'auto'}
-                                                            onChange={e => updateBlock(index, { aspectRatio: e.target.value as any })}
-                                                        >
-                                                            {block.type === 'category_carousel' && (
-                                                                <option value="intrinsic">Adaptable a la Imagen (Natural)</option>
-                                                            )}
-                                                            <option value="auto">Libre (Original)</option>
-                                                            <option value="portrait">Vertical Stories (4:5)</option>
-                                                            <option value="square">Cuadrado (1:1)</option>
-                                                        </select>
-                                                    </div>
-                                                </div>
-                                            )}
+                            {config.blocks.length > 0 && (
+                                <div className="space-y-1 border-t border-shell-line pt-2">
+                                    {config.blocks.map((block, index) => (
+                                        <div
+                                            key={`insert-${block.id}`}
+                                            className="flex flex-wrap items-center gap-1.5"
+                                        >
+                                            <span className="text-[11px] text-shell-muted">
+                                                Insertar después del {index + 1}:
+                                            </span>
+                                            {BLOCK_TYPES.map(type => (
+                                                <button
+                                                    key={type}
+                                                    type="button"
+                                                    onClick={() => handleAddBlock(type, index + 1)}
+                                                    aria-label={`Insertar ${BLOCK_LABELS[type]} después del bloque ${index + 1}`}
+                                                    className={chip}
+                                                >
+                                                    + {BLOCK_LABELS[type]}
+                                                </button>
+                                            ))}
                                         </div>
-                                    </div>
-                                    
-                                    {/* Intermediate Add Block Button / Divider - Now EXPLICIT AND VISIBLE */}
-                                    <div className="relative py-3 my-1 flex flex-col items-center justify-center group opacity-40 hover:opacity-100 transition-opacity w-full">
-                                        <hr className="absolute inset-x-0 h-[2px] bg-blue-100 group-hover:bg-blue-300 border-none transition-colors z-0" />
-                                        
-                                        {/* Icon before hovering */}
-                                        <span className="relative bg-white text-blue-500 group-hover:hidden z-10 text-xs shadow-sm border border-blue-200 rounded-full px-2 py-0.5 cursor-pointer font-bold leading-none" title="Añadir bloque intermedio">+ Insertar Bloque Aquí</span>
-                                        
-                                        {/* Expanded buttons on hover */}
-                                        <div className="relative hidden group-hover:flex bg-white py-1.5 px-3 border-2 border-blue-300 shadow-xl rounded-full gap-2 items-center z-20 mx-auto">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-blue-600 px-2 border-r border-blue-100">Insertar:</span>
-                                            <button type="button" onClick={() => handleAddBlock('hero_banner', index + 1)} className="text-[11px] bg-gray-50 hover:bg-blue-500 hover:text-white font-bold px-3 py-1.5 rounded-full transition-colors shadow-sm whitespace-nowrap">+ Banner</button>
-                                            <button type="button" onClick={() => handleAddBlock('category_carousel', index + 1)} className="text-[11px] bg-gray-50 hover:bg-blue-500 hover:text-white font-bold px-3 py-1.5 rounded-full transition-colors shadow-sm whitespace-nowrap">+ Carrusel</button>
-                                            <button type="button" onClick={() => handleAddBlock('promo_grid', index + 1)} className="text-[11px] bg-gray-50 hover:bg-blue-500 hover:text-white font-bold px-3 py-1.5 rounded-full transition-colors shadow-sm whitespace-nowrap">+ Grilla Promo</button>
-                                            <button type="button" onClick={() => handleAddBlock('classic_grid', index + 1)} className="text-[11px] bg-gray-50 hover:bg-blue-500 hover:text-white font-bold px-3 py-1.5 rounded-full transition-colors shadow-sm whitespace-nowrap">+ Grilla Simple</button>
-                                            <button type="button" onClick={() => handleAddBlock('rich_text', index + 1)} className="text-[11px] bg-gray-50 hover:bg-blue-500 hover:text-white font-bold px-3 py-1.5 rounded-full transition-colors shadow-sm whitespace-nowrap">+ Texto</button>
-                                        </div>
-                                    </div>
-
+                                    ))}
                                 </div>
+                            )}
+
+                            <div className="mt-4 flex flex-wrap items-center gap-1.5 border-t border-shell-line pt-3">
+                                <span className="mr-1 text-[12.5px] text-shell-ink-soft">Añadir bloque al final</span>
+                                {BLOCK_TYPES.map(type => (
+                                    <button
+                                        key={type}
+                                        type="button"
+                                        onClick={() => handleAddBlock(type)}
+                                        className={btn}
+                                    >
+                                        <FiPlus size={13} aria-hidden="true" /> {BLOCK_LABELS[type]}
+                                    </button>
                                 ))}
                             </div>
-                        )}
+                        </Section>
 
-                        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mt-8 pt-6 border-t border-gray-200">
-                            <button onClick={() => handleAddBlock('hero_banner')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Héroe Banner</button>
-                            <button onClick={() => handleAddBlock('category_carousel')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Carrusel</button>
-                            <button onClick={() => handleAddBlock('promo_grid')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Promo Grid</button>
-                            <button onClick={() => handleAddBlock('classic_grid')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Grid Simple</button>
-                            <button onClick={() => handleAddBlock('rich_text')} className="bg-white border-2 border-dashed border-gray-300 text-gray-500 text-xs p-4 rounded-xl hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 font-bold transition-all flex flex-col items-center justify-center gap-2 group"><span className="text-2xl font-light group-hover:scale-110 transition-transform">+</span> Texto Libre</button>
-                        </div>
+                        {/* ---------- 3. Editor del bloque elegido ---------- */}
+                        <Section
+                            id="h-editor"
+                            title="Editor del bloque"
+                            note="Los ajustes de acá se aplican sólo al bloque elegido en la lista."
+                        >
+                            {!selectedBlock ? (
+                                <p className="py-4 text-[12.5px] text-shell-muted">
+                                    Elegí un bloque de la lista para editarlo.
+                                </p>
+                            ) : (
+                                <>
+                                    <div className="flex flex-wrap items-center gap-2 border-b border-shell-line py-2">
+                                        <span className={tagCls}>{BLOCK_LABELS[selectedBlock.type]}</span>
+                                        <span className="text-[12px] text-shell-muted tabular-nums">
+                                            bloque {selectedIndex + 1} de {config.blocks.length}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedBlockId(null)}
+                                            className={`${btnQuiet} ml-auto`}
+                                        >
+                                            Cerrar editor
+                                        </button>
+                                    </div>
 
+                                    <Row label="Título del bloque" hint="Opcional · se muestra arriba del bloque">
+                                        <input
+                                            className={fieldCls}
+                                            value={selectedBlock.title || ''}
+                                            placeholder="Ej: Nueva Colección Verano"
+                                            aria-label="Título del bloque"
+                                            onChange={e => updateBlock(selectedIndex, { title: e.target.value })}
+                                        />
+                                    </Row>
+
+                                    <Row label="Espaciado vertical" hint="Aire entre este bloque y el anterior">
+                                        <select
+                                            className={selectCls}
+                                            value={selectedBlock.spacing || 'medium'}
+                                            aria-label="Espaciado vertical"
+                                            onChange={e => updateBlock(selectedIndex, { spacing: e.target.value as Spacing })}
+                                        >
+                                            <option value="none">Sin Espaciado</option>
+                                            <option value="small">Pequeño</option>
+                                            <option value="medium">Normal (Default)</option>
+                                            <option value="large">Grande</option>
+                                        </select>
+                                    </Row>
+
+                                    {/* Single Image Blocks (Hero) */}
+                                    {selectedBlock.type === 'hero_banner' && (
+                                        <>
+                                            <Row label="Imagen" hint="Portada del bloque">
+                                                {selectedBlock.imageUrl ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowCoverSelector({ blockId: selectedBlock.id })}
+                                                        aria-label="Cambiar imagen del bloque"
+                                                        className="cursor-pointer overflow-hidden rounded border border-shell-line-strong bg-shell-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60"
+                                                    >
+                                                        <span className="relative block h-16 w-16">
+                                                            <Image src={selectedBlock.imageUrl} alt="preview" fill className="object-cover" />
+                                                        </span>
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowCoverSelector({ blockId: selectedBlock.id })}
+                                                        className="flex h-16 w-16 cursor-pointer items-center justify-center rounded border border-dashed border-shell-line-strong bg-shell-surface text-[11.5px] text-shell-accent hover:border-shell-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60"
+                                                    >
+                                                        Elegir
+                                                    </button>
+                                                )}
+                                            </Row>
+
+                                            <Row label="Ruta de Destino (Link)" hint="Adónde va el visitante al tocarlo">
+                                                <input
+                                                    className={fieldCls}
+                                                    value={selectedBlock.linkHref || ''}
+                                                    placeholder="Ej: /moda-hombre"
+                                                    list="album-urls"
+                                                    aria-label="Ruta de destino del bloque"
+                                                    onChange={e => updateBlock(selectedIndex, { linkHref: e.target.value })}
+                                                />
+                                            </Row>
+
+                                            <Row label="Forma (Aspect Ratio)">
+                                                <select
+                                                    className={selectCls}
+                                                    value={selectedBlock.aspectRatio || 'auto'}
+                                                    aria-label="Forma del bloque"
+                                                    onChange={e => updateBlock(selectedIndex, { aspectRatio: e.target.value as AspectRatio })}
+                                                >
+                                                    <option value="auto">Paisaje Ancho (16:9)</option>
+                                                    <option value="portrait">Vertical Stories (4:5)</option>
+                                                    <option value="square">Cuadrado (1:1)</option>
+                                                    <option value="full">Pantalla Completa (Full Bleed)</option>
+                                                    <option value="intrinsic">Adaptable a la Imagen (Natural)</option>
+                                                </select>
+                                            </Row>
+                                        </>
+                                    )}
+
+                                    {/* Rich Text Block Settings */}
+                                    {selectedBlock.type === 'rich_text' && (
+                                        <>
+                                            <Row label="Contenido del Texto">
+                                                <textarea
+                                                    className={`${fieldCls} h-24 resize-y`}
+                                                    value={selectedBlock.textContent || ''}
+                                                    placeholder="Escribe tu título o texto libre aquí..."
+                                                    aria-label="Contenido del texto"
+                                                    onChange={e => updateBlock(selectedIndex, { textContent: e.target.value })}
+                                                />
+                                            </Row>
+                                            <Row label="Tamaño de Letra">
+                                                <select
+                                                    className={selectCls}
+                                                    value={selectedBlock.textSize || 'medium'}
+                                                    aria-label="Tamaño de letra"
+                                                    onChange={e => updateBlock(selectedIndex, { textSize: e.target.value as TextSize })}
+                                                >
+                                                    <option value="small">Pequeño (Etiqueta)</option>
+                                                    <option value="medium">Normal (Párrafo)</option>
+                                                    <option value="large">Grande (Subtítulo)</option>
+                                                    <option value="xlarge">Extra Grande</option>
+                                                    <option value="title">Gigante (Título Principal)</option>
+                                                </select>
+                                            </Row>
+                                            <Row label="Alineación">
+                                                <select
+                                                    className={selectCls}
+                                                    value={selectedBlock.textAlignment || 'center'}
+                                                    aria-label="Alineación del texto"
+                                                    onChange={e => updateBlock(selectedIndex, { textAlignment: e.target.value as TextAlignment })}
+                                                >
+                                                    <option value="left">Izquierda</option>
+                                                    <option value="center">Centro</option>
+                                                    <option value="right">Derecha</option>
+                                                </select>
+                                            </Row>
+                                            <Row label="Fuente (Tipografía)">
+                                                <select
+                                                    className={selectCls}
+                                                    value={selectedBlock.textFont || 'sans'}
+                                                    aria-label="Fuente del texto"
+                                                    onChange={e => updateBlock(selectedIndex, { textFont: e.target.value as TextFont })}
+                                                >
+                                                    <option value="sans">Moderna (Sans-serif)</option>
+                                                    <option value="serif">Elegante (Serif)</option>
+                                                    <option value="mono">Máquina de Escribir (Mono)</option>
+                                                </select>
+                                            </Row>
+                                            <Row label="Grosor (Peso)">
+                                                <select
+                                                    className={selectCls}
+                                                    value={selectedBlock.textWeight || 'normal'}
+                                                    aria-label="Grosor del texto"
+                                                    onChange={e => updateBlock(selectedIndex, { textWeight: e.target.value as TextWeight })}
+                                                >
+                                                    <option value="light">Fino (Light)</option>
+                                                    <option value="normal">Normal</option>
+                                                    <option value="bold">Grueso (Negrita)</option>
+                                                </select>
+                                            </Row>
+                                        </>
+                                    )}
+
+                                    {/* Classic Grid Settings */}
+                                    {selectedBlock.type === 'classic_grid' && (
+                                        <>
+                                            <Row label="Columnas en Computadora">
+                                                <select
+                                                    className={selectCls}
+                                                    value={selectedBlock.gridColumnsDesktop || 5}
+                                                    aria-label="Columnas en computadora"
+                                                    onChange={e => updateBlock(selectedIndex, { gridColumnsDesktop: parseInt(e.target.value) })}
+                                                >
+                                                    <option value="2">2 Columnas</option>
+                                                    <option value="3">3 Columnas</option>
+                                                    <option value="4">4 Columnas</option>
+                                                    <option value="5">5 Columnas (Default)</option>
+                                                    <option value="6">6 Columnas</option>
+                                                </select>
+                                            </Row>
+                                            <Row label="Columnas en Celular">
+                                                <select
+                                                    className={selectCls}
+                                                    value={selectedBlock.gridColumnsMobile || 2}
+                                                    aria-label="Columnas en celular"
+                                                    onChange={e => updateBlock(selectedIndex, { gridColumnsMobile: parseInt(e.target.value) })}
+                                                >
+                                                    <option value="1">1 Columna (Lista)</option>
+                                                    <option value="2">2 Columnas (Default)</option>
+                                                    <option value="3">3 Columnas</option>
+                                                </select>
+                                            </Row>
+                                        </>
+                                    )}
+
+                                    {/* Multi Item Blocks (Carousel / Promo Grid / Classic Grid) */}
+                                    {(selectedBlock.type === 'category_carousel' || selectedBlock.type === 'promo_grid' || selectedBlock.type === 'classic_grid') && (
+                                        <>
+                                            <div className="border-b border-shell-line py-3">
+                                                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                                    <span className="text-[13px] text-shell-ink-soft">
+                                                        Elementos del {selectedBlock.type === 'category_carousel' ? 'Carrusel' : 'Grid'}
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const newItems = [...(selectedBlock.items || []), { imageUrl: '', linkHref: '', title: '' }];
+                                                            updateBlock(selectedIndex, { items: newItems });
+                                                        }}
+                                                        className={btn}
+                                                    >
+                                                        <FiPlus size={13} aria-hidden="true" /> Añadir Elemento
+                                                    </button>
+                                                </div>
+
+                                                <ul className="list-none space-y-1.5 p-0">
+                                                    {selectedBlock.items?.map((item, itemIdx) => (
+                                                        <li
+                                                            key={itemIdx}
+                                                            className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-2 rounded border border-shell-line bg-shell-surface p-2"
+                                                        >
+                                                            {item.imageUrl ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setShowCoverSelector({ blockId: selectedBlock.id, itemIdx })}
+                                                                    aria-label={`Cambiar imagen del elemento ${itemIdx + 1}`}
+                                                                    className="h-12 w-12 cursor-pointer overflow-hidden rounded border border-shell-line-strong bg-shell-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60"
+                                                                >
+                                                                    <span className="relative block h-12 w-12">
+                                                                        <Image src={item.imageUrl} alt="item" fill className="object-cover" />
+                                                                    </span>
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setShowCoverSelector({ blockId: selectedBlock.id, itemIdx })}
+                                                                    aria-label={`Elegir imagen del elemento ${itemIdx + 1}`}
+                                                                    className="flex h-12 w-12 cursor-pointer items-center justify-center rounded border border-dashed border-shell-line-strong text-[13px] text-shell-accent hover:border-shell-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60"
+                                                                >
+                                                                    +
+                                                                </button>
+                                                            )}
+                                                            <div className="flex min-w-0 flex-col gap-1">
+                                                                <input
+                                                                    className={fieldCls}
+                                                                    value={item.title || ''}
+                                                                    placeholder="Título (opcional)"
+                                                                    aria-label={`Título del elemento ${itemIdx + 1}`}
+                                                                    onChange={e => {
+                                                                        const newItems = [...(selectedBlock.items || [])];
+                                                                        newItems[itemIdx] = { ...newItems[itemIdx], title: e.target.value };
+                                                                        updateBlock(selectedIndex, { items: newItems });
+                                                                    }}
+                                                                />
+                                                                <input
+                                                                    className={fieldCls}
+                                                                    value={item.linkHref || ''}
+                                                                    placeholder="URL destino"
+                                                                    list="album-urls"
+                                                                    aria-label={`URL destino del elemento ${itemIdx + 1}`}
+                                                                    onChange={e => {
+                                                                        const newItems = [...(selectedBlock.items || [])];
+                                                                        newItems[itemIdx] = { ...newItems[itemIdx], linkHref: e.target.value };
+                                                                        updateBlock(selectedIndex, { items: newItems });
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const newItems = [...(selectedBlock.items || [])];
+                                                                    newItems.splice(itemIdx, 1);
+                                                                    updateBlock(selectedIndex, { items: newItems });
+                                                                }}
+                                                                aria-label={`Quitar elemento ${itemIdx + 1}`}
+                                                                className={btnQuiet}
+                                                            >
+                                                                <FiTrash2 size={14} aria-hidden="true" />
+                                                            </button>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+
+                                                {selectedBlock.items?.length === 0 && (
+                                                    <p className="mt-1 text-[11.5px] text-shell-muted">
+                                                        Sin elementos todavía. Añadí el primero con el botón de arriba.
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <Row label="Forma de las Fotos (Aspect Ratio)">
+                                                <select
+                                                    className={selectCls}
+                                                    value={selectedBlock.aspectRatio || 'auto'}
+                                                    aria-label="Forma de las fotos"
+                                                    onChange={e => updateBlock(selectedIndex, { aspectRatio: e.target.value as AspectRatio })}
+                                                >
+                                                    {selectedBlock.type === 'category_carousel' && (
+                                                        <option value="intrinsic">Adaptable a la Imagen (Natural)</option>
+                                                    )}
+                                                    <option value="auto">Libre (Original)</option>
+                                                    <option value="portrait">Vertical Stories (4:5)</option>
+                                                    <option value="square">Cuadrado (1:1)</option>
+                                                </select>
+                                            </Row>
+                                        </>
+                                    )}
+                                </>
+                            )}
+                        </Section>
                     </div>
 
-                    {/* Right Panel: Fixed Mobile Live Preview */}
-                    <div className="hidden lg:block lg:col-span-2 relative">
-                        <div className="sticky top-8 h-[calc(100vh-4rem)] flex flex-col items-center justify-start pb-8">
-                            
-                            {/* Device Frame Top */}
-                            <div className="flex justify-between items-center bg-gray-900 border-x-[8px] border-t-[8px] border-gray-900 text-white px-4 py-2 w-full max-w-[400px] rounded-t-3xl shadow-xl z-20">
-                                <h3 className="text-sm font-bold flex items-center gap-2"><FiEye /> Vista Previa En Vivo</h3>
-                                <div className="flex gap-2 text-[10px] uppercase font-bold tracking-widest text-gray-400">
-                                    Móvil Virtual
-                                </div>
-                            </div>
-                            
-                            {/* LIVE PREVIEW CONTAINER */}
-                            <div className="border border-x-[8px] border-gray-900 bg-white w-full max-w-[400px] h-full min-h-[500px] max-h-[800px] overflow-y-auto mb-6 shadow-2xl rounded-b-3xl relative custom-scrollbar">
-                                {config.blocks.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4">
-                                        <p className="text-sm text-center px-4">Arrastra bloques a la izquierda para verlos aquí.</p>
+                    {/* ---------- Columnas 4-5: vista previa y publicación ---------- */}
+                    <div className="lg:col-span-2">
+                        <div className="lg:sticky lg:top-4">
+                            <Section
+                                id="h-preview"
+                                title="Vista previa en vivo"
+                                note="Móvil virtual. Tocá cualquier bloque de la lista para verlo acá."
+                            >
+                                <div className="rounded-md border border-shell-line-strong bg-shell-raised">
+                                    <div className="flex items-center justify-between gap-2 border-b border-shell-line px-3 py-2">
+                                        <h3 className="flex items-center gap-2 text-[12px] font-semibold text-shell-ink">
+                                            <FiEye aria-hidden="true" /> Vista Previa En Vivo
+                                        </h3>
+                                        <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-shell-muted">
+                                            Móvil Virtual
+                                        </span>
                                     </div>
-                                ) : (
-                                    <div className="pointer-events-none w-full bg-white"> 
-                                        <Suspense fallback={<div className="p-10 text-center text-gray-500 text-xs font-mono border-2 border-dashed rounded-xl m-4 bg-gray-50">Sincronizando vista en vivo...</div>}>
-                                            <StorefrontView storefront={config} appConfig={{gridColumns: 5, mobileGridColumns: 2} as any} isPreview={true} />
-                                        </Suspense>
-                                    </div>
-                                )}
-                            </div>
 
-                            <div className="flex gap-4">
-                                <div className="flex-1">
-                                    <h4 className="text-xs font-bold mb-2">Mapeador de Rutas Rápidas</h4>
-                                    <div className="max-h-40 overflow-y-auto space-y-1 bg-white p-2 rounded border text-[10px] font-mono shadow-inner">
-                                        {allAlbums.slice(0, 30).map(album => (
-                                            <div key={album.id} className="truncate p-1 hover:bg-blue-100 hover:text-blue-800 cursor-copy rounded" title="Copy to clipboard" onClick={() => navigator.clipboard.writeText(`/${slugify(album.name)}`)}>
-                                                /{slugify(album.name)}
+                                    <div className="custom-scrollbar max-h-[800px] min-h-[500px] w-full overflow-y-auto bg-white">
+                                        {config.blocks.length === 0 ? (
+                                            <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-3 px-4 text-shell-muted">
+                                                <p className="text-[12.5px] text-center">
+                                                    Agregá un bloque para verlo acá.
+                                                </p>
                                             </div>
+                                        ) : (
+                                            <div className="pointer-events-none w-full bg-white">
+                                                <Suspense fallback={<div className="p-8 text-center text-[12px] text-shell-muted">Sincronizando vista en vivo...</div>}>
+                                                    <StorefrontView storefront={config} appConfig={{ gridColumns: 5, mobileGridColumns: 2 } as AppConfig} isPreview={true} />
+                                                </Suspense>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 border-t border-shell-line pt-3">
+                                    <h4 className="mb-1 text-[12px] font-bold uppercase tracking-[0.08em] text-shell-muted">
+                                        Mapeador de Rutas Rápidas
+                                    </h4>
+                                    <div className="max-h-40 overflow-y-auto rounded border border-shell-line bg-shell-surface p-1 text-[11.5px]">
+                                        {allAlbums.slice(0, 30).map(album => (
+                                            <button
+                                                key={album.id}
+                                                type="button"
+                                                className="block w-full cursor-copy truncate rounded px-1.5 py-0.5 text-left text-shell-ink-soft hover:bg-shell-raised hover:text-shell-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60"
+                                                title="Copiar ruta al portapapeles"
+                                                aria-label={`Copiar la ruta /${slugify(album.name)}`}
+                                                onClick={() => navigator.clipboard.writeText(`/${slugify(album.name)}`)}
+                                            >
+                                                /{slugify(album.name)}
+                                            </button>
                                         ))}
                                     </div>
                                 </div>
-                                <div className="flex-1 flex flex-col justify-end">
+
+                                <div className="mt-4 border-t border-shell-line pt-3">
                                     <button
                                         onClick={handleSave}
                                         disabled={saving}
-                                        className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-bold shadow-md transition-colors"
+                                        className={btnPrimary}
                                     >
                                         {saving ? 'Guardando...' : 'GUARDAR Y PUBLICAR'}
                                     </button>
-                                    
+
                                     <button
                                         onClick={() => {
                                             if (confirm('¿Estás seguro de que quieres destruir todo este diseño? La página principal volverá a su estado original.')) {
@@ -515,46 +806,66 @@ export default function StorefrontBuilder({ availableCovers, allAlbums, allAlbum
                                                 }).then(() => alert('Storefront desactivado y limpiado.')).catch(() => alert('Error reseteando.'));
                                             }
                                         }}
-                                        className="w-full mt-3 text-red-500 text-xs hover:underline text-center"
+                                        className={`${btnQuiet} mt-2 w-full justify-center`}
                                     >
                                         Desactivar y Limpiar Todo
                                     </button>
                                 </div>
-                            </div>
-                            
+                            </Section>
                         </div>
                     </div>
                 </div>
             )}
 
             {showCoverSelector && (
-                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl p-6 max-w-4xl w-full max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
-                        <div className="flex justify-between items-center mb-4 pb-2 border-b">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-shell-bg/80 p-4">
+                    <div
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="h-portadas"
+                        className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-md border border-shell-line-strong bg-shell-surface shadow-2xl"
+                    >
+                        <div className="flex items-start justify-between gap-3 border-b border-shell-line px-4 py-3">
                             <div>
-                                <h3 className="text-xl font-bold">Seleccionar Portada</h3>
-                                <p className="text-xs text-gray-500">Sube fotos verticales a la carpeta PORTADAS en tu Drive para verlas aquí.</p>
+                                <h3 id="h-portadas" className="text-[15px] font-semibold text-shell-ink">
+                                    Seleccionar Portada
+                                </h3>
+                                <p className="mt-0.5 text-[11.5px] text-shell-muted">
+                                    Sube fotos verticales a la carpeta PORTADAS en tu Drive para verlas aquí.
+                                </p>
                             </div>
-                            <button onClick={() => setShowCoverSelector(null)} className="text-gray-500 hover:text-black">Cerrar ✕</button>
+                            <button
+                                type="button"
+                                onClick={() => setShowCoverSelector(null)}
+                                className={btn}
+                            >
+                                Cerrar
+                            </button>
                         </div>
-                        <div className="overflow-y-auto flex-grow pr-2">
-                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+                        <div className="flex-grow overflow-y-auto p-4">
+                            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5">
                                 {availableCovers.map(cover => (
-                                    <div
+                                    <button
                                         key={cover}
-                                        className="cursor-pointer border-2 border-transparent hover:border-blue-500 rounded overflow-hidden group relative"
+                                        type="button"
+                                        aria-label={`Usar la portada ${cover.split('/').pop()}`}
+                                        className="group relative cursor-pointer overflow-hidden rounded border border-shell-line bg-shell-raised text-left hover:border-shell-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60"
                                         onClick={() => handleSelectCover(cover)}
                                     >
-                                        <div className="relative aspect-[4/5] w-full bg-gray-100">
+                                        <span className="relative block aspect-[4/5] w-full bg-shell-raised">
                                             <Image src={cover} alt="cover option" fill className="object-cover transition-transform group-hover:scale-105" />
-                                        </div>
-                                        <div className="absolute inset-x-0 bottom-0 bg-black/50 p-1 text-center">
-                                            <p className="text-[10px] truncate text-white" title={cover.split('/').pop()}>{cover.split('/').pop()}</p>
-                                        </div>
-                                    </div>
+                                        </span>
+                                        <span className="absolute inset-x-0 bottom-0 bg-shell-bg/80 p-1 text-center">
+                                            <span className="block truncate text-[10px] text-shell-ink" title={cover.split('/').pop()}>{cover.split('/').pop()}</span>
+                                        </span>
+                                    </button>
                                 ))}
                             </div>
-                            {availableCovers.length === 0 && <p className="text-center py-10 text-gray-400">No hay imágenes disponibles. Añade imágenes en el folder PORTADAS y sincroniza.</p>}
+                            {availableCovers.length === 0 && (
+                                <p className="py-10 text-center text-[12.5px] text-shell-muted">
+                                    No hay imágenes disponibles. Añade imágenes en el folder PORTADAS y sincroniza.
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
