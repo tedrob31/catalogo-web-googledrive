@@ -4,55 +4,73 @@ interface HistoryTabProps {
   logs: any[];
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  completed: 'completada',
+  syncing: 'en curso',
+  running: 'en curso',
+  failed: 'falló',
+  error: 'falló',
+  cancelled: 'cancelada',
+};
+
 export default function HistoryTab({ logs = [] }: HistoryTabProps) {
   return (
-    <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 shadow-sm">
-      <h2 className="text-base font-bold text-zinc-100 mb-4">Historial de Sincronizaciones</h2>
+    <div>
+      <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-shell-ink">Historial</h1>
+      <p className="mb-6 mt-1 max-w-[66ch] text-[13px] text-shell-muted">
+        Cada sincronización que disparaste, con cuántas fotos procesó y si algo falló.
+      </p>
+
       {logs.length === 0 ? (
-        <p className="text-xs text-zinc-500">Aún no hay registros de sincronización.</p>
+        <p className="rounded-md border border-dashed border-shell-line px-4 py-8 text-center text-[12.5px] text-shell-muted">
+          Todavía no hay sincronizaciones registradas.
+        </p>
       ) : (
-        <div className="space-y-3">
-          {logs.map((log) => (
-            <div
-              key={log.id}
-              className="p-3.5 bg-zinc-950/60 border border-zinc-800/80 rounded-xl flex items-center justify-between text-xs hover:bg-zinc-800/40 transition"
-            >
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      log.status === 'completed'
-                        ? 'bg-emerald-400'
-                        : log.status === 'syncing'
-                        ? 'bg-amber-400 animate-pulse'
-                        : 'bg-rose-500'
-                    }`}
-                  />
-                  <span className="font-semibold text-zinc-200 uppercase tracking-wider text-[10px]">
-                    {log.status}
-                  </span>
-                  {log.error_message && (
-                    <span className="text-rose-400 text-[10px] truncate max-w-xs">
-                      ({log.error_message})
+        <ul className="border-t border-shell-line">
+          {logs.map((log) => {
+            const failed = log.status === 'failed' || log.status === 'error';
+            const running = log.status === 'syncing' || log.status === 'running';
+            return (
+              <li
+                key={log.id}
+                className="flex flex-col gap-1 border-b border-shell-line py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
+                        failed
+                          ? 'border-shell-danger/40 text-shell-danger'
+                          : running
+                            ? 'border-shell-warn/40 text-shell-warn'
+                            : 'border-shell-accent/40 text-shell-accent'
+                      }`}
+                    >
+                      {STATUS_LABEL[log.status] || log.status}
                     </span>
+                    <span className="text-[12px] tabular-nums text-shell-ink-soft">
+                      {new Date(log.started_at).toLocaleString('es-PE')}
+                    </span>
+                  </div>
+                  {log.error_message && (
+                    <p className="mt-1 truncate text-[11.5px] text-shell-danger" title={log.error_message}>
+                      {log.error_message}
+                    </p>
                   )}
                 </div>
-                <span className="text-zinc-400 text-[11px]">
-                  Inicio: {new Date(log.started_at).toLocaleString('es-PE')}
-                </span>
-              </div>
 
-              <div className="text-right">
-                <div className="text-zinc-100 font-mono font-medium">
-                  {log.total_photos || 0} fotos
+                <div className="shrink-0 text-[12px] sm:text-right">
+                  <div className="tabular-nums text-shell-ink">
+                    <b className="font-semibold">{log.items_processed || 0}</b> subidas a R2
+                  </div>
+                  <div className="text-[11px] tabular-nums text-shell-muted">
+                    {log.total_photos || 0} fotos en el catálogo
+                  </div>
                 </div>
-                <div className="text-[10px] text-zinc-500">
-                  {log.items_processed || 0} fotos subidas a Cloudflare R2
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );
