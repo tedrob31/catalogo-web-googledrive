@@ -72,27 +72,76 @@ function Section({
   id,
   title,
   note,
+  index,
+  state,
   children,
 }: {
   id: string;
   title: string;
   note?: string;
+  /** Si viene, la sección se dibuja como paso numerado de la puesta en marcha. */
+  index?: number;
+  state?: 'done' | 'pending';
   children: React.ReactNode;
 }) {
+  // Sin `index` es una sección comun; con `index` es un paso, y se dibuja distinto a proposito:
+  // los cuatro pasos son la puesta en marcha y antes se leian todos iguales, sin avance visible.
+  if (index === undefined) {
+    return (
+      <section aria-labelledby={id} className="mb-8">
+        <h2
+          id={id}
+          className="border-b border-shell-line pb-2 text-[12px] font-bold uppercase tracking-[0.08em] text-shell-muted"
+        >
+          {title}
+        </h2>
+        {note && (
+          <p className="mb-1 mt-2 max-w-[66ch] text-[12.5px] leading-relaxed text-shell-ink-soft">
+            {note}
+          </p>
+        )}
+        {children}
+      </section>
+    );
+  }
+
+  const done = state === 'done';
+
   return (
-    <section aria-labelledby={id} className="mb-8">
-      <h2
-        id={id}
-        className="border-b border-shell-line pb-2 text-[12px] font-bold uppercase tracking-[0.08em] text-shell-muted"
-      >
-        {title}
-      </h2>
-      {note && (
-        <p className="mb-1 mt-2 max-w-[66ch] text-[12.5px] leading-relaxed text-shell-ink-soft">
-          {note}
-        </p>
-      )}
-      {children}
+    <section aria-labelledby={id} className="mb-6 border-t border-shell-line pt-4 first:border-t-0">
+      <div className="mb-1.5 flex items-start gap-3">
+        <span
+          aria-hidden="true"
+          className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[11.5px] font-bold ${
+            done
+              ? 'border-shell-accent bg-shell-accent text-shell-accent-ink'
+              : 'border-shell-line-strong text-shell-muted'
+          }`}
+        >
+          {done ? '✓' : index}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 id={id} className="text-[14px] font-semibold text-shell-ink">
+            {title}
+          </h2>
+          {note && (
+            <p className="mt-0.5 max-w-[66ch] text-[12.5px] leading-relaxed text-shell-muted">
+              {note}
+            </p>
+          )}
+        </div>
+        {state === 'done' && (
+          <span className="shrink-0 rounded border border-shell-accent/40 px-1.5 py-0.5 text-[10px] font-semibold text-shell-accent">
+            listo
+          </span>
+        )}
+        {state === 'pending' && (
+          <span className="shrink-0 rounded border border-shell-line-strong px-1.5 py-0.5 text-[10px] font-semibold text-shell-warn">
+            pendiente
+          </span>
+        )}
+      </div>
+      <div className="pl-9">{children}</div>
     </section>
   );
 }
@@ -386,7 +435,9 @@ export default function DriveTab({
       {/* ---------- 1. Conectar Google Drive ---------- */}
       <Section
         id="h-cuenta"
-        title="1 · Conectar Google Drive"
+        index={1}
+        title="Conectar Google Drive"
+        state={integration?.is_connected ? 'done' : 'pending'}
         note="Damos acceso de solo lectura a tus carpetas y fotos: c4talogo nunca modifica nada en tu Drive."
       >
         {integration?.is_connected ? (
@@ -425,7 +476,9 @@ export default function DriveTab({
       {/* ---------- 2. Carpeta del catálogo ---------- */}
       <Section
         id="h-catalogo"
-        title="2 · Elegir la carpeta del catálogo"
+        index={2}
+        title="Elegir la carpeta del catálogo"
+        state={integration?.catalog_folder_id ? 'done' : 'pending'}
         note="Es la carpeta que ya tenés ordenada: cada subcarpeta se vuelve un álbum de tu catálogo."
       >
         <Row label="Buscar en tu Drive" hint="Nombre de la carpeta principal (ej. Catálogo 2026)">
@@ -537,7 +590,9 @@ export default function DriveTab({
       {/* ---------- 3. Carpeta de portadas ---------- */}
       <Section
         id="h-portadas"
-        title="3 · Elegir la carpeta de portadas"
+        index={3}
+        title="Elegir la carpeta de portadas"
+        state={integration?.cover_folder_id ? 'done' : 'pending'}
         note="Opcional: si no la elegís, cada álbum muestra su primera foto como portada."
       >
         <Row label="Carpeta de portadas" hint="Se marca con «Elegir portadas» en la lista del paso 2">
@@ -585,7 +640,8 @@ export default function DriveTab({
       {/* ---------- 4. Portada de cada álbum ---------- */}
       <Section
         id="h-albumes"
-        title="4 · Asignar una portada a cada álbum"
+        index={4}
+        title="Asignar una portada a cada álbum"
         note="Opcional. La portada la resuelve tu carpeta de portadas; acá podés cambiarla álbum por álbum."
       >
         {/* Banner Sticky de Cambios Pendientes */}
@@ -724,7 +780,7 @@ export default function DriveTab({
                 No hay álbumes que coincidan con &quot;{albumFilter}&quot;.
               </div>
             ) : (
-              <div className="max-h-[550px] overflow-y-auto rounded-md border border-shell-line">
+              <div className="rounded-md border border-shell-line md:max-h-[550px] md:overflow-y-auto">
                 {searchResults.map((album) => {
                   const customCover = folderCovers[album.id];
                   const isChanged = folderCovers[album.id] !== savedFolderCovers[album.id];
@@ -804,7 +860,7 @@ export default function DriveTab({
           </div>
         ) : (
           /* VISTA 2: Navegación por Árbol Jerárquico de Carpetas */
-          <div className="mt-3 max-h-[550px] overflow-y-auto rounded-md border border-shell-line">
+          <div className="mt-3 rounded-md border border-shell-line md:max-h-[550px] md:overflow-y-auto">
             {rootNodes.map((root) => renderTreeNode(root))}
           </div>
         )}
