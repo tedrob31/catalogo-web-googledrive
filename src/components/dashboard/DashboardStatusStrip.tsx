@@ -6,6 +6,8 @@ interface Props {
   onSyncNow: () => void;
   lastSyncAt?: string | null;
   photosCount?: number;
+  /** Cupo de fotos del plan contratado. Sin esto no se ve cuánto margen queda. */
+  photosLimit?: number | null;
   albumsCount?: number;
   onOpenNav: () => void;
   theme: 'dark' | 'light';
@@ -38,12 +40,17 @@ export default function DashboardStatusStrip({
   onSyncNow,
   lastSyncAt,
   photosCount,
+  photosLimit,
   albumsCount,
   onOpenNav,
   theme,
   onToggleTheme,
 }: Props) {
   const connected = driveConnected === true;
+  const photosPercent =
+    typeof photosCount === 'number' && typeof photosLimit === 'number' && photosLimit > 0
+      ? Math.round((photosCount / photosLimit) * 100)
+      : 0;
 
   return (
     <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-shell-line bg-shell-surface/95 px-3 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-shell-surface/80 sm:px-5">
@@ -78,9 +85,23 @@ export default function DashboardStatusStrip({
             <b className="font-semibold text-shell-ink">{relativeTime(lastSyncAt)}</b>
           </span>
           {typeof photosCount === 'number' && (
-            <span className="hidden items-baseline gap-1.5 text-[13px] md:flex">
+            <span className="hidden items-center gap-1.5 text-[13px] md:flex">
               <span className="text-[11.5px] text-shell-muted">fotos</span>
               <b className="font-semibold tabular-nums text-shell-ink">{photosCount}</b>
+              {typeof photosLimit === 'number' && photosLimit > 0 && (
+                <>
+                  <span className="tabular-nums text-shell-muted">/ {photosLimit}</span>
+                  <span
+                    className="h-1 w-12 shrink-0 overflow-hidden rounded-full bg-shell-raised"
+                    title={`${photosPercent}% del cupo del plan`}
+                  >
+                    <span
+                      className={`block h-full ${photosPercent >= 90 ? 'bg-shell-warn' : 'bg-shell-accent'}`}
+                      style={{ width: `${Math.min(100, photosPercent)}%` }}
+                    />
+                  </span>
+                </>
+              )}
             </span>
           )}
           {typeof albumsCount === 'number' && (

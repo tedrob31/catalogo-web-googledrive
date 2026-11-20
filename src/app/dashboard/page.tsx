@@ -902,6 +902,7 @@ export default function TenantDashboard() {
           onSyncNow={handleSyncNow}
           lastSyncAt={integration?.last_synced_at ?? null}
           photosCount={albums.reduce((n, a) => n + (a.photosCount || 0), 0)}
+          photosLimit={plan?.max_photos ?? null}
           albumsCount={albums.length}
           onOpenNav={() => setNavOpen(true)}
           theme={shellTheme}
