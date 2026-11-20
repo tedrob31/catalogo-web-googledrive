@@ -89,7 +89,7 @@ export default function DashboardSidebar({
           type="button"
           aria-label="Cerrar navegación"
           onClick={onClose}
-          className="fixed inset-0 z-40 cursor-default bg-black/60 lg:hidden"
+          className="fixed inset-0 z-40 cursor-default bg-shell-bg/80 lg:hidden"
         />
       )}
 

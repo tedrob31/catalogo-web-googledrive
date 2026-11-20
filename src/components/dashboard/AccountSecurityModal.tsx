@@ -10,6 +10,11 @@ interface AccountSecurityModalProps {
   userEmail: string;
 }
 
+const inputCls =
+  'w-full rounded-md border border-shell-line-strong bg-shell-raised px-2.5 py-2 text-[12.5px] text-shell-ink placeholder:text-shell-muted transition focus:outline-none focus:ring-2 focus:ring-shell-accent/60';
+
+const labelCls = 'mb-1 flex items-center gap-1.5 text-[12px] font-medium text-shell-ink-soft';
+
 export default function AccountSecurityModal({
   isOpen,
   onClose,
@@ -62,44 +67,60 @@ export default function AccountSecurityModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-white/10 rounded-2xl max-w-md w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-shell-bg/80 p-4 backdrop-blur-sm">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="security-modal-title"
+        className="animate-in fade-in zoom-in-95 relative w-full max-w-md rounded-lg border border-shell-line bg-shell-surface p-5 duration-200"
+      >
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition cursor-pointer"
+          aria-label="Cerrar seguridad y contraseña"
+          className="absolute right-3 top-3 cursor-pointer rounded-md p-1.5 text-shell-muted transition hover:bg-shell-raised hover:text-shell-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60"
         >
-          <FaTimes className="text-sm" />
+          <FaTimes className="text-sm" aria-hidden="true" />
         </button>
 
-        <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mb-4 text-xl">
-          <FaShieldAlt />
+        <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-md border border-shell-line bg-shell-raised text-sm text-shell-accent">
+          <FaShieldAlt aria-hidden="true" />
         </div>
 
-        <h3 className="text-base font-bold text-white mb-1">
+        <h3 id="security-modal-title" className="mb-1 text-[15px] font-semibold text-shell-ink">
           Seguridad y Contraseña de Acceso
         </h3>
-        <p className="text-xs text-slate-400 mb-4">
+        <p className="mb-4 text-[12px] text-shell-muted">
           Asigna o actualiza una contraseña para acceder con tu correo electrónico (
-          <strong className="text-white">{userEmail}</strong>) sin depender exclusivamente de Google.
+          <strong className="font-semibold text-shell-ink">{userEmail}</strong>) sin depender
+          exclusivamente de Google.
         </p>
 
         {error && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs rounded-xl mb-4">
-            {error}
+          <div
+            role="alert"
+            className="mb-4 rounded-md border border-shell-danger/40 bg-shell-danger/10 p-2.5 text-[12px] text-shell-danger"
+          >
+            <strong className="font-semibold">Error:</strong> {error}
           </div>
         )}
 
         {success && (
-          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs rounded-xl mb-4 flex items-start gap-2">
-            <FaCheckCircle className="text-emerald-400 text-sm shrink-0 mt-0.5" />
-            <span>{success}</span>
+          <div
+            role="status"
+            className="mb-4 flex items-start gap-2 rounded-md border border-shell-accent/40 bg-shell-accent/10 p-2.5 text-[12px] text-shell-accent"
+          >
+            <FaCheckCircle className="mt-0.5 shrink-0 text-sm" aria-hidden="true" />
+            <span>
+              <strong className="font-semibold">Listo:</strong> {success}
+            </span>
           </div>
         )}
 
-        <form onSubmit={handleUpdatePassword} className="space-y-4">
+        <form onSubmit={handleUpdatePassword} className="space-y-3.5">
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1.5">
-              <FaKey className="text-amber-400 text-[10px]" />
+            <label className={labelCls}>
+              <FaKey className="text-[10px] text-shell-accent" aria-hidden="true" />
               <span>Nueva Contraseña:</span>
             </label>
             <input
@@ -109,13 +130,13 @@ export default function AccountSecurityModal({
               placeholder="Mínimo 6 caracteres"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-800 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
+              className={inputCls}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1.5">
-              <FaLock className="text-amber-400 text-[10px]" />
+            <label className={labelCls}>
+              <FaLock className="text-[10px] text-shell-accent" aria-hidden="true" />
               <span>Confirmar Nueva Contraseña:</span>
             </label>
             <input
@@ -125,21 +146,21 @@ export default function AccountSecurityModal({
               placeholder="Repite la nueva contraseña"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full bg-slate-800 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
+              className={inputCls}
             />
           </div>
 
-          <div className="pt-2 flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col gap-2 pt-2 sm:flex-row">
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-2.5 px-4 bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-semibold text-xs rounded-xl shadow-lg transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+              className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-md border border-shell-accent bg-shell-accent px-4 py-2 text-[12.5px] font-semibold text-shell-accent-ink transition focus:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? (
                 <span>Guardando contraseña...</span>
               ) : (
                 <>
-                  <FaKey />
+                  <FaKey aria-hidden="true" />
                   <span>Guardar Contraseña</span>
                 </>
               )}
@@ -147,7 +168,7 @@ export default function AccountSecurityModal({
             <button
               type="button"
               onClick={onClose}
-              className="py-2.5 px-4 bg-white/10 hover:bg-white/20 text-slate-300 text-xs rounded-xl font-medium transition cursor-pointer"
+              className="cursor-pointer rounded-md border border-shell-line bg-shell-raised px-4 py-2 text-[12.5px] font-medium text-shell-ink-soft transition hover:border-shell-line-strong hover:text-shell-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-shell-accent/60"
             >
               Cerrar
             </button>
