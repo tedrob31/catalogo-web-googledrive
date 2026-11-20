@@ -36,6 +36,25 @@ export default function TenantDashboard() {
     'drive' | 'design' | 'effects' | 'branding' | 'storefront' | 'analytics' | 'history'
   >('drive');
 
+  // Shell: cajón de navegación (pantallas chicas), rail plegado (escritorio) y tema.
+  const [navOpen, setNavOpen] = useState(false);
+  const [navCollapsed, setNavCollapsed] = useState(false);
+  const [shellTheme, setShellTheme] = useState<'dark' | 'light'>('dark');
+
+  // El tema se lee después de montar: leerlo en el render rompe la hidratación.
+  useEffect(() => {
+    const saved = window.localStorage.getItem('c4talogo.shell-theme');
+    if (saved === 'light' || saved === 'dark') setShellTheme(saved);
+  }, []);
+
+  const toggleShellTheme = () => {
+    setShellTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      window.localStorage.setItem('c4talogo.shell-theme', next);
+      return next;
+    });
+  };
+
   // Estado de Drive y Carpetas
   const [searchQuery, setSearchQuery] = useState('');
   const [searchingFolders, setSearchingFolders] = useState(false);
@@ -847,7 +866,11 @@ export default function TenantDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-shell-bg text-shell-ink flex flex-col font-sans lg:pl-[212px]">
+    <div
+      className={`min-h-screen bg-shell-bg text-shell-ink flex flex-col font-sans ${
+        shellTheme === 'light' ? 'theme-light' : ''
+      } ${navCollapsed ? 'lg:pl-[52px]' : 'lg:pl-[212px]'}`}
+    >
       {/* 0. Navegación persistente: las secciones ya no se van con el scroll */}
       <DashboardSidebar
         activeTab={activeTab}
@@ -856,6 +879,10 @@ export default function TenantDashboard() {
         tenantHost={tenant?.subdomain ? `${tenant.subdomain}.${baseDomain}` : baseDomain}
         driveConnected={integration ? Boolean(integration.is_connected) : null}
         badge={<>{plan?.name || 'Plan'} · {albums.length} álbumes</>}
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+        collapsed={navCollapsed}
+        onToggleCollapsed={() => setNavCollapsed((v) => !v)}
       />
       {/* 1. Header Global */}
       <DashboardHeader
@@ -876,6 +903,9 @@ export default function TenantDashboard() {
           lastSyncAt={integration?.last_synced_at ?? null}
           photosCount={albums.reduce((n, a) => n + (a.photosCount || 0), 0)}
           albumsCount={albums.length}
+          onOpenNav={() => setNavOpen(true)}
+          theme={shellTheme}
+          onToggleTheme={toggleShellTheme}
         />
 
         {/* Contenido: ancho acotado y padding propio, para que la franja quede de borde a borde */}

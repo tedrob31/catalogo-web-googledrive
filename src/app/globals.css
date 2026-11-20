@@ -4,10 +4,11 @@
  * Tokens del panel del inquilino.
  *
  * Antes de esto no habia ningun token: todo el panel eran clases sueltas con hex
- * hardcodeados, y por eso cada pestana se resolvio por su cuenta. Estos valores salen del
- * artboard elegido (design/panel-inquilino/03-consola-densa.html) y son la unica fuente de
- * color para el panel de administracion. El catalogo publico NO usa estos tokens: mantiene
- * el tema configurable por inquilino.
+ * hardcodeados, y por eso cada pestana se resolvio por su cuenta. El catalogo publico NO usa
+ * estos tokens: mantiene el tema configurable por inquilino.
+ *
+ * Los utilities de Tailwind compilan a `var(--color-shell-*)`, asi que redefinir esas variables
+ * bajo `.theme-light` cambia el panel entero sin tocar un solo componente.
  */
 @theme {
   --color-shell-bg: #0b0b0c;
@@ -23,6 +24,26 @@
   --color-shell-warn: #e0a458;
   --color-shell-danger: #e06a5a;
 }
+
+/* Variante clara. El acento baja a un verde oliva: el lima del tema oscuro no tiene
+   contraste suficiente como texto sobre fondo claro. */
+.theme-light {
+  --color-shell-bg: #f7f6f3;
+  --color-shell-surface: #ffffff;
+  --color-shell-raised: #f1efe9;
+  --color-shell-line: #e2ded5;
+  --color-shell-line-strong: #cfc9bc;
+  --color-shell-ink: #1b1a18;
+  --color-shell-ink-soft: #46433c;
+  --color-shell-muted: #6b665c;
+  --color-shell-accent: #4f6b14;
+  --color-shell-accent-ink: #ffffff;
+  --color-shell-warn: #8a5a12;
+  --color-shell-danger: #a33b2b;
+}
+
+/* Sin regla global de body a proposito: el catalogo publico tiene su propio tema por
+   inquilino y pisarlo desde aca lo romperia. El panel pinta su fondo en su propio contenedor. */
 
 .dynamic-catalog-grid {
     grid-template-columns: repeat(var(--grid-cols-mobile, 2), minmax(0, 1fr));

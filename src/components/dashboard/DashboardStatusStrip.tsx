@@ -7,6 +7,9 @@ interface Props {
   lastSyncAt?: string | null;
   photosCount?: number;
   albumsCount?: number;
+  onOpenNav: () => void;
+  theme: 'dark' | 'light';
+  onToggleTheme: () => void;
 }
 
 function relativeTime(iso?: string | null): string {
@@ -26,7 +29,8 @@ function relativeTime(iso?: string | null): string {
  * Franja de estado con la acción principal siempre a la vista.
  *
  * Sincronizar es lo que se hace todos los días, así que vive acá y no dentro de una pestaña:
- * queda fija arriba mientras el contenido scrollea.
+ * queda fija arriba mientras el contenido scrollea. También es donde vive el menú, porque en
+ * pantallas chicas la navegación era inalcanzable.
  */
 export default function DashboardStatusStrip({
   driveConnected,
@@ -35,12 +39,28 @@ export default function DashboardStatusStrip({
   lastSyncAt,
   photosCount,
   albumsCount,
+  onOpenNav,
+  theme,
+  onToggleTheme,
 }: Props) {
   const connected = driveConnected === true;
 
   return (
-    <div className="sticky top-0 z-20 flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-shell-line bg-shell-surface/95 px-5 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-shell-surface/80">
-      <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-shell-muted">Drive</span>
+    <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-shell-line bg-shell-surface/95 px-3 py-2.5 backdrop-blur supports-[backdrop-filter]:bg-shell-surface/80 sm:px-5">
+      <button
+        type="button"
+        onClick={onOpenNav}
+        aria-label="Abrir navegación"
+        className="shrink-0 cursor-pointer rounded-md p-1.5 text-shell-ink-soft hover:bg-shell-raised hover:text-shell-ink"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      </button>
+
+      <span className="hidden text-[10px] font-bold uppercase tracking-[0.1em] text-shell-muted sm:block">
+        Drive
+      </span>
 
       <span className="flex items-baseline gap-1.5 text-[13px]">
         <b
@@ -53,18 +73,18 @@ export default function DashboardStatusStrip({
 
       {connected && (
         <>
-          <span className="flex items-baseline gap-1.5 text-[13px]">
+          <span className="hidden items-baseline gap-1.5 text-[13px] sm:flex">
             <span className="text-[11.5px] text-shell-muted">sync</span>
             <b className="font-semibold text-shell-ink">{relativeTime(lastSyncAt)}</b>
           </span>
           {typeof photosCount === 'number' && (
-            <span className="flex items-baseline gap-1.5 text-[13px]">
+            <span className="hidden items-baseline gap-1.5 text-[13px] md:flex">
               <span className="text-[11.5px] text-shell-muted">fotos</span>
               <b className="font-semibold tabular-nums text-shell-ink">{photosCount}</b>
             </span>
           )}
           {typeof albumsCount === 'number' && (
-            <span className="flex items-baseline gap-1.5 text-[13px]">
+            <span className="hidden items-baseline gap-1.5 text-[13px] md:flex">
               <span className="text-[11.5px] text-shell-muted">álbumes</span>
               <b className="font-semibold tabular-nums text-shell-ink">{albumsCount}</b>
             </span>
@@ -72,7 +92,36 @@ export default function DashboardStatusStrip({
         </>
       )}
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          aria-label={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+          title={theme === 'dark' ? 'Tema claro' : 'Tema oscuro'}
+          className="cursor-pointer rounded-md p-1.5 text-shell-ink-soft hover:bg-shell-raised hover:text-shell-ink"
+        >
+          {theme === 'dark' ? (
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <circle cx="8" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.5" />
+              <path
+                d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3.1 3.1l1.1 1.1M11.8 11.8l1.1 1.1M12.9 3.1l-1.1 1.1M4.2 11.8l-1.1 1.1"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+            </svg>
+          )}
+        </button>
+
         <button
           onClick={onSyncNow}
           disabled={syncing || !connected}
