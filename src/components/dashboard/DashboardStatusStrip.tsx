@@ -4,6 +4,9 @@ interface Props {
   driveConnected: boolean | null;
   syncing: boolean;
   onSyncNow: () => void;
+  onCancelSync?: () => void;
+  cancellingSync?: boolean;
+  syncProgress?: { processed: number; total: number; albums: number } | null;
   lastSyncAt?: string | null;
   photosCount?: number;
   /** Cupo de fotos del plan contratado. Sin esto no se ve cuánto margen queda. */
@@ -38,6 +41,9 @@ export default function DashboardStatusStrip({
   driveConnected,
   syncing,
   onSyncNow,
+  onCancelSync,
+  cancellingSync = false,
+  syncProgress,
   lastSyncAt,
   photosCount,
   photosLimit,
@@ -143,13 +149,28 @@ export default function DashboardStatusStrip({
           )}
         </button>
 
+        {syncing && onCancelSync && (
+          <button
+            type="button"
+            onClick={onCancelSync}
+            disabled={cancellingSync}
+            className="cursor-pointer rounded-md border border-shell-line-strong bg-shell-raised px-2.5 py-[6px] text-[12px] font-medium text-shell-ink-soft transition hover:border-shell-danger/50 hover:text-shell-danger disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {cancellingSync ? 'Cancelando…' : 'Cancelar'}
+          </button>
+        )}
+
         <button
           onClick={onSyncNow}
           disabled={syncing || !connected}
           title={connected ? undefined : 'Conectá Google Drive para sincronizar'}
           className="flex cursor-pointer items-center gap-1.5 rounded-md border border-shell-accent bg-shell-accent px-3 py-[6px] text-[12.5px] font-semibold text-shell-accent-ink transition disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {syncing ? 'Sincronizando…' : 'Sincronizar'}
+          {syncing
+            ? syncProgress && syncProgress.processed > 0
+              ? `Sincronizando (${syncProgress.processed})…`
+              : 'Sincronizando…'
+            : 'Sincronizar'}
         </button>
       </div>
     </div>

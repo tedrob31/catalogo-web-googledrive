@@ -155,3 +155,57 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Error interno al consultar sincronización' }, { status: 500 });
   }
 }
+
+// DELETE: Cancelar la sincronización en curso del tenant autenticado
+export async function DELETE(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+    }
+
+    const { data: membership } = await supabase
+      .from('tenant_users')
+      .select('tenant_id, role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!membership || !['owner', 'admin', 'superadmin'].includes(membership.role)) {
+      return NextResponse.json({ error: 'No tienes permisos para cancelar sincronización' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const logId = searchParams.get('logId');
+
+    const adminClient = createAdminClient();
+    let query = adminClient
+      .from('sync_logs')
+      .update({
+        status: 'failed',
+        error_message: 'Sincronización cancelada por el usuario',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('tenant_id', membership.tenant_id)
+      .eq('status', 'syncing');
+
+    if (logId) {
+      query = query.eq('id', logId);
+    }
+
+    const { error } = await query;
+    if (error) {
+      console.error('[Sync API DELETE] Error cancelando sync:', error);
+      return NextResponse.json({ error: 'Error al cancelar la sincronización' }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Sincronización marcada para cancelación.',
+    });
+  } catch (error) {
+    console.error('[Sync API DELETE] Excepción:', error);
+    return NextResponse.json({ error: 'Error interno al cancelar sincronización' }, { status: 500 });
+  }
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { FaGoogle, FaSync, FaCheckCircle, FaLock } from 'react-icons/fa';
@@ -13,6 +13,8 @@ import DesignTab from '@/components/dashboard/DesignTab';
 import EffectsTab from '@/components/dashboard/EffectsTab';
 import BrandingTab from '@/components/dashboard/BrandingTab';
 import HistoryTab from '@/components/dashboard/HistoryTab';
+import ShellToastStack, { ShellToastItem } from '@/components/dashboard/ShellToast';
+import ShellConfirmModal from '@/components/dashboard/ShellConfirmModal';
 import CoverSelectorModal from '@/components/dashboard/CoverSelectorModal';
 import AccountSecurityModal from '@/components/dashboard/AccountSecurityModal';
 import StorefrontBuilder from '@/components/admin/StorefrontBuilder';
@@ -63,6 +65,33 @@ export default function TenantDashboard() {
   const [selectedCoverFolder, setSelectedCoverFolder] = useState<{ id: string; name: string } | null>(null);
   const [savingFolders, setSavingFolders] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [cancellingSync, setCancellingSync] = useState(false);
+  const [activeSyncLogId, setActiveSyncLogId] = useState<string | null>(null);
+  const [syncProgress, setSyncProgress] = useState<{ processed: number; total: number; albums: number } | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [toasts, setToasts] = useState<ShellToastItem[]>([]);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    tone?: 'danger' | 'warn' | 'accent';
+    onConfirm: () => void | Promise<void>;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
+  const pushToast = useCallback((kind: ShellToastItem['kind'], text: string) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    setToasts((prev) => [...prev.slice(-3), { id, kind, text }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((item) => item.id !== id));
+    }, 4500);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
   const [authExpiredModalOpen, setAuthExpiredModalOpen] = useState(false);
   const [securityModalOpen, setSecurityModalOpen] = useState(false);
 
@@ -336,7 +365,7 @@ export default function TenantDashboard() {
 
   async function handleSearchFolders() {
     if (!integration?.is_connected) {
-      alert('Debes conectar tu cuenta de Google Drive primero.');
+      pushToast('warn', 'Debes conectar tu cuenta de Google Drive primero.');
       return;
     }
     setSearchingFolders(true);
@@ -355,7 +384,7 @@ export default function TenantDashboard() {
         ) {
           setAuthExpiredModalOpen(true);
         } else {
-          alert(`Error al buscar carpetas: ${errMsg}`);
+          pushToast('error', `Error al buscar carpetas: ${errMsg}`);
         }
       }
     } catch (err: any) {
@@ -368,28 +397,8 @@ export default function TenantDashboard() {
     }
   }
 
-  async function handleSaveFolders() {
-    if (!selectedCatalogFolder) {
-      alert('Por favor selecciona la carpeta principal de tu catálogo.');
-      return;
-    }
-
-    const previousFolderId = integration?.catalog_folder_id;
-    const isCatalogFolderChanged = previousFolderId && previousFolderId !== selectedCatalogFolder.id;
-    const previousCoverFolderId = integration?.cover_folder_id;
-    const isCoverFolderChanged = (previousCoverFolderId || null) !== (selectedCoverFolder?.id || null);
-
-    if (isCatalogFolderChanged) {
-      const confirmed = window.confirm(
-        `⚠️ ATENCIÓN: Estás cambiando la carpeta principal de tu catálogo:\n\n` +
-        `• Carpeta anterior: "${integration?.catalog_folder_name || 'Anterior'}"\n` +
-        `• Nueva carpeta: "${selectedCatalogFolder.name}"\n\n` +
-        `Al guardar y sincronizar, todas las fotos y álbumes de la carpeta anterior se eliminarán automáticamente de la tienda, de Supabase y de Cloudflare R2 para dar paso a la nueva estructura.\n\n` +
-        `¿Deseas guardar este cambio y sincronizar de inmediato?`
-      );
-      if (!confirmed) return;
-    }
-
+  async function executeSaveFolders(shouldAutoSync: boolean) {
+    if (!selectedCatalogFolder) return;
     setSavingFolders(true);
     try {
       const res = await fetch('/api/drive/folders', {
@@ -404,68 +413,124 @@ export default function TenantDashboard() {
       });
       const data = await res.json();
       if (data.success) {
-        if (isCatalogFolderChanged || isCoverFolderChanged) {
-          alert('¡Carpetas actualizadas! Sincronizando catálogo para procesar la nueva estructura y portadas...');
+        if (shouldAutoSync) {
+          pushToast('ok', 'Carpetas actualizadas. Iniciando sincronización del catálogo…');
           await loadDashboardData();
           handleSyncNow();
         } else {
-          alert('Carpetas configuradas correctamente.');
+          pushToast('ok', 'Carpetas configuradas correctamente.');
           loadDashboardData();
         }
       } else {
-        alert(data.error || 'Error al guardar carpetas');
+        pushToast('error', data.error || 'Error al guardar carpetas.');
       }
     } catch (err) {
       console.error(err);
+      pushToast('error', 'Error de conexión al guardar carpetas.');
     } finally {
       setSavingFolders(false);
     }
   }
 
-  async function handleDisconnectDrive() {
-    const confirmed = window.confirm(
-      '¿Estás seguro de que deseas desvincular tu cuenta de Google Drive?\n\n' +
-      '• Se revocará el acceso de c4talogo.com ante los servidores de Google OAuth.\n' +
-      '• Se eliminarán los tokens de sesión almacenados en la base de datos.\n' +
-      '• La sincronización quedará en pausa hasta que vincules una cuenta nuevamente.'
-    );
-    if (!confirmed) return;
-
-    setDisconnectingDrive(true);
-    try {
-      const res = await fetch('/api/auth/google/disconnect', { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        alert('Cuenta de Google Drive desvinculada y tokens revocados correctamente.');
-        setSelectedCatalogFolder(null);
-        setSelectedCoverFolder(null);
-        setIntegration(null);
-        await loadDashboardData();
-      } else {
-        alert(data.error || 'Error al desvincular la cuenta.');
-      }
-    } catch (err) {
-      console.error('Error desvinculando cuenta:', err);
-      alert('Error de conexión al intentar desvincular la cuenta.');
-    } finally {
-      setDisconnectingDrive(false);
+  function handleSaveFolders() {
+    if (!selectedCatalogFolder) {
+      pushToast('warn', 'Por favor selecciona la carpeta principal de tu catálogo.');
+      return;
     }
+    const previousFolderId = integration?.catalog_folder_id;
+    const isCatalogFolderChanged = Boolean(previousFolderId && previousFolderId !== selectedCatalogFolder.id);
+    const previousCoverFolderId = integration?.cover_folder_id;
+    const isCoverFolderChanged = (previousCoverFolderId || null) !== (selectedCoverFolder?.id || null);
+
+    if (isCatalogFolderChanged) {
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Cambiar carpeta principal del catálogo',
+        message:
+          `Carpeta anterior: "${integration?.catalog_folder_name || 'Anterior'}"\n` +
+          `Nueva carpeta: "${selectedCatalogFolder.name}"\n\n` +
+          'Al guardar y sincronizar, las fotos y álbumes de la carpeta anterior se reemplazarán en la tienda, Supabase y Cloudflare R2.',
+        confirmLabel: 'Guardar y sincronizar',
+        tone: 'warn',
+        onConfirm: async () => {
+          setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+          await executeSaveFolders(true);
+        },
+      });
+      return;
+    }
+
+    executeSaveFolders(isCoverFolderChanged);
+  }
+
+  function handleDisconnectDrive() {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Desvincular cuenta de Google Drive',
+      message:
+        '• Se revocará el acceso ante los servidores de Google OAuth.\n' +
+        '• Se eliminarán los tokens almacenados en la base de datos.\n' +
+        '• La sincronización quedará en pausa hasta volver a vincular.',
+      confirmLabel: 'Desvincular Drive',
+      tone: 'danger',
+      onConfirm: async () => {
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        setDisconnectingDrive(true);
+        try {
+          const res = await fetch('/api/auth/google/disconnect', { method: 'POST' });
+          const data = await res.json();
+          if (data.success) {
+            pushToast('ok', 'Cuenta de Google Drive desvinculada y tokens revocados.');
+            setSelectedCatalogFolder(null);
+            setSelectedCoverFolder(null);
+            setIntegration(null);
+            await loadDashboardData();
+          } else {
+            pushToast('error', data.error || 'Error al desvincular la cuenta.');
+          }
+        } catch (err) {
+          console.error('Error desvinculando cuenta:', err);
+          pushToast('error', 'Error de conexión al intentar desvincular la cuenta.');
+        } finally {
+          setDisconnectingDrive(false);
+        }
+      },
+    });
   }
 
   function pollSync(logId: string) {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
+    setActiveSyncLogId(logId);
+
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/sync/?logId=${logId}`);
         const data = await res.json();
         if (data.success && data.log) {
+          setSyncProgress({
+            processed: Number(data.log.items_processed || 0),
+            total: Number(data.log.total_photos || 0),
+            albums: Number(data.log.total_albums || 0),
+          });
+
           if (data.log.status === 'completed') {
             clearInterval(interval);
+            pollIntervalRef.current = null;
             setSyncing(false);
-            alert(`¡Sincronización completada! Se procesaron ${data.log.items_processed || 0} fotos nuevas.`);
+            setCancellingSync(false);
+            setActiveSyncLogId(null);
+            setSyncProgress(null);
+            pushToast('ok', `Sincronización completada: ${data.log.items_processed || 0} fotos procesadas.`);
             loadDashboardData();
           } else if (data.log.status === 'failed') {
             clearInterval(interval);
+            pollIntervalRef.current = null;
             setSyncing(false);
+            setCancellingSync(false);
+            setActiveSyncLogId(null);
+            setSyncProgress(null);
 
             const errMsg = String(data.log.error_message || '');
             const isAuthExpired =
@@ -477,8 +542,10 @@ export default function TenantDashboard() {
 
             if (isAuthExpired) {
               setAuthExpiredModalOpen(true);
+            } else if (errMsg.toLowerCase().includes('cancelada')) {
+              pushToast('warn', 'Sincronización cancelada.');
             } else {
-              alert(`Error en sincronización: ${errMsg || 'Desconocido'}`);
+              pushToast('error', `Error en sincronización: ${errMsg || 'Desconocido'}`);
             }
             loadDashboardData();
           }
@@ -487,10 +554,30 @@ export default function TenantDashboard() {
         console.error('Error en polling de sincronización:', e);
       }
     }, 3000);
+    pollIntervalRef.current = interval;
+  }
+
+  async function handleCancelSync() {
+    setCancellingSync(true);
+    try {
+      const url = activeSyncLogId ? `/api/sync/?logId=${activeSyncLogId}` : '/api/sync/';
+      const res = await fetch(url, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        pushToast('error', data.error || 'No se pudo cancelar la sincronización.');
+        setCancellingSync(false);
+      } else {
+        pushToast('warn', 'Cancelando sincronización en curso…');
+      }
+    } catch {
+      pushToast('error', 'Error de conexión al cancelar sincronización.');
+      setCancellingSync(false);
+    }
   }
 
   async function handleSyncNow() {
     setSyncing(true);
+    setSyncProgress({ processed: 0, total: 0, albums: 0 });
     try {
       const res = await fetch('/api/sync/', { method: 'POST' });
       const data = await res.json();
@@ -507,18 +594,20 @@ export default function TenantDashboard() {
         if (isAuthExpired) {
           setAuthExpiredModalOpen(true);
         } else {
-          alert(errMsg || 'Error al iniciar sincronización');
+          pushToast('error', errMsg || 'Error al iniciar sincronización.');
         }
         setSyncing(false);
+        setSyncProgress(null);
       }
     } catch (err: any) {
       const errMsg = String(err?.message || '');
       if (errMsg.includes('invalid_grant') || errMsg.includes('AUTH_EXPIRED') || errMsg.includes('expired')) {
         setAuthExpiredModalOpen(true);
       } else {
-        alert(errMsg || 'Error durante la sincronización');
+        pushToast('error', errMsg || 'Error durante la sincronización.');
       }
       setSyncing(false);
+      setSyncProgress(null);
     }
   }
 
@@ -623,10 +712,10 @@ export default function TenantDashboard() {
         }));
       }
 
-      alert('¡Marca y SEO guardados exitosamente!');
+      pushToast('ok', 'Marca y SEO guardados exitosamente.');
       await loadDashboardData();
     } catch (err: any) {
-      alert(err.message || 'Error guardando cambios');
+      pushToast('error', err.message || 'Error guardando cambios.');
     } finally {
       setSavingConfig(false);
     }
@@ -663,10 +752,10 @@ export default function TenantDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al guardar diseño');
 
-      alert('¡Diseño guardado exitosamente!');
+      pushToast('ok', 'Diseño guardado exitosamente.');
       await loadDashboardData();
     } catch (err: any) {
-      alert(err.message || 'Error guardando diseño');
+      pushToast('error', err.message || 'Error guardando diseño.');
     } finally {
       setSavingConfig(false);
     }
@@ -694,10 +783,10 @@ export default function TenantDashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al guardar efectos');
 
-      alert('¡Efectos guardados exitosamente!');
+      pushToast('ok', 'Efectos guardados exitosamente.');
       await loadDashboardData();
     } catch (err: any) {
-      alert(err.message || 'Error guardando efectos');
+      pushToast('error', err.message || 'Error guardando efectos.');
     } finally {
       setSavingConfig(false);
     }
@@ -820,10 +909,10 @@ export default function TenantDashboard() {
 
       setSavedFolderCovers(configForm.folder_covers);
       setPendingR2Keys({});
-      alert('¡Portadas guardadas exitosamente y catálogo actualizado!');
+      pushToast('ok', 'Portadas guardadas y catálogo actualizado.');
       await loadDashboardData();
     } catch (err: any) {
-      alert(err.message || 'Error guardando portadas');
+      pushToast('error', err.message || 'Error guardando portadas.');
     } finally {
       setSavingCovers(false);
     }
@@ -903,6 +992,9 @@ export default function TenantDashboard() {
           driveConnected={integration ? Boolean(integration.is_connected) : null}
           syncing={syncing}
           onSyncNow={handleSyncNow}
+          onCancelSync={handleCancelSync}
+          cancellingSync={cancellingSync}
+          syncProgress={syncProgress}
           lastSyncAt={integration?.last_synced_at ?? null}
           photosCount={albums.reduce((n, a) => n + (a.photosCount || 0), 0)}
           photosLimit={plan?.max_photos ?? null}
@@ -984,6 +1076,7 @@ export default function TenantDashboard() {
             availableCovers={availableCovers}
             allAlbums={tenantAlbums}
             allAlbumUrls={tenantAlbumUrls}
+            onNotify={pushToast}
           />
         )}
 
@@ -1047,6 +1140,21 @@ export default function TenantDashboard() {
         isOpen={securityModalOpen}
         onClose={() => setSecurityModalOpen(false)}
         userEmail={user?.email || ''}
+      />
+
+      <ShellConfirmModal
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmLabel={confirmDialog.confirmLabel}
+        tone={confirmDialog.tone}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+      />
+
+      <ShellToastStack
+        toasts={toasts}
+        onDismiss={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))}
       />
     </div>
   );

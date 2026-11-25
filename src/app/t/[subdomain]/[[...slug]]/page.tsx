@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { loadTenantCatalog } from '@/lib/catalog-db';
+import { getCanonicalStorefrontOrigin } from '@/lib/seo';
 import CatalogView from '@/components/CatalogView';
 
 export const dynamic = 'force-dynamic';
@@ -20,10 +21,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!payload) {
     return {
       title: 'Tienda no encontrada | c4talogo.com',
+      robots: { index: false, follow: false },
     };
   }
 
   const { config, initialPath } = payload;
+  const canonicalOrigin = getCanonicalStorefrontOrigin({
+    subdomain: payload.tenant.subdomain,
+    customDomain: payload.tenant.custom_domain,
+    customDomainEnabled: payload.tenant.custom_domain_enabled,
+    redirectToCustomDomain: config.redirectToCustomDomain,
+    accessedKey: subdomain,
+  });
+  const canonicalPath = slug.length > 0 ? `/${slug.join('/')}/` : '/';
     const currentAlbum = initialPath[initialPath.length - 1];
     const pageTitle =
       currentAlbum && currentAlbum.id !== payload.data.root.id
@@ -43,6 +53,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: pageTitle,
       description: config.siteDescription || `Catálogo de productos de ${payload.tenant.name}`,
       icons: config.favicon ? [{ rel: 'icon', url: config.favicon }] : undefined,
+      alternates: {
+        canonical: `${canonicalOrigin}${canonicalPath}`,
+      },
+      robots: {
+        index: true,
+        follow: true,
+      },
       openGraph: {
         title: pageTitle,
         description: config.siteDescription || undefined,

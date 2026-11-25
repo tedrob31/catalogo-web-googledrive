@@ -1,18 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import {
-  FaUsers,
-  FaImages,
-  FaHdd,
-  FaBan,
-  FaCheck,
   FaExternalLinkAlt,
   FaShieldAlt,
   FaSignOutAlt,
-  FaCrown,
   FaLock,
   FaEdit,
   FaSave,
@@ -27,35 +21,80 @@ import {
   FaCheckCircle,
   FaExclamationTriangle,
   FaEnvelope,
-  FaUserShield,
-  FaToggleOn,
-  FaToggleOff,
+  FaSearch,
 } from 'react-icons/fa';
+import ShellToastStack, { ShellToastItem } from '@/components/dashboard/ShellToast';
+import ShellConfirmModal from '@/components/dashboard/ShellConfirmModal';
 
 export const dynamic = 'force-dynamic';
+
+const cardCls = 'rounded-lg border border-shell-line bg-shell-surface p-5';
+const fieldCls =
+  'w-full rounded-md border border-shell-line-strong bg-shell-raised px-2.5 py-1.5 text-[12.5px] text-shell-ink placeholder:text-shell-muted focus:outline-none focus:ring-2 focus:ring-shell-accent/60';
+const btnCls =
+  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-shell-line-strong bg-shell-raised px-3 py-1.5 text-[12px] font-semibold text-shell-ink transition-colors hover:bg-shell-surface disabled:cursor-not-allowed disabled:opacity-50';
+const btnPrimaryCls =
+  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-shell-accent bg-shell-accent px-3 py-1.5 text-[12px] font-semibold text-shell-accent-ink transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50';
+const btnDangerCls =
+  'inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-shell-danger/40 bg-shell-danger/10 px-2.5 py-1 text-[11.5px] font-semibold text-shell-danger transition-colors hover:bg-shell-danger/20 disabled:cursor-not-allowed disabled:opacity-40';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
   const supabase = createClient();
 
   const [loading, setLoading] = useState(true);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [tenants, setTenants] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
 
+  // Tema compartido del panel (oscuro / claro)
+  const [shellTheme, setShellTheme] = useState<'dark' | 'light'>('dark');
+  useEffect(() => {
+    const saved = window.localStorage.getItem('c4talogo.shell-theme');
+    if (saved === 'light' || saved === 'dark') setShellTheme(saved);
+  }, []);
+
+  const toggleShellTheme = () => {
+    setShellTheme((prev) => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      window.localStorage.setItem('c4talogo.shell-theme', next);
+      return next;
+    });
+  };
+
+  // Toasts y diálogo de confirmación (sin alert / confirm / prompt nativos)
+  const [toasts, setToasts] = useState<ShellToastItem[]>([]);
+  const pushToast = useCallback((kind: ShellToastItem['kind'], text: string) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000);
+    setToasts((prev) => [...prev.slice(-3), { id, kind, text }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((item) => item.id !== id));
+    }, 4500);
+  }, []);
+
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    tone?: 'danger' | 'warn' | 'accent';
+    onConfirm: () => void | Promise<void>;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+
+  // Filtros de tabla de inquilinos
+  const [tenantSearch, setTenantSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
+
   // Configuración de Portada Principal
   const [activeLanding, setActiveLanding] = useState<'minimal' | 'classic'>('minimal');
   const [savingLanding, setSavingLanding] = useState(false);
-  const [landingNotice, setLandingNotice] = useState<string | null>(null);
 
   // Whitelist / Fase Beta
   const [whitelist, setWhitelist] = useState<any[]>([]);
   const [closedBetaEnabled, setClosedBetaEnabled] = useState(true);
   const [newWhitelistEmail, setNewWhitelistEmail] = useState('');
   const [addingWhitelist, setAddingWhitelist] = useState(false);
-  const [whitelistNotice, setWhitelistNotice] = useState<string | null>(null);
 
   // Edición de Planes
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
@@ -96,6 +135,14 @@ export default function SuperAdminDashboard() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createdSuccessData, setCreatedSuccessData] = useState<any>(null);
   const [copiedCredentials, setCopiedCredentials] = useState(false);
+
+  // Modal: Asignar / Editar Dominio Personalizado
+  const [domainModal, setDomainModal] = useState<{
+    isOpen: boolean;
+    tenant: any | null;
+    value: string;
+    saving: boolean;
+  }>({ isOpen: false, tenant: null, value: '', saving: false });
 
   // Modal: Dar de Baja Tienda (Eliminación en Cascada R2 + Supabase)
   const [deleteModal, setDeleteModal] = useState<{
@@ -157,15 +204,17 @@ export default function SuperAdminDashboard() {
       });
       if (res.ok) {
         setClosedBetaEnabled(nextState);
-        setWhitelistNotice(
+        pushToast(
+          'ok',
           nextState
-            ? '✓ Modo Prueba Cerrada Activado: Solo correos autorizados pueden acceder.'
-            : '✓ Modo Abierto Activado: Cualquier usuario puede registrarse.'
+            ? 'Modo Beta Cerrada activado: solo correos autorizados pueden crear tienda.'
+            : 'Acceso público abierto para registros nuevos.'
         );
-        setTimeout(() => setWhitelistNotice(null), 4000);
+      } else {
+        pushToast('error', 'No se pudo cambiar el modo beta.');
       }
-    } catch (e) {
-      alert('Error cambiando modo beta');
+    } catch {
+      pushToast('error', 'Error de conexión cambiando el modo beta.');
     }
   }
 
@@ -183,30 +232,39 @@ export default function SuperAdminDashboard() {
       if (!res.ok) throw new Error(data.error || 'Error al agregar correo');
 
       setNewWhitelistEmail('');
-      setWhitelistNotice(`✓ Correo ${data.email} autorizado exitosamente`);
-      setTimeout(() => setWhitelistNotice(null), 3000);
+      pushToast('ok', `Correo ${data.email} autorizado en la lista blanca.`);
       loadWhitelist();
     } catch (err: any) {
-      alert(err.message);
+      pushToast('error', err.message || 'Error al autorizar correo.');
     } finally {
       setAddingWhitelist(false);
     }
   }
 
-  async function handleRemoveWhitelistEmail(email: string) {
-    if (!confirm(`¿Deseas revocar el acceso a ${email}? Si no tiene tienda activa, ya no podrá ingresar.`)) {
-      return;
-    }
-    try {
-      const res = await fetch(`/api/superadmin/whitelist?email=${encodeURIComponent(email)}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        loadWhitelist();
-      }
-    } catch (e) {
-      alert('Error eliminando de la lista');
-    }
+  function handleRemoveWhitelistEmail(email: string) {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Revocar acceso de lista blanca',
+      message: `¿Deseas revocar el acceso a ${email}? Si no tiene una tienda activa, ya no podrá ingresar.`,
+      confirmLabel: 'Revocar',
+      tone: 'danger',
+      onConfirm: async () => {
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        try {
+          const res = await fetch(`/api/superadmin/whitelist?email=${encodeURIComponent(email)}`, {
+            method: 'DELETE',
+          });
+          if (res.ok) {
+            pushToast('ok', `Acceso revocado para ${email}.`);
+            loadWhitelist();
+          } else {
+            pushToast('error', 'No se pudo revocar el correo.');
+          }
+        } catch {
+          pushToast('error', 'Error de conexión eliminando de la lista.');
+        }
+      },
+    });
   }
 
   async function checkAccessAndLoad() {
@@ -222,7 +280,6 @@ export default function SuperAdminDashboard() {
 
     setCurrentUserEmail(user.email || null);
 
-    // 1. Verificar si el usuario autenticado tiene rol superadmin
     const { data: myRoles } = await supabase
       .from('tenant_users')
       .select('role')
@@ -236,17 +293,14 @@ export default function SuperAdminDashboard() {
       return;
     }
 
-    setIsSuperAdmin(true);
     setAccessDenied(false);
 
-    // 2. Cargar inquilinos enriquecidos con su correo desde la API
     try {
       const res = await fetch('/api/superadmin/tenants');
       if (res.ok) {
         const data = await res.json();
         if (data.tenants) {
           setTenants(data.tenants);
-
           const dbTenants = data.tenants;
           const totalTenants = dbTenants.length;
           const activeTenants = dbTenants.filter((t: any) => t.status === 'active').length;
@@ -266,7 +320,6 @@ export default function SuperAdminDashboard() {
       console.error('Error cargando tenants:', err);
     }
 
-    // 3. Cargar planes
     const { data: dbPlans } = await supabase
       .from('subscription_plans')
       .select('*')
@@ -284,7 +337,6 @@ export default function SuperAdminDashboard() {
 
   async function handleSwitchLanding(type: 'minimal' | 'classic') {
     setSavingLanding(true);
-    setLandingNotice(null);
     try {
       const res = await fetch('/api/superadmin/settings', {
         method: 'POST',
@@ -293,46 +345,56 @@ export default function SuperAdminDashboard() {
       });
       if (res.ok) {
         setActiveLanding(type);
-        setLandingNotice(
+        pushToast(
+          'ok',
           type === 'minimal'
-            ? '✓ Portada cambiada a Minimalista / Informativa (Beta Cerrada)'
-            : '✓ Portada cambiada a SaaS Comercial Completo'
+            ? 'Portada cambiada a Minimalista e Informativa.'
+            : 'Portada cambiada a SaaS Comercial Completo.'
         );
-        setTimeout(() => setLandingNotice(null), 4000);
       } else {
-        alert('Error al actualizar la portada');
+        pushToast('error', 'Error al actualizar la portada.');
       }
-    } catch (e: any) {
-      alert(e?.message || 'Error al cambiar portada');
+    } catch {
+      pushToast('error', 'Error de conexión al cambiar portada.');
     } finally {
       setSavingLanding(false);
     }
   }
 
-  async function handleToggleStatus(tenantId: string, currentStatus: string) {
-    const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    const confirmMsg =
-      newStatus === 'suspended'
-        ? '¿Deseas suspender este catálogo? El público no podrá verlo hasta que sea reactivado.'
-        : '¿Deseas reactivar este catálogo?';
-
-    if (!confirm(confirmMsg)) return;
-
-    try {
-      const res = await fetch('/api/superadmin/tenants/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenant_id: tenantId, status: newStatus }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert('Error actualizando estado: ' + (data.error || 'Desconocido'));
-      } else {
-        checkAccessAndLoad();
-      }
-    } catch (err: any) {
-      alert('Error de conexión: ' + (err?.message || err));
-    }
+  function handleToggleStatus(tenant: any) {
+    const newStatus = tenant.status === 'active' ? 'suspended' : 'active';
+    setConfirmDialog({
+      isOpen: true,
+      title: newStatus === 'suspended' ? `Suspender "${tenant.name}"` : `Reactivar "${tenant.name}"`,
+      message:
+        newStatus === 'suspended'
+          ? 'El catálogo público dejará de mostrarse de inmediato (RAM y Cloudflare purgados) hasta que sea reactivado.'
+          : 'El catálogo volverá a estar visible de inmediato en su subdominio.',
+      confirmLabel: newStatus === 'suspended' ? 'Suspender' : 'Reactivar',
+      tone: newStatus === 'suspended' ? 'warn' : 'accent',
+      onConfirm: async () => {
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        try {
+          const res = await fetch('/api/superadmin/tenants/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tenant_id: tenant.id, status: newStatus }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            pushToast('error', data.error || 'No se pudo actualizar el estado.');
+          } else {
+            pushToast(
+              'ok',
+              newStatus === 'suspended' ? 'Tienda suspendida y caché purgada.' : 'Tienda reactivada.'
+            );
+            checkAccessAndLoad();
+          }
+        } catch {
+          pushToast('error', 'Error de conexión al actualizar estado.');
+        }
+      },
+    });
   }
 
   async function handleChangePlan(tenantId: string, newPlanId: string) {
@@ -344,75 +406,88 @@ export default function SuperAdminDashboard() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert('Error cambiando plan: ' + (data.error || 'Desconocido'));
+        pushToast('error', data.error || 'No se pudo cambiar el plan.');
       } else {
+        pushToast('ok', 'Plan actualizado correctamente.');
         checkAccessAndLoad();
       }
-    } catch (err: any) {
-      alert('Error de conexión: ' + (err?.message || err));
+    } catch {
+      pushToast('error', 'Error de conexión al cambiar plan.');
     }
   }
 
-  async function handleToggleCustomDomain(tenant: any) {
+  function handleToggleCustomDomain(tenant: any) {
     const nextState = !tenant.custom_domain_enabled;
-    const confirmMsg = nextState
-      ? `¿Habilitar la opción de Dominio Personalizado para la tienda "${tenant.name}"?`
-      : `¿Deshabilitar Dominio Personalizado para "${tenant.name}"?`;
-
-    if (!confirm(confirmMsg)) return;
-
-    try {
-      const res = await fetch('/api/superadmin/tenants/custom-domain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenant_id: tenant.id,
-          custom_domain_enabled: nextState,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        alert('Error: ' + (data.error || 'No se pudo actualizar'));
-        return;
-      }
-
-      checkAccessAndLoad();
-    } catch (err: any) {
-      alert('Error de conexión: ' + (err?.message || err));
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: nextState
+        ? `Habilitar dominio propio para "${tenant.name}"`
+        : `Deshabilitar dominio propio para "${tenant.name}"`,
+      message: nextState
+        ? 'El comerciante podrá vincular su propio dominio y servir el catálogo desde ahí.'
+        : 'El catálogo dejará de responder por su dominio propio y solo usará su subdominio.',
+      confirmLabel: nextState ? 'Habilitar' : 'Deshabilitar',
+      tone: nextState ? 'accent' : 'warn',
+      onConfirm: async () => {
+        setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
+        try {
+          const res = await fetch('/api/superadmin/tenants/custom-domain', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tenant_id: tenant.id,
+              custom_domain_enabled: nextState,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            pushToast('error', data.error || 'No se pudo actualizar el permiso de dominio.');
+            return;
+          }
+          pushToast('ok', nextState ? 'Dominio propio habilitado.' : 'Dominio propio deshabilitado.');
+          checkAccessAndLoad();
+        } catch {
+          pushToast('error', 'Error de conexión al actualizar dominio propio.');
+        }
+      },
+    });
   }
 
-  async function handleEditCustomDomain(tenant: any) {
-    const current = tenant.custom_domain || '';
-    const input = prompt(
-      `Ingresa el dominio personalizado para "${tenant.name}" (ej: tiendajuan.com o catalogo.tiendajuan.com).\nDeja en blanco para eliminar el dominio:`,
-      current
-    );
+  function openCustomDomainModal(tenant: any) {
+    setDomainModal({
+      isOpen: true,
+      tenant,
+      value: tenant.custom_domain || '',
+      saving: false,
+    });
+  }
 
-    if (input === null) return; // cancelado
-
+  async function handleSaveCustomDomain(e: React.FormEvent) {
+    e.preventDefault();
+    if (!domainModal.tenant) return;
+    setDomainModal((prev) => ({ ...prev, saving: true }));
     try {
       const res = await fetch('/api/superadmin/tenants/custom-domain', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tenant_id: tenant.id,
-          custom_domain: input.trim(),
+          tenant_id: domainModal.tenant.id,
+          custom_domain: domainModal.value.trim(),
           custom_domain_enabled: true,
         }),
       });
-
       const data = await res.json();
       if (!res.ok) {
-        alert('Error: ' + (data.error || 'No se pudo guardar el dominio'));
+        pushToast('error', data.error || 'No se pudo guardar el dominio.');
+        setDomainModal((prev) => ({ ...prev, saving: false }));
         return;
       }
-
-      alert('Dominio personalizado actualizado con éxito.');
+      pushToast('ok', 'Dominio personalizado actualizado.');
+      setDomainModal({ isOpen: false, tenant: null, value: '', saving: false });
       checkAccessAndLoad();
-    } catch (err: any) {
-      alert('Error de conexión: ' + (err?.message || err));
+    } catch {
+      pushToast('error', 'Error de conexión al guardar dominio.');
+      setDomainModal((prev) => ({ ...prev, saving: false }));
     }
   }
 
@@ -441,14 +516,14 @@ export default function SuperAdminDashboard() {
         .eq('id', planId);
 
       if (error) {
-        alert('Error actualizando plan: ' + error.message);
+        pushToast('error', 'Error actualizando plan: ' + error.message);
       } else {
-        alert('¡Plan actualizado correctamente!');
+        pushToast('ok', 'Plan actualizado correctamente.');
         setEditingPlanId(null);
         checkAccessAndLoad();
       }
     } catch (err: any) {
-      alert(err?.message || 'Error al guardar plan');
+      pushToast('error', err?.message || 'Error al guardar plan.');
     } finally {
       setSavingPlan(false);
     }
@@ -476,12 +551,12 @@ export default function SuperAdminDashboard() {
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         throw new Error(data.error || 'Error al crear tienda');
       }
 
       setCreatedSuccessData(data);
+      pushToast('ok', `Tienda "${createForm.subdomain}" creada y autorizada.`);
       checkAccessAndLoad();
       loadWhitelist();
     } catch (err: any) {
@@ -504,13 +579,14 @@ export default function SuperAdminDashboard() {
 
     navigator.clipboard.writeText(text);
     setCopiedCredentials(true);
+    pushToast('ok', 'Credenciales copiadas al portapapeles.');
     setTimeout(() => setCopiedCredentials(false), 3000);
   }
 
   async function handleExecuteDelete() {
     if (!deleteModal.tenant) return;
     if (deleteModal.confirmText.trim().toLowerCase() !== deleteModal.tenant.subdomain.toLowerCase()) {
-      alert(`Debes escribir exactamente '${deleteModal.tenant.subdomain}' para confirmar.`);
+      pushToast('warn', `Escribe exactamente "${deleteModal.tenant.subdomain}" para confirmar.`);
       return;
     }
 
@@ -524,12 +600,11 @@ export default function SuperAdminDashboard() {
       });
 
       const data = await res.json();
-
       if (!res.ok) {
         throw new Error(data.error || 'Error al eliminar la tienda');
       }
 
-      alert(data.message || 'Tienda eliminada exitosamente');
+      pushToast('ok', data.message || 'Tienda eliminada exitosamente.');
       setDeleteModal({
         isOpen: false,
         tenant: null,
@@ -544,14 +619,30 @@ export default function SuperAdminDashboard() {
     }
   }
 
+  const filteredTenants = useMemo(() => {
+    const q = tenantSearch.trim().toLowerCase();
+    return tenants.filter((t) => {
+      if (statusFilter === 'active' && t.status !== 'active') return false;
+      if (statusFilter === 'suspended' && t.status === 'active') return false;
+      if (!q) return true;
+      return (
+        String(t.name || '').toLowerCase().includes(q) ||
+        String(t.subdomain || '').toLowerCase().includes(q) ||
+        String(t.custom_domain || '').toLowerCase().includes(q) ||
+        String(t.owner_email || t.google_email || '').toLowerCase().includes(q)
+      );
+    });
+  }, [tenants, tenantSearch, statusFilter]);
+
   const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'c4talogo.com';
+  const rootCls = shellTheme === 'light' ? 'theme-light' : '';
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-        <div className="flex items-center gap-3 text-slate-400">
-          <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-medium">Cargando Panel Maestro SuperAdmin...</span>
+      <div className={`min-h-screen bg-shell-bg text-shell-ink flex items-center justify-center p-4 ${rootCls}`}>
+        <div className="flex items-center gap-3 text-shell-muted">
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-shell-accent border-t-transparent" />
+          <span className="text-[13px] font-medium">Cargando Consola SuperAdmin…</span>
         </div>
       </div>
     );
@@ -559,27 +650,24 @@ export default function SuperAdminDashboard() {
 
   if (accessDenied) {
     return (
-      <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mb-4 text-xl shadow-sm">
+      <div className={`min-h-screen bg-shell-bg text-shell-ink flex flex-col items-center justify-center p-6 text-center ${rootCls}`}>
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-shell-warn/40 bg-shell-warn/10 text-lg text-shell-warn">
           <FaLock />
         </div>
-        <h1 className="text-2xl font-bold mb-2 tracking-tight text-zinc-100">Acceso Restringido</h1>
-        <p className="text-zinc-400 max-w-md text-xs mb-6 leading-relaxed">
-          Has iniciado sesión como <span className="text-zinc-200 font-semibold">{currentUserEmail}</span>, pero esta cuenta no tiene privilegios de SuperAdministrador en la plataforma.
+        <h1 className="mb-2 text-[20px] font-semibold tracking-tight text-shell-ink">Acceso Restringido</h1>
+        <p className="mb-6 max-w-md text-[12.5px] leading-relaxed text-shell-muted">
+          Has iniciado sesión como <span className="font-semibold text-shell-ink">{currentUserEmail}</span>, pero esta cuenta no tiene privilegios de SuperAdministrador en la plataforma.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-750 border border-zinc-700/80 rounded-xl text-xs font-semibold text-zinc-200 transition cursor-pointer shadow-sm"
-          >
-            Ir a mi Dashboard de Inquilino
+        <div className="flex flex-col gap-2.5 sm:flex-row">
+          <button onClick={() => router.push('/dashboard')} className={btnCls}>
+            Ir a mi Panel de Inquilino
           </button>
           <button
             onClick={async () => {
               await supabase.auth.signOut();
               router.push('/login');
             }}
-            className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-xl text-xs font-semibold transition shadow-sm cursor-pointer"
+            className={btnPrimaryCls}
           >
             Cerrar sesión e ingresar con otra cuenta
           </button>
@@ -589,429 +677,377 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100 flex flex-col font-sans relative selection:bg-amber-500/20 selection:text-amber-200">
-      {/* Top Header */}
-      <header className="border-b border-zinc-800 bg-[#09090b]/90 backdrop-blur-md sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+    <div className={`min-h-screen bg-shell-bg text-shell-ink flex flex-col font-sans ${rootCls}`}>
+      {/* Header Consola Densa */}
+      <header className="sticky top-0 z-30 border-b border-shell-line bg-shell-surface/95 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500 text-zinc-950 flex items-center justify-center font-black text-sm shadow-sm">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-md border border-shell-accent/40 bg-shell-accent/15 text-[13px] text-shell-accent">
               <FaShieldAlt />
             </div>
             <div>
-              <span className="font-bold text-sm text-zinc-100 tracking-wide">
-                C4TALOGO MAESTRO
-              </span>
-              <div className="text-[11px] text-zinc-400 font-mono">
-                app.{baseDomain} (SuperAdmin)
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-bold tracking-wide text-shell-ink">C4TALOGO MAESTRO</span>
+                <span className="rounded border border-shell-accent/40 bg-shell-accent/10 px-1.5 py-0.5 text-[10px] font-semibold text-shell-accent">
+                  SuperAdmin
+                </span>
               </div>
+              <div className="font-mono text-[11px] text-shell-muted">app.{baseDomain}</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-zinc-400 font-mono hidden md:inline">
-              {currentUserEmail}
-            </span>
+          <div className="flex items-center gap-2">
+            <span className="hidden font-mono text-[11.5px] text-shell-muted md:inline">{currentUserEmail}</span>
+
+            <button
+              type="button"
+              onClick={toggleShellTheme}
+              aria-label={shellTheme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+              title={shellTheme === 'dark' ? 'Tema claro' : 'Tema oscuro'}
+              className="cursor-pointer rounded-md p-1.5 text-shell-ink-soft hover:bg-shell-raised hover:text-shell-ink"
+            >
+              {shellTheme === 'dark' ? (
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <circle cx="8" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.5" />
+                  <path
+                    d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3.1 3.1l1.1 1.1M11.8 11.8l1.1 1.1M12.9 3.1l-1.1 1.1M4.2 11.8l-1.1 1.1"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path
+                    d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1Z"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </button>
+
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
                 router.push('/login');
               }}
-              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 cursor-pointer shadow-sm"
+              className={btnCls}
             >
-              <FaSignOutAlt className="text-xs" />
-              <span>Cerrar Sesión</span>
+              <FaSignOutAlt className="text-[11px]" />
+              <span>Salir</span>
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8 space-y-8 relative z-10">
-        {/* Global KPI Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-zinc-700/80 transition-colors">
-            <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2">
-              <span>Total Tiendas</span>
-              <FaUsers className="text-amber-400 text-sm" />
+      <main className="mx-auto w-full max-w-7xl flex-1 space-y-6 px-4 py-6 sm:px-6">
+        {/* KPIs compactos */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className={cardCls}>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-shell-muted">Tiendas</div>
+            <div className="mt-1 font-mono text-[26px] font-bold tabular-nums text-shell-ink">
+              {globalStats.totalTenants}
             </div>
-            <div className="text-3xl font-bold font-mono text-zinc-100 tracking-tight">{globalStats.totalTenants}</div>
-            <div className="text-xs text-emerald-400 font-medium mt-1">
-              {globalStats.activeTenants} activas actualmente
-            </div>
+            <div className="mt-0.5 text-[11.5px] text-shell-accent">{globalStats.activeTenants} activas</div>
           </div>
 
-          <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-zinc-700/80 transition-colors">
-            <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2">
-              <span>Fotos Indexadas</span>
-              <FaImages className="text-amber-400 text-sm" />
+          <div className={cardCls}>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-shell-muted">
+              Fotos Indexadas
             </div>
-            <div className="text-3xl font-bold font-mono text-zinc-100 tracking-tight">{globalStats.totalPhotos}</div>
-            <div className="text-xs text-zinc-400 mt-1">Sincronizadas desde Google Drive</div>
+            <div className="mt-1 font-mono text-[26px] font-bold tabular-nums text-shell-ink">
+              {globalStats.totalPhotos.toLocaleString('es-PE')}
+            </div>
+            <div className="mt-0.5 text-[11.5px] text-shell-muted">Sincronizadas desde Drive</div>
           </div>
 
-          <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-zinc-700/80 transition-colors">
-            <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2">
-              <span>Almacenamiento Total</span>
-              <FaHdd className="text-cyan-400 text-sm" />
+          <div className={cardCls}>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-shell-muted">
+              Almacenamiento R2
             </div>
-            <div className="text-3xl font-bold font-mono text-zinc-100 tracking-tight">
-              {globalStats.totalStorageMB}{' '}
-              <span className="text-sm font-normal text-zinc-400">MB</span>
+            <div className="mt-1 font-mono text-[26px] font-bold tabular-nums text-shell-ink">
+              {globalStats.totalStorageMB} <span className="text-[13px] font-normal text-shell-muted">MB</span>
             </div>
-            <div className="text-xs text-zinc-400 mt-1">Almacenado en Cloudflare R2</div>
+            <div className="mt-0.5 text-[11.5px] text-shell-muted">Objeto directo sin Sharp</div>
           </div>
 
-          <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-5 shadow-sm hover:border-zinc-700/80 transition-colors">
-            <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold mb-2">
-              <span>Planes Activos</span>
-              <FaCrown className="text-emerald-400 text-sm" />
+          <div className={cardCls}>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-shell-muted">
+              Planes Activos
             </div>
-            <div className="text-3xl font-bold font-mono text-zinc-100 tracking-tight">{plans.length}</div>
-            <div className="text-xs text-emerald-400 font-medium mt-1">Básico, Pro, Premium</div>
+            <div className="mt-1 font-mono text-[26px] font-bold tabular-nums text-shell-ink">{plans.length}</div>
+            <div className="mt-0.5 text-[11.5px] text-shell-muted">Básico, Pro, Premium</div>
           </div>
         </div>
 
-        {/* 1. Selector de Portada Principal (c4talogo.com) */}
-        <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        {/* 1. Portada Principal + Whitelist lado a lado en desktop */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <section className={`${cardCls} space-y-4 lg:col-span-5`}>
             <div>
-              <div className="flex items-center gap-2">
-                <FaGlobe className="text-amber-400 text-base" />
-                <h2 className="text-base font-bold text-zinc-100">Página de Inicio Principal (c4talogo.com)</h2>
-              </div>
-              <p className="text-xs text-zinc-400 mt-1">
-                Elige qué diseño ven los usuarios al ingresar a la raíz <span className="text-zinc-200 font-mono font-semibold">{baseDomain}</span>.
+              <h2 className="text-[12px] font-bold uppercase tracking-[0.08em] text-shell-muted">
+                Portada Principal ({baseDomain})
+              </h2>
+              <p className="mt-1 text-[12px] text-shell-ink-soft">
+                Diseño visible en el dominio raíz para visitantes y evaluadores.
               </p>
             </div>
 
-            {landingNotice && (
-              <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-lg">
-                {landingNotice}
-              </span>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Opción 1: Minimalista / Informativa (Beta Cerrada) */}
-            <div
-              onClick={() => handleSwitchLanding('minimal')}
-              className={`p-4 rounded-xl border transition cursor-pointer relative ${
-                activeLanding === 'minimal'
-                  ? 'bg-amber-500/10 border-amber-500/50 shadow-sm'
-                  : 'bg-zinc-950/60 border-zinc-800/80 hover:border-zinc-750'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 text-[10px] font-bold mb-2 border border-amber-500/20">
-                    RECOMENDADA EN BETA
-                  </div>
-                  <h3 className="text-sm font-bold text-zinc-100">Minimalista e Informativa</h3>
-                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                    Explica a compradores que los catálogos están en sus subdominios oficiales (<code className="text-amber-300">tienda.{baseDomain}</code>) y ofrece acceso privado a administradores. Sin registro público.
-                  </p>
-                </div>
-                <div className="shrink-0 mt-1">
-                  <input
-                    type="radio"
-                    name="landing_type"
-                    checked={activeLanding === 'minimal'}
-                    onChange={() => handleSwitchLanding('minimal')}
-                    className="accent-amber-500 w-4 h-4 cursor-pointer"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Opción 2: SaaS Comercial Completo */}
-            <div
-              onClick={() => handleSwitchLanding('classic')}
-              className={`p-4 rounded-xl border transition cursor-pointer relative ${
-                activeLanding === 'classic'
-                  ? 'bg-amber-500/10 border-amber-500/50 shadow-sm'
-                  : 'bg-zinc-950/60 border-zinc-800/80 hover:border-zinc-750'
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-300 text-[10px] font-bold mb-2 border border-zinc-700/60">
-                    GOOGLE VERIFICADO
-                  </div>
-                  <h3 className="text-sm font-bold text-zinc-100">SaaS Comercial Completo</h3>
-                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                    Landing page comercial original con características completas de la plataforma, arquitectura Google Drive nativa, WhatsApp y comparativas de valor.
-                  </p>
-                </div>
-                <div className="shrink-0 mt-1">
-                  <input
-                    type="radio"
-                    name="landing_type"
-                    checked={activeLanding === 'classic'}
-                    onChange={() => handleSwitchLanding('classic')}
-                    className="accent-amber-500 w-4 h-4 cursor-pointer"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 2. Lista Blanca de Acceso (Fase Beta Cerrada) */}
-        <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 space-y-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <FaUserShield className="text-amber-400 text-base" />
-                <h2 className="text-base font-bold text-zinc-100">Lista Blanca de Acceso (Whitelist — Fase Beta)</h2>
-              </div>
-              <p className="text-xs text-zinc-400 mt-1">
-                Controla exactamente qué correos tienen permiso de entrar o crear tiendas durante la prueba cerrada.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
+            <div className="space-y-2.5">
               <button
-                onClick={handleToggleClosedBeta}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition border cursor-pointer ${
-                  closedBetaEnabled
-                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                    : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                type="button"
+                disabled={savingLanding}
+                onClick={() => handleSwitchLanding('minimal')}
+                className={`w-full cursor-pointer rounded-md border p-3.5 text-left transition ${
+                  activeLanding === 'minimal'
+                    ? 'border-shell-accent bg-shell-accent/10'
+                    : 'border-shell-line bg-shell-raised hover:border-shell-line-strong'
                 }`}
               >
-                {closedBetaEnabled ? <FaToggleOn className="text-base" /> : <FaToggleOff className="text-base" />}
-                <span>{closedBetaEnabled ? 'Modo Beta Cerrada: ACTIVO' : 'Acceso Público: ABIERTO'}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[13px] font-semibold text-shell-ink">Minimalista e Informativa</span>
+                  <span className="rounded border border-shell-accent/40 px-1.5 py-0.5 text-[10px] font-semibold text-shell-accent">
+                    {activeLanding === 'minimal' ? 'Activa' : 'Beta'}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-shell-muted">
+                  Redirige a los subdominios oficiales y muestra acceso privado sin registro abierto.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                disabled={savingLanding}
+                onClick={() => handleSwitchLanding('classic')}
+                className={`w-full cursor-pointer rounded-md border p-3.5 text-left transition ${
+                  activeLanding === 'classic'
+                    ? 'border-shell-accent bg-shell-accent/10'
+                    : 'border-shell-line bg-shell-raised hover:border-shell-line-strong'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[13px] font-semibold text-shell-ink">SaaS Comercial Completo</span>
+                  <span className="rounded border border-shell-line-strong px-1.5 py-0.5 text-[10px] font-semibold text-shell-ink-soft">
+                    {activeLanding === 'classic' ? 'Activa' : 'Google Verificado'}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11.5px] leading-relaxed text-shell-muted">
+                  Landing comercial completa con arquitectura Drive, WhatsApp y planes.
+                </p>
               </button>
             </div>
-          </div>
+          </section>
 
-          {whitelistNotice && (
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl font-medium">
-              {whitelistNotice}
+          <section className={`${cardCls} space-y-4 lg:col-span-7`}>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-[12px] font-bold uppercase tracking-[0.08em] text-shell-muted">
+                  Lista Blanca (Whitelist)
+                </h2>
+                <p className="mt-1 text-[12px] text-shell-ink-soft">
+                  Correos autorizados para auto-aprovisionar tienda durante la beta.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleClosedBeta}
+                className={`cursor-pointer rounded-md border px-2.5 py-1 text-[11.5px] font-semibold transition ${
+                  closedBetaEnabled
+                    ? 'border-shell-accent/40 bg-shell-accent/10 text-shell-accent'
+                    : 'border-shell-warn/40 bg-shell-warn/10 text-shell-warn'
+                }`}
+              >
+                {closedBetaEnabled ? 'Beta Cerrada: ACTIVA' : 'Registro Público: ABIERTO'}
+              </button>
             </div>
-          )}
 
-          {/* Formulario para agregar correo */}
-          <form onSubmit={handleAddWhitelistEmail} className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <FaEnvelope className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 text-xs" />
-              <input
-                type="email"
-                required
-                value={newWhitelistEmail}
-                onChange={(e) => setNewWhitelistEmail(e.target.value)}
-                placeholder="autorizar.nuevo.usuario@gmail.com"
-                className="w-full pl-10 pr-4 py-2 bg-zinc-950/70 border border-zinc-800 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 font-mono transition"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={addingWhitelist}
-              className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-xl text-xs font-semibold transition shadow-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <FaPlus className="text-[10px]" />
-              <span>{addingWhitelist ? 'Autorizando...' : 'Autorizar Correo'}</span>
-            </button>
-          </form>
+            <form onSubmit={handleAddWhitelistEmail} className="flex flex-col gap-2 sm:flex-row">
+              <div className="relative flex-1">
+                <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-shell-muted" />
+                <input
+                  type="email"
+                  required
+                  value={newWhitelistEmail}
+                  onChange={(e) => setNewWhitelistEmail(e.target.value)}
+                  placeholder="autorizar.usuario@gmail.com"
+                  className={`${fieldCls} pl-8 font-mono`}
+                />
+              </div>
+              <button type="submit" disabled={addingWhitelist} className={btnPrimaryCls}>
+                <FaPlus className="text-[10px]" />
+                <span>{addingWhitelist ? 'Autorizando…' : 'Autorizar'}</span>
+              </button>
+            </form>
 
-          {/* Tabla de correos en whitelist */}
-          <div className="overflow-x-auto border border-zinc-800/80 rounded-xl">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-zinc-950/70 text-zinc-400 border-b border-zinc-800/80 font-medium">
-                <tr>
-                  <th className="py-2.5 px-4">Correo Autorizado</th>
-                  <th className="py-2.5 px-4">Estado de Tienda</th>
-                  <th className="py-2.5 px-4">Fecha Autorización</th>
-                  <th className="py-2.5 px-4 text-right">Acción</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800/60">
-                {whitelist.length === 0 ? (
+            <div className="max-h-56 overflow-y-auto rounded-md border border-shell-line">
+              <table className="w-full text-left text-[12px]">
+                <thead className="sticky top-0 border-b border-shell-line bg-shell-raised text-shell-muted">
                   <tr>
-                    <td colSpan={4} className="py-4 text-center text-zinc-500 text-xs">
-                      No hay correos en la lista blanca aún.
-                    </td>
+                    <th className="px-3 py-2 font-medium">Correo</th>
+                    <th className="px-3 py-2 font-medium">Estado</th>
+                    <th className="px-3 py-2 font-medium">Alta</th>
+                    <th className="px-3 py-2 text-right font-medium">Acción</th>
                   </tr>
-                ) : (
-                  whitelist.map((w) => (
-                    <tr key={w.email} className="hover:bg-zinc-800/30 transition text-zinc-300">
-                      <td className="py-2.5 px-4 font-mono font-medium text-zinc-100 flex items-center gap-2">
-                        <FaEnvelope className="text-zinc-500 text-[10px]" />
-                        <span>{w.email}</span>
-                      </td>
-                      <td className="py-2.5 px-4">
-                        <span
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                            w.has_active_store
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-zinc-800 text-zinc-400 border border-zinc-700/60'
-                          }`}
-                        >
-                          {w.has_active_store ? 'Tienda Activa' : 'Pendiente / Sin Tienda'}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-4 text-zinc-500 font-mono text-[11px]">
-                        {new Date(w.created_at).toLocaleDateString('es-PE')}
-                      </td>
-                      <td className="py-2.5 px-4 text-right">
-                        <button
-                          onClick={() => handleRemoveWhitelistEmail(w.email)}
-                          className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg text-[11px] transition cursor-pointer"
-                          title="Revocar autorización"
-                        >
-                          Revocar
-                        </button>
+                </thead>
+                <tbody className="divide-y divide-shell-line">
+                  {whitelist.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-4 text-center text-shell-muted">
+                        Sin correos en la lista blanca.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    whitelist.map((w) => (
+                      <tr key={w.email} className="hover:bg-shell-raised/60">
+                        <td className="px-3 py-2 font-mono text-shell-ink">{w.email}</td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${
+                              w.has_active_store
+                                ? 'border-shell-accent/40 bg-shell-accent/10 text-shell-accent'
+                                : 'border-shell-line-strong bg-shell-raised text-shell-muted'
+                            }`}
+                          >
+                            {w.has_active_store ? 'Activa' : 'Pendiente'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 font-mono text-[11px] text-shell-muted">
+                          {new Date(w.created_at).toLocaleDateString('es-PE')}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveWhitelistEmail(w.email)}
+                            className={btnDangerCls}
+                          >
+                            Revocar
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
 
-        {/* 3. Subscription Plans Management */}
-        <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
+        {/* 2. Planes */}
+        <section className={`${cardCls} space-y-4`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-base font-bold text-zinc-100">Configuración de Planes y Límites</h2>
-              <p className="text-xs text-zinc-400 mt-0.5">
-                Personaliza fotos máximas, cuota de almacenamiento en MB y precio de suscripción.
+              <h2 className="text-[12px] font-bold uppercase tracking-[0.08em] text-shell-muted">
+                Planes y Límites
+              </h2>
+              <p className="mt-0.5 text-[12px] text-shell-ink-soft">
+                Fotos máximas, cuota de almacenamiento y precio mensual en Supabase.
               </p>
             </div>
-            <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-full font-mono">
-              En Vivo (Supabase)
-            </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {plans.map((p) => {
               const isEditing = editingPlanId === p.id;
-              const isEnterprise = p.slug === 'enterprise';
-
               return (
                 <div
                   key={p.id}
-                  className={`bg-zinc-950/60 border rounded-xl p-5 flex flex-col justify-between transition ${
-                    isEditing
-                      ? 'border-amber-500 ring-1 ring-amber-500/40'
-                      : isEnterprise
-                      ? 'border-amber-500/30'
-                      : 'border-zinc-800/80'
+                  className={`flex flex-col justify-between rounded-md border bg-shell-raised p-4 ${
+                    isEditing ? 'border-shell-accent' : 'border-shell-line'
                   }`}
                 >
                   <div>
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="mb-3 flex items-center justify-between gap-2">
                       {isEditing ? (
                         <input
                           type="text"
                           value={planForm.name}
                           onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
-                          className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-sm font-bold text-zinc-100 w-full mr-2"
+                          className={fieldCls}
                         />
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-base text-zinc-100">{p.name}</h3>
-                          {isEnterprise && (
-                            <span className="text-[10px] bg-amber-500/15 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded font-semibold uppercase tracking-wider">
-                              Top
-                            </span>
-                          )}
-                        </div>
+                        <h3 className="text-[14px] font-semibold text-shell-ink">{p.name}</h3>
                       )}
-
-                      <span className="text-[10px] text-zinc-500 font-mono uppercase bg-zinc-800 px-2 py-0.5 rounded">
+                      <span className="rounded border border-shell-line-strong bg-shell-surface px-1.5 py-0.5 font-mono text-[10px] uppercase text-shell-muted">
                         {p.slug}
                       </span>
                     </div>
 
                     {isEditing ? (
-                      <div className="space-y-3 text-xs mb-4">
+                      <div className="mb-4 space-y-2.5 text-[12px]">
                         <div>
-                          <label className="block text-zinc-400 mb-1">Fotos Máximas:</label>
+                          <label className="mb-1 block text-shell-muted">Fotos Máximas</label>
                           <input
                             type="number"
                             value={planForm.max_photos}
-                            onChange={(e) =>
-                              setPlanForm({ ...planForm, max_photos: Number(e.target.value) })
-                            }
-                            className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-white font-mono"
+                            onChange={(e) => setPlanForm({ ...planForm, max_photos: Number(e.target.value) })}
+                            className={`${fieldCls} font-mono`}
                           />
                         </div>
                         <div>
-                          <label className="block text-zinc-400 mb-1">Almacenamiento (MB):</label>
+                          <label className="mb-1 block text-shell-muted">Almacenamiento (MB)</label>
                           <input
                             type="number"
                             value={planForm.max_storage_mb}
-                            onChange={(e) =>
-                              setPlanForm({ ...planForm, max_storage_mb: Number(e.target.value) })
-                            }
-                            className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-white font-mono"
+                            onChange={(e) => setPlanForm({ ...planForm, max_storage_mb: Number(e.target.value) })}
+                            className={`${fieldCls} font-mono`}
                           />
                         </div>
                         <div>
-                          <label className="block text-zinc-400 mb-1">Precio Mensual ($):</label>
+                          <label className="mb-1 block text-shell-muted">Precio Mensual ($)</label>
                           <input
                             type="number"
                             step="0.01"
                             value={planForm.price_monthly}
-                            onChange={(e) =>
-                              setPlanForm({ ...planForm, price_monthly: Number(e.target.value) })
-                            }
-                            className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-white font-mono"
+                            onChange={(e) => setPlanForm({ ...planForm, price_monthly: Number(e.target.value) })}
+                            className={`${fieldCls} font-mono`}
                           />
                         </div>
                       </div>
                     ) : (
-                      <div className="space-y-2 text-xs mb-4">
-                        <div className="flex justify-between py-1 border-b border-zinc-800/80 text-zinc-300">
-                          <span>Fotos Límite:</span>
-                          <strong className="text-zinc-100 font-mono">{p.max_photos} fotos</strong>
+                      <div className="mb-4 space-y-1.5 text-[12px]">
+                        <div className="flex justify-between border-b border-shell-line py-1">
+                          <span className="text-shell-muted">Fotos límite</span>
+                          <strong className="font-mono text-shell-ink">{p.max_photos}</strong>
                         </div>
-                        <div className="flex justify-between py-1 border-b border-zinc-800/80 text-zinc-300">
-                          <span>Almacenamiento:</span>
-                          <strong className="text-zinc-100 font-mono">
+                        <div className="flex justify-between border-b border-shell-line py-1">
+                          <span className="text-shell-muted">Almacenamiento</span>
+                          <strong className="font-mono text-shell-ink">
                             {p.max_storage_mb >= 1024
                               ? `${(p.max_storage_mb / 1024).toFixed(1)} GB`
                               : `${p.max_storage_mb} MB`}
                           </strong>
                         </div>
-                        <div className="flex justify-between py-1 text-zinc-300">
-                          <span>Precio Mensual:</span>
-                          <strong className="text-emerald-400 font-mono">
-                            {Number(p.price_monthly) === 0
-                              ? 'Gratis ($0.00)'
-                              : `$${Number(p.price_monthly).toFixed(2)}`}
+                        <div className="flex justify-between py-1">
+                          <span className="text-shell-muted">Precio mensual</span>
+                          <strong className="font-mono text-shell-accent">
+                            {Number(p.price_monthly) === 0 ? 'Gratis ($0.00)' : `$${Number(p.price_monthly).toFixed(2)}`}
                           </strong>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  <div className="pt-4 mt-2 border-t border-zinc-800/80 flex gap-2">
+                  <div className="flex gap-2 border-t border-shell-line pt-3">
                     {isEditing ? (
                       <>
                         <button
+                          type="button"
                           onClick={() => handleSavePlan(p.id)}
                           disabled={savingPlan}
-                          className="flex-1 py-1.5 px-3 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                          className={`${btnPrimaryCls} flex-1`}
                         >
                           <FaSave />
-                          <span>{savingPlan ? 'Guardando...' : 'Guardar'}</span>
+                          <span>{savingPlan ? 'Guardando…' : 'Guardar'}</span>
                         </button>
-                        <button
-                          onClick={() => setEditingPlanId(null)}
-                          className="py-1.5 px-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/80 rounded-lg text-xs transition cursor-pointer"
-                        >
+                        <button type="button" onClick={() => setEditingPlanId(null)} className={btnCls}>
                           Cancelar
                         </button>
                       </>
                     ) : (
-                      <button
-                        onClick={() => startEditPlan(p)}
-                        className="w-full py-1.5 px-3 bg-zinc-800/80 hover:bg-zinc-750 border border-zinc-750 text-zinc-200 rounded-lg text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
-                      >
-                        <FaEdit className="text-amber-400 text-[10px]" />
-                        <span>Editar Configuración</span>
+                      <button type="button" onClick={() => startEditPlan(p)} className={`${btnCls} w-full`}>
+                        <FaEdit className="text-[11px] text-shell-accent" />
+                        <span>Editar Plan</span>
                       </button>
                     )}
                   </div>
@@ -1019,85 +1055,114 @@ export default function SuperAdminDashboard() {
               );
             })}
           </div>
-        </div>
+        </section>
 
-        {/* 4. Tenants Table & Management */}
-        <div className="bg-[#121215] border border-zinc-800 rounded-2xl p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        {/* 3. Tabla de Inquilinos con Búsqueda y Filtros */}
+        <section className={`${cardCls} space-y-4`}>
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
             <div>
-              <h2 className="text-base font-bold text-zinc-100">Todos los Inquilinos (Tenants)</h2>
-              <span className="text-xs text-zinc-400 font-mono">
-                Total: {tenants.length} tiendas registradas
-              </span>
+              <h2 className="text-[12px] font-bold uppercase tracking-[0.08em] text-shell-muted">
+                Inquilinos ({filteredTenants.length} / {tenants.length})
+              </h2>
+              <p className="mt-0.5 text-[12px] text-shell-ink-soft">
+                Suspender o cambiar plan invalida caché en RAM y purga Cloudflare al instante.
+              </p>
             </div>
 
             <button
+              type="button"
               onClick={() => {
                 setCreatedSuccessData(null);
                 setCreateError(null);
                 generateRandomPassword();
                 setIsCreateModalOpen(true);
               }}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-xl text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+              className={btnPrimaryCls}
             >
               <FaPlus className="text-[10px]" />
-              <span>+ Nueva Tienda / Invitar Cliente</span>
+              <span>Nueva Tienda</span>
             </button>
           </div>
 
-          {tenants.length === 0 ? (
-            <div className="text-center py-8 text-xs text-zinc-500">
-              Aún no hay inquilinos registrados.
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-shell-muted" />
+              <input
+                type="text"
+                value={tenantSearch}
+                onChange={(e) => setTenantSearch(e.target.value)}
+                placeholder="Buscar por nombre, subdominio, dominio propio o correo…"
+                className={`${fieldCls} pl-8`}
+              />
+            </div>
+
+            <div className="flex items-center gap-1 rounded-md border border-shell-line-strong bg-shell-raised p-0.5 text-[11.5px]">
+              {(['all', 'active', 'suspended'] as const).map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setStatusFilter(st)}
+                  className={`cursor-pointer rounded px-2.5 py-1 font-medium transition ${
+                    statusFilter === st
+                      ? 'bg-shell-accent text-shell-accent-ink'
+                      : 'text-shell-muted hover:text-shell-ink'
+                  }`}
+                >
+                  {st === 'all' ? 'Todos' : st === 'active' ? 'Activos' : 'Suspendidos'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filteredTenants.length === 0 ? (
+            <div className="rounded-md border border-dashed border-shell-line py-8 text-center text-[12.5px] text-shell-muted">
+              No se encontraron tiendas con ese criterio.
             </div>
           ) : (
-            <div className="overflow-x-auto border border-zinc-800/80 rounded-xl">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-zinc-950/70 text-zinc-400 border-b border-zinc-800/80 font-medium">
+            <div className="overflow-x-auto rounded-md border border-shell-line">
+              <table className="w-full text-left text-[12px]">
+                <thead className="border-b border-shell-line bg-shell-raised text-shell-muted">
                   <tr>
-                    <th className="py-3 px-4">Tienda / Subdominio / Correo</th>
-                    <th className="py-3 px-4">Dominio Propio (VIP)</th>
-                    <th className="py-3 px-4">Estado</th>
-                    <th className="py-3 px-4">Plan Asignado</th>
-                    <th className="py-3 px-4">Fotos</th>
-                    <th className="py-3 px-4">Almacenamiento</th>
-                    <th className="py-3 px-4">Fecha Alta</th>
-                    <th className="py-3 px-4 text-right">Acciones</th>
+                    <th className="px-3.5 py-2.5 font-medium">Tienda / Subdominio / Correo</th>
+                    <th className="px-3.5 py-2.5 font-medium">Dominio Propio</th>
+                    <th className="px-3.5 py-2.5 font-medium">Estado</th>
+                    <th className="px-3.5 py-2.5 font-medium">Plan</th>
+                    <th className="px-3.5 py-2.5 font-medium">Fotos</th>
+                    <th className="px-3.5 py-2.5 font-medium">Alta</th>
+                    <th className="px-3.5 py-2.5 text-right font-medium">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-800/60">
-                  {tenants.map((t) => (
-                    <tr key={t.id} className="text-zinc-300 hover:bg-zinc-800/30 transition">
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-zinc-100">{t.name}</div>
+                <tbody className="divide-y divide-shell-line">
+                  {filteredTenants.map((t) => (
+                    <tr key={t.id} className="hover:bg-shell-raised/50">
+                      <td className="px-3.5 py-3">
+                        <div className="font-semibold text-shell-ink">{t.name}</div>
                         <a
                           href={`https://${t.subdomain}.${baseDomain}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-amber-400 hover:underline flex items-center gap-1 font-mono text-[11px]"
+                          className="inline-flex items-center gap-1 font-mono text-[11px] text-shell-accent hover:underline"
                         >
-                          <span>
-                            {t.subdomain}.{baseDomain}
-                          </span>
+                          <span>{t.subdomain}.{baseDomain}</span>
                           <FaExternalLinkAlt className="text-[9px]" />
                         </a>
-                        <div className="text-[11px] text-zinc-400 flex items-center gap-1.5 mt-1 font-mono">
-                          <FaEnvelope className="text-zinc-500 text-[10px]" />
-                          <span>{t.owner_email || t.google_email || 'Sin correo asociado'}</span>
+                        <div className="mt-0.5 font-mono text-[11px] text-shell-muted">
+                          {t.owner_email || t.google_email || 'Sin correo asociado'}
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-col gap-1.5">
+                      <td className="px-3.5 py-3">
+                        <div className="flex flex-col gap-1">
                           <button
+                            type="button"
                             onClick={() => handleToggleCustomDomain(t)}
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition w-fit cursor-pointer ${
+                            className={`inline-flex w-fit cursor-pointer items-center gap-1.5 rounded border px-2 py-0.5 text-[10.5px] font-semibold ${
                               t.custom_domain_enabled
-                                ? 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
-                                : 'bg-zinc-800/80 border-zinc-700/60 text-zinc-400 hover:bg-zinc-750'
+                                ? 'border-shell-accent/40 bg-shell-accent/10 text-shell-accent'
+                                : 'border-shell-line-strong bg-shell-raised text-shell-muted'
                             }`}
-                            title="Haz clic para activar o desactivar la función de Dominio Propio para este inquilino"
                           >
-                            <FaGlobe className={t.custom_domain_enabled ? 'text-amber-400' : 'text-zinc-500'} />
+                            <FaGlobe className="text-[10px]" />
                             <span>{t.custom_domain_enabled ? 'Habilitado' : 'Deshabilitado'}</span>
                           </button>
 
@@ -1107,94 +1172,92 @@ export default function SuperAdminDashboard() {
                                 href={`https://${t.custom_domain}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-[11px] font-mono text-emerald-400 hover:underline flex items-center gap-1"
+                                className="inline-flex items-center gap-1 font-mono text-[11px] text-shell-ink hover:underline"
                               >
                                 <span>{t.custom_domain}</span>
                                 <FaExternalLinkAlt className="text-[8px]" />
                               </a>
                               <button
-                                onClick={() => handleEditCustomDomain(t)}
-                                title="Editar o borrar dominio"
-                                className="text-zinc-500 hover:text-amber-300 p-0.5 cursor-pointer"
+                                type="button"
+                                onClick={() => openCustomDomainModal(t)}
+                                title="Editar o quitar dominio"
+                                className="cursor-pointer p-0.5 text-shell-muted hover:text-shell-accent"
                               >
                                 <FaEdit className="text-[10px]" />
                               </button>
                             </div>
                           ) : t.custom_domain_enabled ? (
                             <button
-                              onClick={() => handleEditCustomDomain(t)}
-                              className="text-[10px] text-amber-400/90 hover:text-amber-300 underline cursor-pointer text-left"
+                              type="button"
+                              onClick={() => openCustomDomainModal(t)}
+                              className="cursor-pointer text-left text-[11px] text-shell-accent hover:underline"
                             >
-                              + Asignar dominio manual
+                              + Asignar dominio
                             </button>
                           ) : null}
                         </div>
                       </td>
 
-                      <td className="py-3.5 px-4">
+                      <td className="px-3.5 py-3">
                         <span
-                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                          className={`rounded border px-1.5 py-0.5 text-[10.5px] font-semibold ${
                             t.status === 'active'
-                              ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-                              : 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
+                              ? 'border-shell-accent/40 bg-shell-accent/10 text-shell-accent'
+                              : 'border-shell-danger/40 bg-shell-danger/10 text-shell-danger'
                           }`}
                         >
                           {t.status === 'active' ? 'Activo' : 'Suspendido'}
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-4">
+                      <td className="px-3.5 py-3">
                         <select
                           value={t.plan_id || ''}
                           onChange={(e) => handleChangePlan(t.id, e.target.value)}
-                          className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:border-amber-500/60 transition"
+                          className="rounded-md border border-shell-line-strong bg-shell-raised px-2 py-1 text-[11.5px] text-shell-ink focus:outline-none focus:ring-2 focus:ring-shell-accent/60"
                         >
                           {plans.map((p) => (
                             <option key={p.id} value={p.id}>
-                              {p.name} ({p.max_photos} fotos)
+                              {p.name} ({p.max_photos})
                             </option>
                           ))}
                         </select>
                       </td>
 
-                      <td className="py-3.5 px-4 font-mono text-zinc-100">{t.current_photos_count || 0}</td>
-
-                      <td className="py-3.5 px-4 font-mono text-zinc-400">
-                        {Math.round((t.current_storage_bytes || 0) / (1024 * 1024))} MB
+                      <td className="px-3.5 py-3 font-mono tabular-nums text-shell-ink">
+                        {t.current_photos_count || 0}
                       </td>
 
-                      <td className="py-3.5 px-4 text-zinc-500 font-mono">
+                      <td className="px-3.5 py-3 font-mono text-[11px] text-shell-muted">
                         {new Date(t.created_at).toLocaleDateString('es-PE')}
                       </td>
 
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="px-3.5 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
-                            onClick={() => handleToggleStatus(t.id, t.status)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer border ${
-                              t.status === 'active'
-                                ? 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700/80 text-zinc-300'
-                                : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20'
-                            }`}
+                            type="button"
+                            onClick={() => handleToggleStatus(t)}
+                            className={btnCls}
                           >
                             {t.status === 'active' ? 'Suspender' : 'Reactivar'}
                           </button>
 
                           <button
-                            onClick={() => {
+                            type="button"
+                            onClick={() =>
                               setDeleteModal({
                                 isOpen: true,
                                 tenant: t,
                                 confirmText: '',
                                 deleting: false,
                                 error: null,
-                              });
-                            }}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 transition cursor-pointer flex items-center gap-1"
+                              })
+                            }
+                            className={btnDangerCls}
                             title="Eliminar tienda de Supabase y fotos de R2"
                           >
                             <FaTrash className="text-[10px]" />
-                            <span>Dar de baja</span>
+                            <span>Baja</span>
                           </button>
                         </div>
                       </td>
@@ -1204,116 +1267,95 @@ export default function SuperAdminDashboard() {
               </table>
             </div>
           )}
-        </div>
+        </section>
       </main>
 
-      {/* MODAL 1: NUEVA TIENDA / INVITAR USUARIO */}
+      {/* MODAL 1: NUEVA TIENDA */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-sm shadow-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-shell-bg/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg space-y-4 rounded-lg border border-shell-line-strong bg-shell-surface p-5 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-shell-line pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="grid h-8 w-8 place-items-center rounded-md border border-shell-accent/40 bg-shell-accent/10 text-shell-accent">
                   <FaStore />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-zinc-100">Alta de Nueva Tienda</h3>
-                  <p className="text-[11px] text-zinc-400">
-                    Crea la tienda, el subdominio y las credenciales de acceso iniciales.
-                  </p>
+                  <h3 className="text-[15px] font-semibold text-shell-ink">Alta de Nueva Tienda</h3>
+                  <p className="text-[11.5px] text-shell-muted">Crea tienda, subdominio y credenciales iniciales.</p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="text-zinc-400 hover:text-white text-lg font-mono cursor-pointer"
+                className="cursor-pointer rounded px-2 py-1 text-[16px] text-shell-muted hover:text-shell-ink"
               >
-                ✕
+                ×
               </button>
             </div>
 
             {createdSuccessData ? (
-              <div className="space-y-4">
-                <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-2">
-                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
-                    <FaCheckCircle />
-                    <span>¡Tienda creada y autorizada con éxito!</span>
-                  </div>
-                  <p className="text-xs text-zinc-300 leading-relaxed">
-                    Comparte las siguientes credenciales con el cliente para que pueda ingresar a su panel:
-                  </p>
+              <div className="space-y-3.5">
+                <div className="flex items-center gap-2 rounded-md border border-shell-accent/40 bg-shell-accent/10 p-3 text-[12.5px] font-semibold text-shell-accent">
+                  <FaCheckCircle />
+                  <span>¡Tienda creada y autorizada con éxito!</span>
                 </div>
 
-                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2 font-mono text-xs">
+                <div className="space-y-1.5 rounded-md border border-shell-line bg-shell-raised p-3.5 font-mono text-[12px]">
                   <div>
-                    <span className="text-zinc-500">Catálogo Web:</span>{' '}
-                    <span className="text-amber-400 font-semibold">
+                    <span className="text-shell-muted">Catálogo:</span>{' '}
+                    <span className="font-semibold text-shell-accent">
                       https://{createdSuccessData.credentials.subdomain}.{baseDomain}
                     </span>
                   </div>
                   <div>
-                    <span className="text-zinc-500">Panel Login:</span>{' '}
-                    <span className="text-zinc-100">https://{baseDomain}/login</span>
+                    <span className="text-shell-muted">Login:</span>{' '}
+                    <span className="text-shell-ink">https://{baseDomain}/login</span>
                   </div>
                   <div>
-                    <span className="text-zinc-500">Usuario (Email):</span>{' '}
-                    <span className="text-emerald-400 font-semibold">
-                      {createdSuccessData.credentials.email}
-                    </span>
+                    <span className="text-shell-muted">Email:</span>{' '}
+                    <span className="text-shell-ink">{createdSuccessData.credentials.email}</span>
                   </div>
                   <div>
-                    <span className="text-zinc-500">Contraseña temporal:</span>{' '}
-                    <span className="text-rose-400 font-bold">
-                      {createdSuccessData.credentials.password}
-                    </span>
+                    <span className="text-shell-muted">Contraseña:</span>{' '}
+                    <span className="font-semibold text-shell-warn">{createdSuccessData.credentials.password}</span>
                   </div>
                 </div>
 
-                <button
-                  onClick={copyCredentialsToClipboard}
-                  className="w-full py-2.5 px-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700/80 text-zinc-100 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                >
+                <button type="button" onClick={copyCredentialsToClipboard} className={`${btnCls} w-full`}>
                   <FaCopy />
-                  <span>
-                    {copiedCredentials
-                      ? '✓ ¡Copiado al Portapapeles!'
-                      : 'Copiar Mensaje Completo para WhatsApp'}
-                  </span>
+                  <span>{copiedCredentials ? 'Copiado al portapapeles' : 'Copiar mensaje completo para WhatsApp'}</span>
                 </button>
 
-                <div className="flex justify-end pt-2">
+                <div className="flex justify-end pt-1">
                   <button
+                    type="button"
                     onClick={() => {
                       setIsCreateModalOpen(false);
                       setCreatedSuccessData(null);
                     }}
-                    className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-xl text-xs font-semibold cursor-pointer shadow-sm"
+                    className={btnPrimaryCls}
                   >
                     Cerrar
                   </button>
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleCreateTenantSubmit} className="space-y-4">
+              <form onSubmit={handleCreateTenantSubmit} className="space-y-3.5">
                 {createError && (
-                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-xs font-medium">
+                  <div className="rounded-md border border-shell-danger/40 bg-shell-danger/10 p-2.5 text-[12px] text-shell-danger">
                     {createError}
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">
-                    Nombre del Negocio o Tienda
-                  </label>
+                  <label className="mb-1 block text-[12px] font-medium text-shell-ink-soft">Nombre de la tienda</label>
                   <input
                     type="text"
                     required
                     value={createForm.name}
                     onChange={(e) => {
                       const name = e.target.value;
-                      const autoSubdomain = name
-                        .toLowerCase()
-                        .trim()
-                        .replace(/[^a-z0-9]/g, '');
+                      const autoSubdomain = name.toLowerCase().trim().replace(/[^a-z0-9]/g, '');
                       setCreateForm((prev) => ({
                         ...prev,
                         name,
@@ -1321,14 +1363,12 @@ export default function SuperAdminDashboard() {
                       }));
                     }}
                     placeholder="Ej. Modas Camila"
-                    className="w-full bg-zinc-950/70 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 transition"
+                    className={fieldCls}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">
-                    Subdominio asignado
-                  </label>
+                  <label className="mb-1 block text-[12px] font-medium text-shell-ink-soft">Subdominio</label>
                   <div className="flex items-center">
                     <input
                       type="text"
@@ -1341,37 +1381,33 @@ export default function SuperAdminDashboard() {
                         })
                       }
                       placeholder="modascamila"
-                      className="flex-1 bg-zinc-950/70 border border-zinc-800 rounded-l-xl px-3 py-2 text-xs text-amber-300 font-mono placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 transition"
+                      className={`${fieldCls} rounded-r-none font-mono`}
                     />
-                    <span className="bg-zinc-800 border border-l-0 border-zinc-700/80 px-3 py-2 rounded-r-xl text-xs text-zinc-400 font-mono">
+                    <span className="shrink-0 rounded-r-md border border-l-0 border-shell-line-strong bg-shell-surface px-2.5 py-1.5 font-mono text-[12px] text-shell-muted">
                       .{baseDomain}
                     </span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">
-                    Correo Electrónico del Cliente
-                  </label>
+                  <label className="mb-1 block text-[12px] font-medium text-shell-ink-soft">Correo del cliente</label>
                   <input
                     type="email"
                     required
                     value={createForm.email}
                     onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
                     placeholder="cliente@gmail.com"
-                    className="w-full bg-zinc-950/70 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 transition"
+                    className={fieldCls}
                   />
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-medium text-zinc-300">
-                      Contraseña Asignada
-                    </label>
+                  <div className="mb-1 flex items-center justify-between">
+                    <label className="text-[12px] font-medium text-shell-ink-soft">Contraseña</label>
                     <button
                       type="button"
                       onClick={generateRandomPassword}
-                      className="text-[11px] text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      className="inline-flex cursor-pointer items-center gap-1 text-[11px] text-shell-accent hover:underline"
                     >
                       <FaKey className="text-[9px]" /> Generar aleatoria
                     </button>
@@ -1381,16 +1417,13 @@ export default function SuperAdminDashboard() {
                       type={showPassword ? 'text' : 'password'}
                       required
                       value={createForm.password}
-                      onChange={(e) =>
-                        setCreateForm({ ...createForm, password: e.target.value })
-                      }
-                      placeholder="Contraseña segura"
-                      className="w-full bg-zinc-950/70 border border-zinc-800 rounded-xl px-3 py-2 pr-10 text-xs text-zinc-100 font-mono placeholder-zinc-500 focus:outline-none focus:border-amber-500/60 transition"
+                      onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                      className={`${fieldCls} pr-9 font-mono`}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white text-xs cursor-pointer"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer text-[12px] text-shell-muted hover:text-shell-ink"
                     >
                       {showPassword ? <FaEyeSlash /> : <FaEye />}
                     </button>
@@ -1398,13 +1431,11 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-zinc-300 mb-1">
-                    Plan de Suscripción
-                  </label>
+                  <label className="mb-1 block text-[12px] font-medium text-shell-ink-soft">Plan</label>
                   <select
                     value={createForm.plan_id}
                     onChange={(e) => setCreateForm({ ...createForm, plan_id: e.target.value })}
-                    className="w-full bg-zinc-950/70 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-amber-500/60 transition"
+                    className={fieldCls}
                   >
                     {plans.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -1414,20 +1445,12 @@ export default function SuperAdminDashboard() {
                   </select>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800">
-                  <button
-                    type="button"
-                    onClick={() => setIsCreateModalOpen(false)}
-                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-750 rounded-xl text-xs transition cursor-pointer"
-                  >
+                <div className="flex justify-end gap-2 border-t border-shell-line pt-3">
+                  <button type="button" onClick={() => setIsCreateModalOpen(false)} className={btnCls}>
                     Cancelar
                   </button>
-                  <button
-                    type="submit"
-                    disabled={creatingTenant}
-                    className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50 cursor-pointer"
-                  >
-                    {creatingTenant ? 'Creando...' : 'Crear Tienda y Autorizar'}
+                  <button type="submit" disabled={creatingTenant} className={btnPrimaryCls}>
+                    {creatingTenant ? 'Creando…' : 'Crear Tienda'}
                   </button>
                 </div>
               </form>
@@ -1436,72 +1459,101 @@ export default function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* MODAL 2: DAR DE BAJA TIENDA (ELIMINACIÓN EN CASCADA) */}
+      {/* MODAL 2: DOMINIO PERSONALIZADO */}
+      {domainModal.isOpen && domainModal.tenant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-shell-bg/80 p-4 backdrop-blur-sm">
+          <form
+            onSubmit={handleSaveCustomDomain}
+            className="w-full max-w-md space-y-4 rounded-lg border border-shell-line-strong bg-shell-surface p-5 shadow-2xl"
+          >
+            <div>
+              <h3 className="text-[15px] font-semibold text-shell-ink">
+                Dominio Propio — {domainModal.tenant.name}
+              </h3>
+              <p className="mt-1 text-[12px] text-shell-muted">
+                Ej: <code className="font-mono">tiendajuan.com</code> o{' '}
+                <code className="font-mono">catalogo.tiendajuan.com</code>. Déjalo vacío para quitarlo.
+              </p>
+            </div>
+
+            <input
+              type="text"
+              value={domainModal.value}
+              onChange={(e) => setDomainModal((prev) => ({ ...prev, value: e.target.value }))}
+              placeholder="catalogo.mitienda.com"
+              className={`${fieldCls} font-mono`}
+            />
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={domainModal.saving}
+                onClick={() => setDomainModal({ isOpen: false, tenant: null, value: '', saving: false })}
+                className={btnCls}
+              >
+                Cancelar
+              </button>
+              <button type="submit" disabled={domainModal.saving} className={btnPrimaryCls}>
+                {domainModal.saving ? 'Guardando…' : 'Guardar Dominio'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* MODAL 3: DAR DE BAJA TIENDA */}
       {deleteModal.isOpen && deleteModal.tenant && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-rose-500/30 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center gap-3 text-rose-400">
-              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-shell-bg/85 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md space-y-4 rounded-lg border border-shell-danger/50 bg-shell-surface p-5 shadow-2xl">
+            <div className="flex items-center gap-3 text-shell-danger">
+              <div className="grid h-9 w-9 place-items-center rounded-md border border-shell-danger/40 bg-shell-danger/10">
                 <FaExclamationTriangle />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Dar de baja Tienda</h3>
-                <p className="text-[11px] text-rose-400 font-medium">
-                  Eliminación irreversible en cascada
-                </p>
+                <h3 className="text-[15px] font-semibold text-shell-ink">Dar de baja Tienda</h3>
+                <p className="text-[11.5px] text-shell-danger">Eliminación irreversible en cascada</p>
               </div>
             </div>
 
-            <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs text-zinc-300 leading-relaxed space-y-2">
+            <div className="space-y-1.5 rounded-md border border-shell-danger/30 bg-shell-danger/10 p-3 text-[12px] text-shell-ink-soft">
               <p>
-                Estás a punto de eliminar definitivamente la tienda:{' '}
-                <strong className="text-white">{deleteModal.tenant.name}</strong> (
-                <code className="text-amber-300 font-mono">{deleteModal.tenant.subdomain}</code>).
+                Vas a eliminar definitivamente <strong className="text-shell-ink">{deleteModal.tenant.name}</strong> (
+                <code className="font-mono text-shell-warn">{deleteModal.tenant.subdomain}</code>).
               </p>
-              <ul className="list-disc list-inside space-y-1 text-zinc-400 text-[11px]">
-                <li>Se borrarán todas las fotos del bucket de Cloudflare R2.</li>
-                <li>Se eliminarán álbumes, fotos y configuraciones de Supabase.</li>
-                <li>Se revocará el subdominio y se quitará de la lista blanca de acceso.</li>
+              <ul className="list-inside list-disc space-y-0.5 text-[11.5px] text-shell-muted">
+                <li>Se borrarán todas sus fotos en Cloudflare R2.</li>
+                <li>Se eliminarán álbumes, fotos y configuración en Supabase.</li>
+                <li>Se revocará su subdominio y lista blanca.</li>
               </ul>
             </div>
 
             {deleteModal.error && (
-              <div className="p-2.5 bg-rose-500/20 border border-rose-500/30 rounded-lg text-xs text-rose-300">
+              <div className="rounded-md border border-shell-danger/40 bg-shell-danger/10 p-2.5 text-[12px] text-shell-danger">
                 {deleteModal.error}
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1">
-                Para confirmar, escribe el subdominio:{' '}
-                <code className="text-amber-400 font-mono font-bold">
-                  {deleteModal.tenant.subdomain}
-                </code>
+              <label className="mb-1 block text-[12px] text-shell-ink-soft">
+                Escribe <code className="font-mono font-bold text-shell-warn">{deleteModal.tenant.subdomain}</code>{' '}
+                para confirmar:
               </label>
               <input
                 type="text"
                 value={deleteModal.confirmText}
-                onChange={(e) =>
-                  setDeleteModal({ ...deleteModal, confirmText: e.target.value })
-                }
+                onChange={(e) => setDeleteModal({ ...deleteModal, confirmText: e.target.value })}
                 placeholder={deleteModal.tenant.subdomain}
-                className="w-full bg-zinc-950 border border-rose-500/30 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-rose-500"
+                className={`${fieldCls} font-mono`}
               />
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800">
+            <div className="flex justify-end gap-2 border-t border-shell-line pt-3">
               <button
                 type="button"
                 onClick={() =>
-                  setDeleteModal({
-                    isOpen: false,
-                    tenant: null,
-                    confirmText: '',
-                    deleting: false,
-                    error: null,
-                  })
+                  setDeleteModal({ isOpen: false, tenant: null, confirmText: '', deleting: false, error: null })
                 }
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-750 rounded-xl text-xs transition cursor-pointer"
+                className={btnCls}
               >
                 Cancelar
               </button>
@@ -1510,20 +1562,32 @@ export default function SuperAdminDashboard() {
                 onClick={handleExecuteDelete}
                 disabled={
                   deleteModal.deleting ||
-                  deleteModal.confirmText.trim().toLowerCase() !==
-                    deleteModal.tenant.subdomain.toLowerCase()
+                  deleteModal.confirmText.trim().toLowerCase() !== deleteModal.tenant.subdomain.toLowerCase()
                 }
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1.5"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-shell-danger bg-shell-danger px-3.5 py-1.5 text-[12px] font-semibold text-shell-accent-ink transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <FaTrash className="text-[10px]" />
-                <span>
-                  {deleteModal.deleting ? 'Eliminando en R2 y DB...' : 'Eliminar Definitivamente'}
-                </span>
+                <span>{deleteModal.deleting ? 'Eliminando…' : 'Eliminar Definitivamente'}</span>
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <ShellConfirmModal
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmLabel={confirmDialog.confirmLabel}
+        tone={confirmDialog.tone}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+      />
+
+      <ShellToastStack
+        toasts={toasts}
+        onDismiss={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))}
+      />
     </div>
   );
 }

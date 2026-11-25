@@ -13,6 +13,7 @@ interface StorefrontBuilderProps {
     availableCovers: string[];
     allAlbums: Album[];
     allAlbumUrls: string[];
+    onNotify?: (kind: 'ok' | 'error' | 'warn', text: string) => void;
 }
 
 type Spacing = NonNullable<StorefrontBlock['spacing']>;
@@ -144,10 +145,11 @@ function Section({
     );
 }
 
-export default function StorefrontBuilder({ availableCovers, allAlbums, allAlbumUrls }: StorefrontBuilderProps) {
+export default function StorefrontBuilder({ availableCovers, allAlbums, allAlbumUrls, onNotify }: StorefrontBuilderProps) {
     const [config, setConfig] = useState<StorefrontConfig | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [saveNotice, setSaveNotice] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
     const [showCoverSelector, setShowCoverSelector] = useState<{ blockId: string, itemIdx?: number } | null>(null);
     /* Sólo presentación: qué bloque está abierto en el editor. */
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -168,6 +170,7 @@ export default function StorefrontBuilder({ availableCovers, allAlbums, allAlbum
     const handleSave = async () => {
         if (!config) return;
         setSaving(true);
+        setSaveNotice(null);
         try {
             const res = await fetch('/api/storefront', {
                 method: 'POST',
@@ -175,10 +178,14 @@ export default function StorefrontBuilder({ availableCovers, allAlbums, allAlbum
                 body: JSON.stringify(config)
             });
             if (!res.ok) throw new Error('Failed to save');
-            alert('Storefront guardado y recargado con éxito!');
+            const msg = 'Storefront guardado y recargado con éxito.';
+            if (onNotify) onNotify('ok', msg);
+            else setSaveNotice({ kind: 'ok', text: msg });
         } catch (error) {
             console.error(error);
-            alert('Error al guardar el Storefront');
+            const msg = 'Error al guardar el Storefront.';
+            if (onNotify) onNotify('error', msg);
+            else setSaveNotice({ kind: 'error', text: msg });
         } finally {
             setSaving(false);
         }
@@ -272,6 +279,18 @@ export default function StorefrontBuilder({ availableCovers, allAlbums, allAlbum
                 Ordená los bloques de tu página de inicio y editá uno por vez. Si está activado, los
                 visitantes ven este diseño en lugar de las carpetas crudas de Google Drive.
             </p>
+            {saveNotice && (
+                <p
+                    role={saveNotice.kind === 'error' ? 'alert' : 'status'}
+                    className={`mb-4 rounded-md border px-3 py-2 text-[12.5px] ${
+                        saveNotice.kind === 'error'
+                            ? 'border-shell-danger/40 bg-shell-danger/10 text-shell-danger'
+                            : 'border-shell-accent/40 bg-shell-accent/10 text-shell-accent'
+                    }`}
+                >
+                    {saveNotice.text}
+                </p>
+            )}
 
             {/* ---------- 1. Estado ---------- */}
             <Section
