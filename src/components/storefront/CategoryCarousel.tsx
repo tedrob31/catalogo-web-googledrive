@@ -3,6 +3,7 @@
 import Image from 'next/image';
 
 import { StorefrontBlock } from '@/lib/storefront';
+import { sanitizeSafeHref } from '@/lib/safe-redirect';
 
 interface CategoryCarouselProps {
     block: StorefrontBlock;
@@ -64,9 +65,10 @@ export default function CategoryCarousel({ block, isPreview }: CategoryCarouselP
 
                         const wrapperCls = `flex-none snap-start group block ${block.aspectRatio === 'intrinsic' ? 'w-[85vw] md:w-full max-w-5xl' : 'w-48 md:w-64'}`;
 
-                        if (item.linkHref && !isPreview) {
+                        const safeHref = !isPreview ? sanitizeSafeHref(item.linkHref) : null;
+                        if (safeHref) {
                             return (
-                                <a key={idx} href={item.linkHref} className={wrapperCls}>
+                                <a key={idx} href={safeHref} className={wrapperCls}>
                                     {content}
                                 </a>
                             );

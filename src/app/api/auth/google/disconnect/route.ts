@@ -119,8 +119,8 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'Cuenta de Google Drive desvinculada y tokens revocados correctamente.',
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[Google OAuth] Error general en disconnect:', err);
-    return NextResponse.json({ error: err.message || 'Error inesperado al desvincular cuenta' }, { status: 500 });
+    return NextResponse.json({ error: 'Error inesperado al desvincular cuenta' }, { status: 500 });
   }
 }

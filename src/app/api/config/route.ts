@@ -80,8 +80,9 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(fullConfig);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    console.error('[Config GET] Error:', err);
+    return NextResponse.json({ error: 'Error interno al obtener configuración' }, { status: 500 });
   }
 }
 
@@ -241,7 +242,7 @@ export async function POST(request: NextRequest) {
 
       if (tUpdateErr) {
         console.error('Error actualizando tabla tenants en Supabase:', tUpdateErr);
-        return NextResponse.json({ error: tUpdateErr.message }, { status: 500 });
+        return NextResponse.json({ error: 'Error al actualizar los datos de la tienda' }, { status: 500 });
       }
 
       // Sincronizar automáticamente con Cloudflare for SaaS (Custom Hostnames)
@@ -354,7 +355,7 @@ export async function POST(request: NextRequest) {
 
     if (updateError) {
       console.error('Error actualizando tenant_configs en Supabase:', updateError);
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      return NextResponse.json({ error: 'Error al guardar la configuración visual' }, { status: 500 });
     }
 
     // Revalidar caché en memoria RAM e ISR de Next.js
@@ -369,8 +370,17 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true, message: 'Configuración guardada exitosamente en Supabase' });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({
+      success: true,
+      message: 'Configuración guardada exitosamente en Supabase',
+      updated: {
+        name: tenantUpdateData.name ?? tenantInfo?.name,
+        subdomain: activeSubdomain,
+        custom_domain: updatedCustomDomain !== undefined ? updatedCustomDomain : tenantInfo?.custom_domain,
+      },
+    });
+  } catch (err) {
+    console.error('[Config POST] Error:', err);
+    return NextResponse.json({ error: 'Error interno al guardar configuración' }, { status: 500 });
   }
 }

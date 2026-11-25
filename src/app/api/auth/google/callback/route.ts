@@ -1,24 +1,82 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { getOAuth2Client } from '@/lib/google-auth';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { encryptToken } from '@/lib/token-crypto';
+import {
+  OAUTH_STATE_COOKIE,
+  getOAuthStateSecret,
+  resolveSafeAppOrigin,
+  verifySignedOAuthState,
+} from '@/lib/oauth-state';
+
+function redirectWithClearedCookie(targetUrl: string): NextResponse {
+  const res = NextResponse.redirect(targetUrl);
+  res.cookies.delete({ name: OAUTH_STATE_COOKIE, path: '/' });
+  return res;
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
-  const tenantId = searchParams.get('state');
-  const error = searchParams.get('error');
+  const rawState = searchParams.get('state');
+  const oauthError = searchParams.get('error');
+  const cookieNonce = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
 
-  const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'c4talogo.com';
-  const protocol = request.headers.get('x-forwarded-proto') || 'https';
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${appUrl}/api/auth/google/callback`;
+  const appOrigin = resolveSafeAppOrigin({
+    appUrlEnv: process.env.NEXT_PUBLIC_APP_URL,
+    forwardedHost: request.headers.get('x-forwarded-host'),
+    host: request.headers.get('host'),
+    forwardedProto: request.headers.get('x-forwarded-proto'),
+    baseDomain: process.env.NEXT_PUBLIC_BASE_DOMAIN,
+  });
+  const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${appOrigin}/api/auth/google/callback`;
 
-  if (error || !code || !tenantId) {
-    console.error('Error en Google OAuth Callback:', error || 'Faltan parámetros');
-    return NextResponse.redirect(`${appUrl}/dashboard?tab=drive&error=${encodeURIComponent(error || 'missing_params')}`);
+  if (oauthError || !code || !rawState) {
+    console.error('[Google OAuth Callback] Autorización rechazada o parámetros incompletos:', oauthError || 'missing_params');
+    return redirectWithClearedCookie(`${appOrigin}/dashboard?tab=drive&error=oauth_denied`);
   }
+
+  let verified: { tenantId: string; userId: string } | null = null;
+  try {
+    verified = verifySignedOAuthState({
+      state: rawState,
+      cookieNonce,
+      secret: getOAuthStateSecret(),
+    });
+  } catch (secretErr) {
+    console.error('[Google OAuth Callback] Error validando secreto OAuth:', secretErr);
+    return redirectWithClearedCookie(`${appOrigin}/dashboard?tab=drive&error=oauth_config_error`);
+  }
+
+  if (!verified) {
+    console.warn('[Google OAuth Callback] Estado OAuth inválido, expirado o cookie CSRF ausente.');
+    return redirectWithClearedCookie(`${appOrigin}/dashboard?tab=drive&error=invalid_oauth_state`);
+  }
+
+  // Verificar que exista una sesión activa y pertenezca al mismo usuario y tenant del state firmado
+  const userSupabase = await createClient();
+  const { data: { user } } = await userSupabase.auth.getUser();
+
+  if (!user || user.id !== verified.userId) {
+    console.warn('[Google OAuth Callback] Usuario no autenticado o no coincide con el state OAuth.');
+    return redirectWithClearedCookie(`${appOrigin}/dashboard?tab=drive&error=session_mismatch`);
+  }
+
+  const { data: membership } = await userSupabase
+    .from('tenant_users')
+    .select('role')
+    .eq('tenant_id', verified.tenantId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!membership || !['owner', 'admin', 'superadmin'].includes(membership.role)) {
+    console.warn('[Google OAuth Callback] El usuario autenticado no tiene permisos sobre el tenant del state.');
+    return redirectWithClearedCookie(`${appOrigin}/dashboard?tab=drive&error=forbidden`);
+  }
+
+  const tenantId = verified.tenantId;
 
   try {
     const oauth2Client = getOAuth2Client(redirectUri);
@@ -84,13 +142,12 @@ export async function GET(request: NextRequest) {
 
     if (dbError) {
       console.error('Error guardando tokens en Supabase:', dbError);
-      return NextResponse.redirect(`${appUrl}/dashboard?tab=drive&error=db_error`);
+      return redirectWithClearedCookie(`${appOrigin}/dashboard?tab=drive&error=db_error`);
     }
 
-    return NextResponse.redirect(`${appUrl}/dashboard?tab=drive&connected=true`);
+    return redirectWithClearedCookie(`${appOrigin}/dashboard?tab=drive&connected=true`);
   } catch (err) {
     console.error('Error procesando callback de Google:', err);
-    const mensaje = err instanceof Error ? err.message : 'unknown';
-    return NextResponse.redirect(`${appUrl}/dashboard?tab=drive&error=${encodeURIComponent(mensaje)}`);
+    return redirectWithClearedCookie(`${appOrigin}/dashboard?tab=drive&error=oauth_exchange_failed`);
   }
 }

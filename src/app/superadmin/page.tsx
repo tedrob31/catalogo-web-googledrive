@@ -318,28 +318,38 @@ export default function SuperAdminDashboard() {
 
     if (!confirm(confirmMsg)) return;
 
-    const { error } = await supabase
-      .from('tenants')
-      .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq('id', tenantId);
-
-    if (error) {
-      alert('Error actualizando estado: ' + error.message);
-    } else {
-      checkAccessAndLoad();
+    try {
+      const res = await fetch('/api/superadmin/tenants/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenantId, status: newStatus }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert('Error actualizando estado: ' + (data.error || 'Desconocido'));
+      } else {
+        checkAccessAndLoad();
+      }
+    } catch (err: any) {
+      alert('Error de conexión: ' + (err?.message || err));
     }
   }
 
   async function handleChangePlan(tenantId: string, newPlanId: string) {
-    const { error } = await supabase
-      .from('tenants')
-      .update({ plan_id: newPlanId, updated_at: new Date().toISOString() })
-      .eq('id', tenantId);
-
-    if (error) {
-      alert('Error cambiando plan: ' + error.message);
-    } else {
-      checkAccessAndLoad();
+    try {
+      const res = await fetch('/api/superadmin/tenants/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenant_id: tenantId, plan_id: newPlanId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert('Error cambiando plan: ' + (data.error || 'Desconocido'));
+      } else {
+        checkAccessAndLoad();
+      }
+    } catch (err: any) {
+      alert('Error de conexión: ' + (err?.message || err));
     }
   }
 

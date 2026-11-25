@@ -1,6 +1,7 @@
 import Image from 'next/image';
 
 import { StorefrontBlock } from '@/lib/storefront';
+import { sanitizeSafeHref } from '@/lib/safe-redirect';
 
 interface ClassicGridProps {
     block: StorefrontBlock;
@@ -54,9 +55,10 @@ export default function ClassicGrid({ block, gridColsCls, isPreview }: ClassicGr
                         </>
                     );
 
-                    if (item.linkHref && !isPreview) {
+                    const safeHref = !isPreview ? sanitizeSafeHref(item.linkHref) : null;
+                    if (safeHref) {
                         return (
-                            <a key={idx} href={item.linkHref} className="group block">
+                            <a key={idx} href={safeHref} className="group block">
                                 {content}
                             </a>
                         );

@@ -5,6 +5,7 @@ import { CacheStructure, Album, PhotoItem, findAlbumBySlugPath } from '@/lib/typ
 import { AppConfig } from '@/lib/config';
 import { slugify } from '@/lib/utils';
 import { StorefrontConfig } from '@/lib/storefront';
+import { isValidTenantKey } from '@/lib/tenant-host';
 
 export interface TenantCatalogPayload {
   tenant: {
@@ -153,7 +154,13 @@ export async function fetchAllTenantAlbums(
  * Obtiene la estructura completa del catálogo del tenant desde la memoria RAM del servidor
  * o la construye desde Supabase si es la primera carga.
  */
-async function loadTenantCatalogBase(subdomain: string): Promise<CachedTenantBase | null> {
+async function loadTenantCatalogBase(rawSubdomain: string): Promise<CachedTenantBase | null> {
+  const subdomain = (rawSubdomain || '').trim().toLowerCase();
+  // Barrera de seguridad contra inyección de filtros PostgREST (comas, paréntesis, etc.)
+  if (!isValidTenantKey(subdomain)) {
+    return null;
+  }
+
   const cached = memoryCatalogCache.get(subdomain);
   if (cached) {
     const isNegative = cached.tenant === null;

@@ -15,6 +15,7 @@ services:
       - NEXT_TELEMETRY_DISABLED=1
       # Dominio Base de la Plataforma
       - NEXT_PUBLIC_BASE_DOMAIN=${NEXT_PUBLIC_BASE_DOMAIN:-c4talogo.com}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-https://c4talogo.com}
       - COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-c4talogo_platform}
 
       # Supabase Cloud (Base de Datos & Auth Multi-Tenant)
@@ -34,9 +35,12 @@ services:
       - IMGPROXY_KEY=${IMGPROXY_KEY}
       - IMGPROXY_SALT=${IMGPROXY_SALT}
 
-      # Google OAuth 2.0 (Google Drive Integration)
+      # Google OAuth 2.0 (Google Drive Integration) & Cifrado de Tokens en Reposo
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-https://c4talogo.com/api/auth/google/callback}
+      - TOKEN_ENCRYPTION_KEY=${TOKEN_ENCRYPTION_KEY:-}
+      - OAUTH_STATE_SECRET=${OAUTH_STATE_SECRET:-}
 
       # Cloudflare Cache Purge
       - CLOUDFLARE_ZONE_ID=${CLOUDFLARE_ZONE_ID:-}

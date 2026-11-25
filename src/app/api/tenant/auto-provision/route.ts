@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, listAllAuthUsers } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
     // 2. Si no tiene tienda con este user_id, buscar si este mismo correo ya es dueño de una tienda
     // (Por ejemplo si se registró con contraseña antes y ahora entra por Google, o viceversa)
     if (userEmail) {
-      const { data: userList } = await adminSupabase.auth.admin.listUsers({ perPage: 1000 });
-      const matchingUids = (userList?.users || [])
+      const authUsers = await listAllAuthUsers(adminSupabase);
+      const matchingUids = authUsers
         .filter((u) => u.email?.toLowerCase().trim() === userEmail)
         .map((u) => u.id);
 
@@ -156,8 +156,8 @@ export async function POST(req: NextRequest) {
       role: 'owner',
     });
 
-    // Si es superadmin privilegiado, actualizar rol
-    if (['hardted31@gmail.com', 'tedrob31@gmail.com'].includes(userEmail)) {
+    // Si es superadmin privilegiado, actualizar rol (alineado con trigger SQL handle_auto_superadmin)
+    if (['hardted31@gmail.com', 'tedrob31@gmail.com', 'teddy.robles.cc@gmail.com'].includes(userEmail)) {
       await adminSupabase
         .from('tenant_users')
         .update({ role: 'superadmin' })
@@ -189,10 +189,10 @@ export async function POST(req: NextRequest) {
       provisioned: true,
       tenant: newTenant,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Auto-Provision Error]:', error);
     return NextResponse.json(
-      { error: error?.message || 'Error en auto-aprovisionamiento de tienda' },
+      { error: 'Error en auto-aprovisionamiento de tienda' },
       { status: 500 }
     );
   }

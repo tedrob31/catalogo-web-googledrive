@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error desconocido';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[Analytics Track] Error:', error);
+    return NextResponse.json({ error: 'Error procesando evento' }, { status: 500 });
   }
 }

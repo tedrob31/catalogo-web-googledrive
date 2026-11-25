@@ -795,7 +795,18 @@ export default function TenantDashboard() {
   async function handleSaveCoverChanges() {
     setSavingCovers(true);
     try {
-      // 1. Guardar en tenant_configs (purga Cloudflare automáticamente una sola vez)
+      // 1. Actualizar primero las claves R2 en albums antes de invalidar RAM/CDN en /api/config
+      for (const [albumId, r2Key] of Object.entries(pendingR2Keys)) {
+        const { error: albErr } = await supabase
+          .from('albums')
+          .update({ cover_photo_r2_key: r2Key, updated_at: new Date().toISOString() })
+          .eq('id', albumId);
+        if (albErr) {
+          throw new Error(albErr.message || 'Error al actualizar portada de álbum');
+        }
+      }
+
+      // 2. Guardar en tenant_configs (invalida RAM y purga Cloudflare una sola vez)
       const res = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -805,14 +816,6 @@ export default function TenantDashboard() {
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Error al guardar portadas');
-      }
-
-      // 2. Si hay claves R2 que actualizar o borrar en la tabla albums
-      for (const [albumId, r2Key] of Object.entries(pendingR2Keys)) {
-        await supabase
-          .from('albums')
-          .update({ cover_photo_r2_key: r2Key, updated_at: new Date().toISOString() })
-          .eq('id', albumId);
       }
 
       setSavedFolderCovers(configForm.folder_covers);
@@ -977,13 +980,11 @@ export default function TenantDashboard() {
         )}
 
         {activeTab === 'storefront' && (
-          <div className="bg-white rounded-2xl p-6 text-gray-900 shadow-xl">
-            <StorefrontBuilder
-              availableCovers={availableCovers}
-              allAlbums={tenantAlbums}
-              allAlbumUrls={tenantAlbumUrls}
-            />
-          </div>
+          <StorefrontBuilder
+            availableCovers={availableCovers}
+            allAlbums={tenantAlbums}
+            allAlbumUrls={tenantAlbumUrls}
+          />
         )}
 
         {activeTab === 'analytics' && <AnalyticsDashboard />}

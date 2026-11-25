@@ -37,8 +37,9 @@ export async function GET(request: NextRequest) {
 
     const settings = (config.settings as Record<string, any>) || {};
     return NextResponse.json(settings.storefront || { enabled: false, blocks: [] });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err) {
+    console.error('[Storefront GET] Error:', err);
+    return NextResponse.json({ error: 'Error interno cargando el Storefront' }, { status: 500 });
   }
 }
 
@@ -85,7 +86,8 @@ export async function POST(request: NextRequest) {
       .eq('tenant_id', tenantId);
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      console.error('[Storefront POST] Error actualizando:', updateError);
+      return NextResponse.json({ error: 'Error al guardar el Storefront' }, { status: 500 });
     }
 
     invalidateTenantCatalogCache(tenantId);
@@ -100,7 +102,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, message: 'Storefront guardado en Supabase' });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error('[Storefront POST] Excepción:', error);
+    return NextResponse.json({ error: 'Error interno al guardar el Storefront' }, { status: 500 });
   }
 }

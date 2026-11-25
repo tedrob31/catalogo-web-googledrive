@@ -60,9 +60,11 @@ detalle de cada uno y su estado actual.
 20261118214001  harden_get_tenant_analytics_summary   <- migracion/archivo local
 20261118215844  harden_page_metrics_grants            <- migracion/archivo local
 20261118235452  fix_google_integrations_column_scope  <- migracion/archivo local
+20261119162617  harden_platform_whitelist_anon        <- migracion/archivo local
+20261124233517  harden_trigger_functions_and_search_path <- migracion/archivo local
 ```
 
-Sólo las **tres** últimas tienen archivo local, y esa correspondencia exacta es la que hace seguro
+Sólo las **cinco** últimas tienen archivo local, y esa correspondencia exacta es la que hace seguro
 a `db push`. Las siete primeras no se reconstruyeron: sólo se conoce su efecto neto, no el DDL
 original, y tres cambios reales ni siquiera están registrados (ver
 `migrations-archive/README.md`).

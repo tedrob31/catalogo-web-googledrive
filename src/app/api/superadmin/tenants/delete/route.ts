@@ -145,10 +145,10 @@ export async function POST(req: NextRequest) {
       message,
       deletedR2Count,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Delete Tenant Error]:', error);
     return NextResponse.json(
-      { error: error?.message || 'Error al dar de baja la tienda' },
+      { error: 'Error interno al dar de baja la tienda' },
       { status: 500 }
     );
   }

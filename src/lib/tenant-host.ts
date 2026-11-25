@@ -23,6 +23,15 @@ const RESERVED_SUBDOMAINS = new Set(['www', 'app', 'localhost']);
  */
 const VALID_HOST = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/;
 
+/**
+ * Valida que una clave de tenant (subdominio o dominio propio) sea estrictamente un
+ * hostname/etiqueta desnudo, seguro para interpolar en filtros PostgREST (`.or(...)`).
+ */
+export function isValidTenantKey(value: string | null | undefined): boolean {
+  if (!value || typeof value !== 'string') return false;
+  return VALID_HOST.test(value);
+}
+
 function isIpAddress(host: string): boolean {
   return /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':');
 }

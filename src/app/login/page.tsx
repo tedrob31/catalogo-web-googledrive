@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FaGoogle, FaEnvelope, FaLock, FaArrowRight, FaShieldAlt } from 'react-icons/fa';
+import { sanitizeInternalRedirect } from '@/lib/safe-redirect';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,9 +23,8 @@ export default function LoginPage() {
   const getRedirectTarget = () => {
     if (typeof window === 'undefined') return '/dashboard';
     const params = new URLSearchParams(window.location.search);
-    const redirectParam = params.get('redirect');
-    if (redirectParam) return redirectParam;
-    return window.location.hostname.startsWith('app.') ? '/' : '/dashboard';
+    const fallback = window.location.hostname.startsWith('app.') ? '/' : '/dashboard';
+    return sanitizeInternalRedirect(params.get('redirect'), fallback);
   };
 
   const handleAuth = async (e: React.FormEvent) => {

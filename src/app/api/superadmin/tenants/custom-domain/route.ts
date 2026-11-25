@@ -118,7 +118,8 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (updateErr) {
-      return NextResponse.json({ error: updateErr.message }, { status: 500 });
+      console.error('[Custom Domain Superadmin Update Error]:', updateErr);
+      return NextResponse.json({ error: 'Error actualizando dominio personalizado' }, { status: 500 });
     }
 
     // Invalidar caché en RAM del catálogo para que tome el nuevo host de inmediato
@@ -146,8 +147,8 @@ export async function POST(req: NextRequest) {
       success: true,
       tenant: updatedTenant,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[Custom Domain Superadmin Error]:', err);
-    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 });
+    return NextResponse.json({ error: 'Error interno al configurar dominio' }, { status: 500 });
   }
 }

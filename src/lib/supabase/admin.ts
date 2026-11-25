@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, User } from '@supabase/supabase-js';
 import { Database } from '@/types/database.types';
 
 function sanitizeSupabaseUrl(rawUrl: string): string {
@@ -21,4 +21,38 @@ export function createAdminClient() {
       persistSession: false,
     },
   });
+}
+
+/**
+ * Recorre todas las páginas de `auth.admin.listUsers` (Supabase devuelve máx. 50 por defecto).
+ * Evita truncamiento silencioso al superar los primeros 50 o 1,000 usuarios registrados.
+ */
+export async function listAllAuthUsers(
+  adminSupabase: ReturnType<typeof createAdminClient>
+): Promise<User[]> {
+  const allUsers: User[] = [];
+  const perPage = 1000;
+  let page = 1;
+
+  while (true) {
+    const { data, error } = await adminSupabase.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (error) {
+      console.error(`[Admin Auth] Error listando usuarios (página ${page}):`, error);
+      break;
+    }
+
+    const batch = data?.users || [];
+    allUsers.push(...batch);
+
+    if (batch.length < perPage) {
+      break;
+    }
+    page += 1;
+  }
+
+  return allUsers;
 }

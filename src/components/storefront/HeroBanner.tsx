@@ -1,6 +1,7 @@
 import Image from 'next/image';
 
 import { StorefrontBlock } from '@/lib/storefront';
+import { sanitizeSafeHref } from '@/lib/safe-redirect';
 
 interface HeroBannerProps {
     block: StorefrontBlock;
@@ -51,8 +52,9 @@ export default function HeroBanner({ block, isPreview }: HeroBannerProps) {
         </div>
     );
 
-    if (block.linkHref && !isPreview) {
-        return <a href={block.linkHref} className="block w-full">{content}</a>;
+    const safeHref = !isPreview ? sanitizeSafeHref(block.linkHref) : null;
+    if (safeHref) {
+        return <a href={safeHref} className="block w-full">{content}</a>;
     }
     return content;
 }

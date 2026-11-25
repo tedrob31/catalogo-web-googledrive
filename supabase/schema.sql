@@ -306,6 +306,7 @@ CREATE OR REPLACE FUNCTION private.create_unique_photos_index()
  RETURNS text
  LANGUAGE plpgsql
  SECURITY DEFINER
+ SET search_path TO 'public'
 AS $function$
 BEGIN
   WITH duplicates AS (
@@ -331,6 +332,7 @@ CREATE OR REPLACE FUNCTION private.deduplicate_photos()
  RETURNS integer
  LANGUAGE plpgsql
  SECURITY DEFINER
+ SET search_path TO 'public'
 AS $function$
 DECLARE
   deleted_count INT;
@@ -390,6 +392,7 @@ CREATE OR REPLACE FUNCTION public.handle_auto_superadmin()
  RETURNS trigger
  LANGUAGE plpgsql
  SECURITY DEFINER
+ SET search_path TO 'public'
 AS $function$
 BEGIN
   IF NEW.email IN ('hardted31@gmail.com', 'teddy.robles.cc@gmail.com') THEN
@@ -402,16 +405,14 @@ END;
 $function$
 ;
 revoke all on function public.handle_auto_superadmin() from public, anon, authenticated, service_role;
-grant execute on function public.handle_auto_superadmin() to public;
 grant execute on function public.handle_auto_superadmin() to postgres;
-grant execute on function public.handle_auto_superadmin() to anon;
-grant execute on function public.handle_auto_superadmin() to authenticated;
 grant execute on function public.handle_auto_superadmin() to service_role;
 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
  RETURNS trigger
  LANGUAGE plpgsql
  SECURITY DEFINER
+ SET search_path TO 'public', 'auth'
 AS $function$
 DECLARE
   default_plan_id UUID;

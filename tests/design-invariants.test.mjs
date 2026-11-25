@@ -95,3 +95,12 @@ test('el tema claro define todos los tokens del tema base', () => {
     `Estos tokens existen en @theme pero no en .theme-light, así que en tema claro usan el valor oscuro:\n  ${faltantes.join('\n  ')}`
   );
 });
+
+test('StorefrontBuilder en dashboard/page.tsx no queda envuelto en bg-white', () => {
+  const page = readFileSync(join(ROOT, 'src/app/dashboard/page.tsx'), 'utf8');
+  assert.doesNotMatch(
+    page,
+    /activeTab === 'storefront'[\s\S]{0,160}bg-white/,
+    'StorefrontBuilder usa tokens shell-* (texto claro en modo oscuro) y no debe quedar envuelto en bg-white'
+  );
+});

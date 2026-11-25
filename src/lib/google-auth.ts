@@ -22,14 +22,14 @@ export function getOAuth2Client(redirectUri?: string) {
   return new google.auth.OAuth2(clientId, clientSecret, baseRedirect);
 }
 
-export function generateGoogleAuthUrl(tenantId: string, redirectUri?: string) {
+export function generateGoogleAuthUrl(state: string, redirectUri?: string) {
   const oauth2Client = getOAuth2Client(redirectUri);
 
   return oauth2Client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
     scope: SCOPES,
-    state: tenantId, // Vincula la autorización directamente al tenant
+    state,
   });
 }
 
@@ -125,8 +125,8 @@ export async function searchDriveFolders(tenantId: string, query?: string) {
 
   let q = "mimeType = 'application/vnd.google-apps.folder' and trashed = false";
   if (query && query.trim()) {
-    // Escapar comillas simples
-    const sanitized = query.trim().replace(/'/g, "\\'");
+    // Escapar barras invertidas primero y luego comillas simples para evitar romper el literal de Drive
+    const sanitized = query.trim().replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     q += ` and name contains '${sanitized}'`;
   }
 

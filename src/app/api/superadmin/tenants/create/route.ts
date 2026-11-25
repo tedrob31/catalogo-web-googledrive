@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, listAllAuthUsers } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,9 +68,9 @@ export async function POST(req: NextRequest) {
     // 2. Gestionar usuario en Supabase Auth
     let userId: string;
 
-    // Buscar si el usuario ya existe en Auth
-    const { data: userList } = await adminSupabase.auth.admin.listUsers();
-    const existingUser = userList?.users?.find(
+    // Buscar si el usuario ya existe en Auth (paginación completa)
+    const authUsers = await listAllAuthUsers(adminSupabase);
+    const existingUser = authUsers.find(
       (u) => u.email?.toLowerCase() === cleanEmail
     );
 
@@ -152,10 +152,10 @@ export async function POST(req: NextRequest) {
         loginUrl: 'https://c4talogo.com/login',
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Create Tenant Error]:', error);
     return NextResponse.json(
-      { error: error?.message || 'Error al crear la tienda e invitar al usuario' },
+      { error: 'Error al crear la tienda e invitar al usuario' },
       { status: 500 }
     );
   }

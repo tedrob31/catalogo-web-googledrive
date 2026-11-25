@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
 
     if (metricsErr) {
       console.error('[Analytics GET Error]:', metricsErr);
-      return NextResponse.json({ error: metricsErr.message }, { status: 500 });
+      return NextResponse.json({ error: 'Error consultando métricas' }, { status: 500 });
     }
 
     const rawSummary = summaryData as {
@@ -101,8 +101,8 @@ export async function GET(req: NextRequest) {
       dailyTrend,
       topContent,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Analytics GET Handler Exception]:', error);
-    return NextResponse.json({ error: error?.message || 'Error consultando métricas' }, { status: 500 });
+    return NextResponse.json({ error: 'Error consultando métricas' }, { status: 500 });
   }
 }

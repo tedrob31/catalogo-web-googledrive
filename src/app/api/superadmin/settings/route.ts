@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const updated = await updateSystemSettings(body);
     return NextResponse.json({ success: true, settings: updated });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || 'Error guardando ajustes' }, { status: 500 });
+  } catch (error) {
+    console.error('[SuperAdmin Settings POST] Error:', error);
+    return NextResponse.json({ error: 'Error guardando ajustes' }, { status: 500 });
   }
 }

@@ -94,6 +94,11 @@ export function proxy(request: NextRequest) {
   }
 
   // CASO D: Dominio Raíz (c4talogo.com)
+  // Bloquear acceso directo externo al prefijo interno /t/ en el dominio raíz
+  if (pathname === '/t' || pathname.startsWith('/t/')) {
+    return new NextResponse('Not found', { status: 404 });
+  }
+
   // Sirve la landing page, login de usuarios y panel de inquilino (/dashboard)
   const response = NextResponse.next();
   applyCacheHeaders(response, request);

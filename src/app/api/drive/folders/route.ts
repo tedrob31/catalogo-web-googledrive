@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { searchDriveFolders } from '@/lib/google-auth';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // GET: Buscar o listar carpetas de Google Drive del tenant autenticado
 export async function GET(request: NextRequest) {
@@ -10,6 +11,14 @@ export async function GET(request: NextRequest) {
 
   if (!user) {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  }
+
+  const rl = checkRateLimit(`drive_folders:${user.id}`, 30, 60 * 1000);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Demasiadas consultas a Google Drive. Espera un momento.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } }
+    );
   }
 
   const { data: membership } = await supabase
@@ -28,9 +37,18 @@ export async function GET(request: NextRequest) {
   try {
     const folders = await searchDriveFolders(membership.tenant_id, q);
     return NextResponse.json({ folders });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error buscando carpetas en Drive:', error);
-    return NextResponse.json({ error: error.message || 'Error al conectar con Google Drive' }, { status: 500 });
+    const rawMsg = error instanceof Error ? error.message : String(error || '');
+    const isAuthExpired =
+      rawMsg.includes('invalid_grant') ||
+      rawMsg.includes('expired') ||
+      rawMsg.includes('revoked') ||
+      rawMsg.includes('falta el refresh_token');
+    if (isAuthExpired) {
+      return NextResponse.json({ error: 'AUTH_EXPIRED' }, { status: 401 });
+    }
+    return NextResponse.json({ error: 'Error al conectar con Google Drive' }, { status: 500 });
   }
 }
 
@@ -71,7 +89,8 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('[Drive Folders POST] Error guardando carpetas:', error);
+    return NextResponse.json({ error: 'Error al guardar las carpetas seleccionadas' }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, integration: data });

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, listAllAuthUsers } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +39,8 @@ export async function GET() {
     .order('created_at', { ascending: false });
 
   if (tenantsError) {
-    return NextResponse.json({ error: tenantsError.message }, { status: 500 });
+    console.error('[SuperAdmin Tenants GET] Error:', tenantsError);
+    return NextResponse.json({ error: 'Error consultando tiendas' }, { status: 500 });
   }
 
   // 2. Obtener los owners de cada tenant
@@ -48,9 +49,9 @@ export async function GET() {
     .select('tenant_id, user_id')
     .eq('role', 'owner');
 
-  // 3. Mapear user_id a email de auth.users
-  const { data: authUsers } = await adminSupabase.auth.admin.listUsers();
-  const authUserMap = new Map((authUsers?.users || []).map((u) => [u.id, u.email]));
+  // 3. Mapear user_id a email de auth.users (con paginación completa >50 usuarios)
+  const authUsers = await listAllAuthUsers(adminSupabase);
+  const authUserMap = new Map(authUsers.map((u) => [u.id, u.email]));
 
   const tenantOwnerEmailMap = new Map<string, string>();
   for (const ou of ownerUsers || []) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createAdminClient, listAllAuthUsers } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,8 +58,8 @@ export async function GET() {
     .from('google_integrations')
     .select('tenant_id, google_email');
 
-  const { data: allUsers } = await adminSupabase.auth.admin.listUsers({ perPage: 1000 });
-  const userMap = new Map((allUsers?.users || []).map((u) => [u.id, u.email?.toLowerCase().trim()]));
+  const allUsers = await listAllAuthUsers(adminSupabase);
+  const userMap = new Map(allUsers.map((u) => [u.id, u.email?.toLowerCase().trim()]));
 
   const activeEmailSet = new Set<string>();
 
@@ -117,8 +117,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, email: cleanEmail });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || 'Error al agregar a la lista blanca' }, { status: 500 });
+  } catch (error) {
+    console.error('[Whitelist POST] Error:', error);
+    return NextResponse.json({ error: 'Error al agregar a la lista blanca' }, { status: 500 });
   }
 }
 
@@ -148,8 +149,9 @@ export async function DELETE(req: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ success: true, removed: cleanEmail });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || 'Error al eliminar de la lista blanca' }, { status: 500 });
+  } catch (error) {
+    console.error('[Whitelist DELETE] Error:', error);
+    return NextResponse.json({ error: 'Error al eliminar de la lista blanca' }, { status: 500 });
   }
 }
 
@@ -175,7 +177,8 @@ export async function PATCH(req: NextRequest) {
     if (error) throw error;
 
     return NextResponse.json({ success: true, closed_beta_enabled: Boolean(closed_beta_enabled) });
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || 'Error actualizando modo beta' }, { status: 500 });
+  } catch (error) {
+    console.error('[Whitelist PATCH] Error:', error);
+    return NextResponse.json({ error: 'Error actualizando modo beta' }, { status: 500 });
   }
 }

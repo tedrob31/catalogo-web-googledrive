@@ -2,6 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+function getConfiguredMediaHosts(): Set<string> {
+  const hosts = new Set<string>([
+    'cdn.c4talogo.com',
+    'img.c4talogo.com',
+    'imgproxy.r4tlabs.com',
+    'c4talogo.com',
+  ]);
+
+  for (const envVal of [
+    process.env.R2_PUBLIC_DOMAIN,
+    process.env.NEXT_PUBLIC_CDN_URL,
+    process.env.IMGPROXY_URL,
+  ]) {
+    if (!envVal) continue;
+    try {
+      hosts.add(new URL(envVal).hostname.toLowerCase());
+    } catch {
+      // Ignorar URL malformada en entorno
+    }
+  }
+  return hosts;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -12,25 +35,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'URL requerida' }, { status: 400 });
     }
 
-    // 1. Validar que la URL pertenezca a dominios autorizados (prevención de SSRF)
-    const parsed = new URL(imageUrl);
-    const allowedHosts = [
-      'cdn.c4talogo.com',
-      'imgproxy.r4tlabs.com',
-      'c4talogo.com',
-    ];
+    // 1. Validar protocolo HTTPS y host estrictamente autorizado (prevención de SSRF)
+    let parsed: URL;
+    try {
+      parsed = new URL(imageUrl);
+    } catch {
+      return NextResponse.json({ error: 'URL inválida' }, { status: 400 });
+    }
 
-    const isAllowed =
-      allowedHosts.includes(parsed.hostname) ||
-      parsed.hostname.endsWith('.c4talogo.com') ||
-      parsed.hostname.endsWith('.r2.cloudflarestorage.com');
+    if (parsed.protocol !== 'https:') {
+      return NextResponse.json({ error: 'Solo se permiten descargas por HTTPS' }, { status: 403 });
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+    const allowedHosts = getConfiguredMediaHosts();
+    const isAllowed = allowedHosts.has(hostname) || hostname.endsWith('.c4talogo.com');
 
     if (!isAllowed) {
       return NextResponse.json({ error: 'Host no autorizado para descarga' }, { status: 403 });
     }
 
-    // 2. Fetch directo en backend (sin restricciones de CORS de navegador)
-    const upstream = await fetch(imageUrl, {
+    // 2. Fetch directo en backend sin seguir redirecciones externas (evita bypass de SSRF)
+    const upstream = await fetch(parsed.toString(), {
+      redirect: 'error',
       headers: {
         'User-Agent': 'c4talogo-downloader/1.0',
       },
@@ -43,28 +70,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 3. Sanitizar y normalizar nombre de archivo
-    let cleanFilename = filenameParam.replace(/[/\\?%*:|"<>]/g, '_').trim();
+    const rawContentType = (upstream.headers.get('content-type') || 'image/jpeg').split(';')[0].trim().toLowerCase();
+    if (!rawContentType.startsWith('image/') && rawContentType !== 'application/octet-stream') {
+      return NextResponse.json({ error: 'El recurso remoto no corresponde a una imagen válida' }, { status: 415 });
+    }
+
+    // 3. Sanitizar y normalizar nombre de archivo (incluyendo caracteres de control \r\n)
+    let cleanFilename = filenameParam.replace(/[\x00-\x1f\x7f/\\?%*:|"<>]/g, '_').trim();
     if (!cleanFilename) cleanFilename = 'foto.jpg';
     if (!/\.[a-zA-Z0-9]{3,4}$/.test(cleanFilename)) {
       cleanFilename += '.jpg';
     }
 
-    const contentType = upstream.headers.get('content-type') || 'image/jpeg';
-
     // 4. Servir stream binario directamente con Content-Disposition para forzar descarga inmediata
     return new Response(upstream.body, {
       status: 200,
       headers: {
-        'Content-Type': contentType,
+        'Content-Type': rawContentType,
         'Content-Disposition': `attachment; filename="${cleanFilename}"; filename*=UTF-8''${encodeURIComponent(cleanFilename)}`,
         'Cache-Control': 'public, max-age=86400, stale-while-revalidate=604800',
         'Access-Control-Allow-Origin': '*',
       },
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[API Download] Error procesando descarga:', err);
-    return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 });
+    return NextResponse.json({ error: 'Error interno al procesar la descarga' }, { status: 500 });
   }
 }
-
