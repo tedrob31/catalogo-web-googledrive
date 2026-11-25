@@ -6,6 +6,7 @@ import { AppConfig } from '@/lib/config';
 import { slugify } from '@/lib/utils';
 import { StorefrontConfig } from '@/lib/storefront';
 import { isValidTenantKey } from '@/lib/tenant-host';
+import { normalizePhotoSortOrder, sortPhotosByOrder } from '@/lib/photo-layout';
 
 export interface TenantCatalogPayload {
   tenant: {
@@ -244,6 +245,8 @@ async function loadTenantCatalogBase(rawSubdomain: string): Promise<CachedTenant
   const rawConfig = Array.isArray(tenant.tenant_configs)
     ? tenant.tenant_configs[0]
     : tenant.tenant_configs;
+  const rawSettings = (rawConfig?.settings as Record<string, any>) || {};
+  const photoSortOrder = normalizePhotoSortOrder(rawSettings.photo_sort_order);
 
   // 2. Obtener todos los álbumes del tenant con paginación
   const dbAlbums = await fetchAllTenantAlbums(supabase, tenant.id);
@@ -261,11 +264,9 @@ async function loadTenantCatalogBase(rawSubdomain: string): Promise<CachedTenant
   );
 
   // 3. Obtener todas las fotos del tenant con paginación completa (soporta 10,000+ fotos)
-  const dbPhotos = await fetchAllTenantPhotos(supabase, tenant.id);
-  dbPhotos.sort((a, b) => {
-    if (a.order_index !== b.order_index) return a.order_index - b.order_index;
-    return (a.name || '').localeCompare(b.name || '');
-  });
+  // Ordenar estrictamente por nombre natural (desc o asc según configuración) sin tocar la jerarquía de álbumes.
+  const rawPhotos = await fetchAllTenantPhotos(supabase, tenant.id);
+  const dbPhotos = sortPhotosByOrder(rawPhotos || [], photoSortOrder);
 
   // 4. Mapear fotos por álbum: miniatura liviana (500px ~15KB) para grilla rápida + HD (1080px) para lightbox
   const photosByAlbum = new Map<string, PhotoItem[]>();
@@ -275,8 +276,8 @@ async function loadTenantCatalogBase(rawSubdomain: string): Promise<CachedTenant
       name: p.name,
       thumbnailLink: ImgproxyProfiles.grid(p.r2_key),
       fullLink: ImgproxyProfiles.catalog(p.r2_key),
-      width: p.width || 1080,
-      height: p.height || 1080,
+      width: p.width || undefined,
+      height: p.height || undefined,
       modifiedTime: p.drive_modified_time || undefined,
     };
 
@@ -352,8 +353,6 @@ async function loadTenantCatalogBase(rawSubdomain: string): Promise<CachedTenant
     lastSynced: new Date().toISOString(),
   };
 
-  const rawSettings = (rawConfig?.settings as Record<string, any>) || {};
-
   const config: AppConfig = {
     rootFolderId: '',
     gridColumns: rawSettings.grid_columns || 5,
@@ -374,6 +373,8 @@ async function loadTenantCatalogBase(rawSubdomain: string): Promise<CachedTenant
     seasonalDuration: rawSettings.seasonal_duration || 0,
     clickEffect: rawSettings.click_effect || 'none',
     hideAlbumTitles: rawSettings.hide_album_titles || false,
+    hidePhotoNames: Boolean(rawSettings.hide_photo_names),
+    photoSortOrder,
     cardBorderWidth: rawSettings.card_border_width || undefined,
     cardBorderColor: rawSettings.card_border_color || undefined,
     ogImage: rawSettings.og_image || undefined,

@@ -66,6 +66,8 @@ export async function GET(request: NextRequest) {
       gridColumns: rawSettings.grid_columns || 5,
       mobileGridColumns: rawSettings.mobile_grid_columns || 2,
       hideAlbumTitles: rawSettings.hide_album_titles || false,
+      hidePhotoNames: Boolean(rawSettings.hide_photo_names),
+      photoSortOrder: rawSettings.photo_sort_order === 'asc' ? 'asc' : 'desc',
       cardBorderWidth: rawSettings.card_border_width || 1,
       cardBorderColor: rawSettings.card_border_color || '',
       seasonalEffect: rawSettings.seasonal_effect || 'none',
@@ -276,6 +278,18 @@ export async function POST(request: NextRequest) {
       grid_columns: Number(body.gridColumns) || existingSettings.grid_columns || 5,
       mobile_grid_columns: Number(body.mobileGridColumns) || existingSettings.mobile_grid_columns || 2,
       hide_album_titles: body.hideAlbumTitles !== undefined ? Boolean(body.hideAlbumTitles) : Boolean(existingSettings.hide_album_titles),
+      hide_photo_names:
+        body.hidePhotoNames !== undefined
+          ? Boolean(body.hidePhotoNames)
+          : body.hide_photo_names !== undefined
+          ? Boolean(body.hide_photo_names)
+          : Boolean(existingSettings.hide_photo_names),
+      photo_sort_order:
+        body.photoSortOrder !== undefined
+          ? (body.photoSortOrder === 'asc' ? 'asc' : 'desc')
+          : body.photo_sort_order !== undefined
+          ? (body.photo_sort_order === 'asc' ? 'asc' : 'desc')
+          : (existingSettings.photo_sort_order === 'asc' ? 'asc' : 'desc'),
       card_border_width: body.cardBorderWidth !== undefined ? Number(body.cardBorderWidth) : (existingSettings.card_border_width ?? 1),
       card_border_color: body.cardBorderColor !== undefined ? body.cardBorderColor : (existingSettings.card_border_color || ''),
       seasonal_effect: body.seasonalEffect !== undefined ? body.seasonalEffect : (existingSettings.seasonal_effect || 'none'),

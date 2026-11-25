@@ -24,6 +24,8 @@ export interface AppConfig {
     backgroundImage?: string;
     textColor?: string;
     hideAlbumTitles?: boolean;
+    hidePhotoNames?: boolean;
+    photoSortOrder?: 'desc' | 'asc';
     cardBorderWidth?: number;
     cardBorderColor?: string;
     clickEffect?: 'none' | 'stars' | 'hearts';
@@ -53,5 +55,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     mobileGridColumns: 2,
     autoSyncEnabled: true,
     hideAlbumTitles: false,
+    hidePhotoNames: false,
+    photoSortOrder: 'desc',
     theme: 'light',
 };

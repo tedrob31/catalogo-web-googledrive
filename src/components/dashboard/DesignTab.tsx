@@ -145,6 +145,32 @@ export default function DesignTab({
             label="Ocultar títulos de álbumes"
           />
         </Row>
+
+        <Row
+          label="Nombres de fotos"
+          hint="Si los ocultás, no se muestra el nombre del archivo sobre cada foto"
+        >
+          <Switch
+            checked={Boolean(configForm.hide_photo_names)}
+            onChange={() => set({ hide_photo_names: !configForm.hide_photo_names })}
+            label="Ocultar nombres de fotos"
+          />
+        </Row>
+
+        <Row
+          label="Orden de fotos"
+          hint="Solo aplica a las fotos dentro de cada carpeta; los álbumes conservan el orden de Drive"
+        >
+          <select
+            value={configForm.photo_sort_order === 'asc' ? 'asc' : 'desc'}
+            onChange={(e) => set({ photo_sort_order: e.target.value === 'asc' ? 'asc' : 'desc' })}
+            className={selectCls}
+            aria-label="Orden de fotos dentro de carpetas"
+          >
+            <option value="desc">Descendente (Z → A · últimas primero)</option>
+            <option value="asc">Ascendente (A → Z · igual que Drive)</option>
+          </select>
+        </Row>
       </Section>
 
       {/* ---------- 2. Tema ---------- */}

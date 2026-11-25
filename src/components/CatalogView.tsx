@@ -20,6 +20,7 @@ import SeasonalEffects from './SeasonalEffects';
 import ClickEffects from './ClickEffects';
 import { hexToRgba, isColorDark } from '@/lib/theme-presets';
 import { optimizeWallpaperUrl } from '@/lib/cloudflare-images';
+import { isWidePhotoDimensions, resolveEffectiveGridColumns } from '@/lib/photo-layout';
 
 interface CatalogViewProps {
     data: CacheStructure | null;
@@ -54,6 +55,10 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
     const [activePath, setActivePath] = useState<Album[]>(initialPath || (rootAlbum ? [rootAlbum] : []));
     const [searchQuery, setSearchQuery] = useState('');
     const [lightboxPhotoIndex, setLightboxPhotoIndex] = useState<number>(-1);
+    const [measuredWideIds, setMeasuredWideIds] = useState<Record<string, true>>({});
+    const handleWideDetected = useCallback((photoId: string) => {
+        setMeasuredWideIds((prev) => (prev[photoId] ? prev : { ...prev, [photoId]: true }));
+    }, []);
 
     // Sincronizar si cambia initialPath desde SSR (evitar re-renders y ciclos si los álbumes son idénticos)
     useEffect(() => {
@@ -275,6 +280,12 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
     const isSearching = !!searchQuery;
     const visibleAlbums = isSearching ? searchResults!.albums : currentAlbum?.subAlbums || [];
     const visiblePhotos = isSearching ? searchResults!.photos : currentAlbum?.photos || [];
+    const configuredDesktopCols = config.gridColumns || 5;
+    const configuredMobileCols = config.mobileGridColumns || 2;
+    const hasWideVisiblePhoto = visiblePhotos.some(
+        (photo) => measuredWideIds[photo.id] || isWidePhotoDimensions(photo.width, photo.height)
+    );
+    const effectiveDesktopCols = resolveEffectiveGridColumns(configuredDesktopCols, hasWideVisiblePhoto);
 
     // Handlers con navegación instantánea (0ms) y sincronización de URL
     const constructUrl = (path: Album[]) => {
@@ -556,10 +567,10 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                                 </h2>
                                 <div className="grid gap-1 sm:gap-4 md:gap-6">
                                     <div
-                                        className="dynamic-catalog-grid grid gap-1 sm:gap-4 md:gap-6"
+                                        className="dynamic-catalog-grid grid grid-flow-row-dense items-start gap-1 sm:gap-4 md:gap-6"
                                         style={{
-                                            '--grid-cols-desktop': config.gridColumns || 5,
-                                            '--grid-cols-mobile': config.mobileGridColumns || 2
+                                            '--grid-cols-desktop': effectiveDesktopCols,
+                                            '--grid-cols-mobile': configuredMobileCols
                                         } as any}
                                     >
                                         {visiblePhotos.map((photo, idx) => (
@@ -567,7 +578,10 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                                                 key={photo.id}
                                                 photo={photo}
                                                 config={config}
+                                                desktopCols={effectiveDesktopCols}
+                                                mobileCols={configuredMobileCols}
                                                 priority={idx < 2}
+                                                onWideDetected={handleWideDetected}
                                                 onClick={() => openLightbox(idx)}
                                             />
                                         ))}

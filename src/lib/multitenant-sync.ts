@@ -514,7 +514,7 @@ async function syncFolderRecursive({
   do {
     const res: any = await drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,
-      fields: 'nextPageToken, files(id, name, mimeType, size, modifiedTime, md5Checksum, version)',
+      fields: 'nextPageToken, files(id, name, mimeType, size, modifiedTime, md5Checksum, version, imageMediaMetadata(width, height))',
       pageSize: 1000,
       pageToken: pageToken,
       supportsAllDrives: true,
@@ -547,6 +547,14 @@ async function syncFolderRecursive({
     if (progress.error) break;
     if (!img.id || !img.name) continue;
     visitedDriveFileIds.add(img.id);
+    const currentPhotoIndex = photoIndex++;
+
+    const rawW = img.imageMediaMetadata?.width;
+    const rawH = img.imageMediaMetadata?.height;
+    const driveWidth =
+      typeof rawW === 'number' && Number.isFinite(rawW) && rawW > 0 ? Math.round(rawW) : null;
+    const driveHeight =
+      typeof rawH === 'number' && Number.isFinite(rawH) && rawH > 0 ? Math.round(rawH) : null;
 
     const ext = (img.name.split('.').pop() || 'jpg').toLowerCase();
     const rawFileName = img.name.substring(0, img.name.lastIndexOf('.')) || img.name;
@@ -593,6 +601,20 @@ async function syncFolderRecursive({
       existingPhoto.name === img.name;
 
     if (isUpToDate) {
+      if ((!existingPhoto.width || !existingPhoto.height) && driveWidth && driveHeight) {
+        await supabase
+          .from('photos')
+          .update({
+            width: driveWidth,
+            height: driveHeight,
+          })
+          .eq('id', existingPhoto.id);
+        existingPhotosMap.set(img.id, {
+          ...existingPhoto,
+          width: driveWidth,
+          height: driveHeight,
+        });
+      }
       progress.skipped++;
       continue;
     }
@@ -602,13 +624,15 @@ async function syncFolderRecursive({
       await supabase.from('photos').update({
         album_id: album.id,
         name: img.name,
-        order_index: photoIndex++,
+        order_index: currentPhotoIndex,
+        ...(driveWidth && driveHeight ? { width: driveWidth, height: driveHeight } : {}),
       }).eq('id', existingPhoto.id);
 
       existingPhotosMap.set(img.id, {
         ...existingPhoto,
         album_id: album.id,
         name: img.name,
+        ...(driveWidth && driveHeight ? { width: driveWidth, height: driveHeight } : {}),
       });
       progress.skipped++;
       continue;
@@ -649,8 +673,10 @@ async function syncFolderRecursive({
           md5_checksum: rawHash,
           mime_type: img.mimeType || 'image/jpeg',
           size_bytes: buffer.length,
+          width: driveWidth ?? existingPhoto.width ?? null,
+          height: driveHeight ?? existingPhoto.height ?? null,
           drive_modified_time: img.modifiedTime,
-          order_index: photoIndex++,
+          order_index: currentPhotoIndex,
         }).eq('id', existingPhoto.id);
 
         existingPhotosMap.set(img.id, {
@@ -661,6 +687,8 @@ async function syncFolderRecursive({
           md5_checksum: rawHash,
           mime_type: img.mimeType || 'image/jpeg',
           size_bytes: buffer.length,
+          width: driveWidth ?? existingPhoto.width ?? null,
+          height: driveHeight ?? existingPhoto.height ?? null,
           drive_modified_time: img.modifiedTime,
         });
       } else {
@@ -673,8 +701,10 @@ async function syncFolderRecursive({
           md5_checksum: rawHash,
           mime_type: img.mimeType || 'image/jpeg',
           size_bytes: buffer.length,
+          width: driveWidth,
+          height: driveHeight,
           drive_modified_time: img.modifiedTime,
-          order_index: photoIndex++,
+          order_index: currentPhotoIndex,
         }, { onConflict: 'tenant_id,drive_file_id' }).select('*').single();
 
         if (insertedPhoto) {

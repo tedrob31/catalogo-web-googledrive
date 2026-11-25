@@ -126,6 +126,8 @@ export default function TenantDashboard() {
     card_border_width: 1,
     card_border_color: '#e5e7eb',
     hide_album_titles: false,
+    hide_photo_names: false,
+    photo_sort_order: 'desc' as 'desc' | 'asc',
     allow_photo_download: false,
     social_links: {
       instagram: '',
@@ -248,6 +250,8 @@ export default function TenantDashboard() {
           rawSettings.card_border_width !== undefined ? Number(rawSettings.card_border_width) : 1,
         card_border_color: rawSettings.card_border_color || '#e5e7eb',
         hide_album_titles: Boolean(rawSettings.hide_album_titles),
+        hide_photo_names: Boolean(rawSettings.hide_photo_names),
+        photo_sort_order: (rawSettings.photo_sort_order === 'asc' ? 'asc' : 'desc') as 'desc' | 'asc',
         allow_photo_download: Boolean(rawSettings.allow_photo_download),
         social_links: {
           instagram: (cfg.social_links as any)?.instagram || rawSettings.instagram || '',
@@ -644,6 +648,8 @@ export default function TenantDashboard() {
       configForm.grid_columns !== savedConfig.grid_columns ||
       configForm.mobile_grid_columns !== savedConfig.mobile_grid_columns ||
       Boolean(configForm.hide_album_titles) !== Boolean(savedConfig.hide_album_titles) ||
+      Boolean(configForm.hide_photo_names) !== Boolean(savedConfig.hide_photo_names) ||
+      configForm.photo_sort_order !== savedConfig.photo_sort_order ||
       configForm.card_border_width !== savedConfig.card_border_width ||
       configForm.card_border_color !== savedConfig.card_border_color
     );
@@ -740,6 +746,8 @@ export default function TenantDashboard() {
       if (configForm.grid_columns !== savedConfig.grid_columns) payload.gridColumns = configForm.grid_columns;
       if (configForm.mobile_grid_columns !== savedConfig.mobile_grid_columns) payload.mobileGridColumns = configForm.mobile_grid_columns;
       if (Boolean(configForm.hide_album_titles) !== Boolean(savedConfig.hide_album_titles)) payload.hideAlbumTitles = configForm.hide_album_titles;
+      if (Boolean(configForm.hide_photo_names) !== Boolean(savedConfig.hide_photo_names)) payload.hidePhotoNames = configForm.hide_photo_names;
+      if (configForm.photo_sort_order !== savedConfig.photo_sort_order) payload.photoSortOrder = configForm.photo_sort_order;
       if (configForm.card_border_width !== savedConfig.card_border_width) payload.cardBorderWidth = configForm.card_border_width;
       if (configForm.card_border_color !== savedConfig.card_border_color) payload.cardBorderColor = configForm.card_border_color;
 
