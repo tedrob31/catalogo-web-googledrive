@@ -6,6 +6,7 @@ interface MetricEntry {
   path: string;
   title: string;
   views: number;
+  unique_visitors: number;
   whatsapp: number;
 }
 
@@ -33,7 +34,8 @@ export function recordMetricEvent(
   tenantId: string,
   rawPath: string,
   rawTitle: string,
-  eventType: 'view' | 'whatsapp' = 'view'
+  eventType: 'view' | 'whatsapp' = 'view',
+  isUniqueDaily: boolean = false
 ) {
   if (!tenantId) return;
 
@@ -43,12 +45,14 @@ export function recordMetricEvent(
 
   const key = `${tenantId}::${date}::${path}`;
   const existing = metricBuffer.get(key);
+  const uniqueInc = eventType !== 'whatsapp' && isUniqueDaily ? 1 : 0;
 
   if (existing) {
     if (eventType === 'whatsapp') {
       existing.whatsapp += 1;
     } else {
       existing.views += 1;
+      existing.unique_visitors += uniqueInc;
     }
     if (title && title !== 'Catálogo Principal') {
       existing.title = title;
@@ -60,6 +64,7 @@ export function recordMetricEvent(
       path,
       title,
       views: eventType === 'view' ? 1 : 0,
+      unique_visitors: uniqueInc,
       whatsapp: eventType === 'whatsapp' ? 1 : 0,
     });
   }
@@ -115,7 +120,8 @@ export async function flushAnalyticsBuffer() {
             p_title: item.title,
             p_views: item.views,
             p_whatsapp: item.whatsapp,
-          })
+            p_unique_visitors: item.unique_visitors,
+          } as any)
         )
       );
     } else {

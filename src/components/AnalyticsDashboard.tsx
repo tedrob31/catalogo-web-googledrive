@@ -10,14 +10,14 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
-import { FaEye, FaWhatsapp, FaFolder, FaSyncAlt } from 'react-icons/fa';
+import { FaEye, FaWhatsapp, FaFolder, FaSyncAlt, FaUsers } from 'react-icons/fa';
 
 export default function AnalyticsDashboard() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [chartView, setChartView] = useState<'views' | 'whatsapp'>('views');
+  const [chartView, setChartView] = useState<'uniqueVisitors' | 'views' | 'whatsapp'>('uniqueVisitors');
 
   const fetchAnalytics = async () => {
     try {
@@ -69,7 +69,9 @@ export default function AnalyticsDashboard() {
   }
 
   const summary = data?.summary || {
+    totalUniqueVisitors: 0,
     totalViews: 0,
+    totalCategoryViews: 0,
     totalWhatsapp: 0,
     conversionRate: 0,
     topPage: 'Ninguna',
@@ -91,7 +93,7 @@ export default function AnalyticsDashboard() {
             Rendimiento de tu catálogo
           </h1>
           <p className="mt-1 max-w-[66ch] text-[13px] text-shell-muted">
-            Métricas reales y agregadas de los últimos 30 días.
+            Visitantes únicos diarios separados de las vistas por categoría (últimos 30 días).
           </p>
         </div>
 
@@ -109,24 +111,36 @@ export default function AnalyticsDashboard() {
       </div>
 
       {/* 2. Franja única de métricas clave */}
-      <div className="grid grid-cols-1 divide-y divide-shell-line border border-shell-line sm:grid-cols-4 sm:divide-x sm:divide-y-0">
+      <div className="grid grid-cols-1 divide-y divide-shell-line border border-shell-line sm:grid-cols-2 lg:grid-cols-5 lg:divide-x lg:divide-y-0">
         <div className="px-4 py-3">
-          <div className={cellLabelCls}>Visitas al catálogo</div>
-          <div className={cellValueCls}>{summary.totalViews.toLocaleString()}</div>
+          <div className={cellLabelCls}>Visitantes únicos</div>
+          <div className={cellValueCls}>
+            {Number(summary.totalUniqueVisitors ?? 0).toLocaleString()}
+          </div>
+          <div className="mt-0.5 text-[11px] text-shell-muted">1 por día por dispositivo</div>
+        </div>
+
+        <div className="px-4 py-3">
+          <div className={cellLabelCls}>Vistas en categorías</div>
+          <div className={cellValueCls}>
+            {Number(summary.totalCategoryViews ?? summary.totalViews ?? 0).toLocaleString()}
+          </div>
+          <div className="mt-0.5 text-[11px] text-shell-muted">Exploraciones en álbumes</div>
         </div>
 
         <div className="px-4 py-3">
           <div className={cellLabelCls}>Pedidos por WhatsApp</div>
-          <div className={cellValueCls}>{summary.totalWhatsapp.toLocaleString()}</div>
+          <div className={cellValueCls}>{Number(summary.totalWhatsapp ?? 0).toLocaleString()}</div>
         </div>
 
         <div className="px-4 py-3">
           <div className={cellLabelCls}>Tasa de conversión</div>
           <div className={cellValueCls}>{summary.conversionRate}%</div>
+          <div className="mt-0.5 text-[11px] text-shell-muted">Sobre visitantes únicos</div>
         </div>
 
         <div className="px-4 py-3">
-          <div className={cellLabelCls}>Sección más visitada</div>
+          <div className={cellLabelCls}>Categoría más visitada</div>
           <div className={`${cellValueCls} truncate`} title={summary.topPage}>
             {summary.topPage}
           </div>
@@ -144,12 +158,24 @@ export default function AnalyticsDashboard() {
               Evolución de tráfico diario
             </h2>
             <p className="mt-0.5 text-[11.5px] text-shell-muted">
-              Fluctuación de interacciones por día en tu tienda.
+              Compara visitantes únicos diarios, vistas de categorías y clics a WhatsApp.
             </p>
           </div>
 
-          {/* Toggle entre Visitas y WhatsApp */}
+          {/* Toggle entre Únicos, Categorías y WhatsApp */}
           <div className="inline-flex shrink-0 self-start rounded-md border border-shell-line bg-shell-raised p-0.5 sm:self-auto">
+            <button
+              onClick={() => setChartView('uniqueVisitors')}
+              aria-pressed={chartView === 'uniqueVisitors'}
+              className={`flex cursor-pointer items-center gap-1.5 rounded-[4px] px-2.5 py-1 text-[11.5px] font-semibold transition ${
+                chartView === 'uniqueVisitors'
+                  ? 'bg-shell-accent text-shell-accent-ink'
+                  : 'text-shell-muted hover:text-shell-ink'
+              }`}
+            >
+              <FaUsers aria-hidden="true" className="text-[10px]" />
+              <span>Únicos</span>
+            </button>
             <button
               onClick={() => setChartView('views')}
               aria-pressed={chartView === 'views'}
@@ -160,7 +186,7 @@ export default function AnalyticsDashboard() {
               }`}
             >
               <FaEye aria-hidden="true" className="text-[10px]" />
-              <span>Visitas</span>
+              <span>Categorías</span>
             </button>
             <button
               onClick={() => setChartView('whatsapp')}
@@ -220,16 +246,26 @@ export default function AnalyticsDashboard() {
                   labelStyle={{ color: 'var(--color-shell-ink-soft)', fontWeight: 'bold' }}
                   itemStyle={{
                     color:
-                      chartView === 'views'
-                        ? 'var(--color-shell-accent)'
-                        : 'var(--color-shell-warn)',
+                      chartView === 'whatsapp'
+                        ? 'var(--color-shell-warn)'
+                        : 'var(--color-shell-accent)',
                   }}
                 />
-                {chartView === 'views' ? (
+                {chartView === 'uniqueVisitors' ? (
+                  <Area
+                    type="monotone"
+                    dataKey="uniqueVisitors"
+                    name="Visitantes únicos"
+                    stroke="var(--color-shell-accent)"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#viewsGradient)"
+                  />
+                ) : chartView === 'views' ? (
                   <Area
                     type="monotone"
                     dataKey="views"
-                    name="Visitas"
+                    name="Vistas de secciones"
                     stroke="var(--color-shell-accent)"
                     strokeWidth={2}
                     fillOpacity={1}

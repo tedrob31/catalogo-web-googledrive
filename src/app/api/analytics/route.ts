@@ -47,30 +47,54 @@ export async function GET(req: NextRequest) {
     }
 
     const rawSummary = summaryData as {
+      total_unique_visitors?: number;
       total_views: number;
+      total_category_views?: number;
       total_whatsapp: number;
-      daily_trend: Array<{ date: string; views: number; whatsapp: number }>;
-      top_content: Array<{ path: string; title: string; views: number; whatsapp: number }>;
+      daily_trend: Array<{
+        date: string;
+        unique_visitors?: number;
+        views: number;
+        whatsapp: number;
+      }>;
+      top_content: Array<{
+        path: string;
+        title: string;
+        views: number;
+        unique_visitors?: number;
+        whatsapp: number;
+      }>;
       top_page: string;
     } | null;
 
+    const totalUniqueVisitors = Number(rawSummary?.total_unique_visitors || 0);
     const totalViews = Number(rawSummary?.total_views || 0);
+    const totalCategoryViews = Number(rawSummary?.total_category_views ?? totalViews);
     const totalWhatsapp = Number(rawSummary?.total_whatsapp || 0);
     const topPage = rawSummary?.top_page || 'Ninguna aún';
-    const topContent = rawSummary?.top_content || [];
+    const topContent = (rawSummary?.top_content || []).map((item) => ({
+      ...item,
+      views: Number(item.views || 0),
+      uniqueVisitors: Number(item.unique_visitors || 0),
+      whatsapp: Number(item.whatsapp || 0),
+    }));
 
     // 3. Crear mapa con los 30 días para garantizar que la gráfica no tenga huecos
-    const dailyMap = new Map<string, { views: number; whatsapp: number }>();
+    const dailyMap = new Map<string, { uniqueVisitors: number; views: number; whatsapp: number }>();
     for (let i = 29; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
       const dStr = d.toISOString().split('T')[0];
-      dailyMap.set(dStr, { views: 0, whatsapp: 0 });
+      dailyMap.set(dStr, { uniqueVisitors: 0, views: 0, whatsapp: 0 });
     }
 
     // Rellenar con los días agregados devueltos por la base de datos
     for (const d of rawSummary?.daily_trend || []) {
       if (dailyMap.has(d.date)) {
-        dailyMap.set(d.date, { views: Number(d.views || 0), whatsapp: Number(d.whatsapp || 0) });
+        dailyMap.set(d.date, {
+          uniqueVisitors: Number(d.unique_visitors || 0),
+          views: Number(d.views || 0),
+          whatsapp: Number(d.whatsapp || 0),
+        });
       }
     }
 
@@ -81,19 +105,24 @@ export async function GET(req: NextRequest) {
       return {
         date: dateStr,
         shortDate,
+        uniqueVisitors: val.uniqueVisitors,
         views: val.views,
         whatsapp: val.whatsapp,
       };
     });
 
-    const conversionRate = totalViews > 0 ? ((totalWhatsapp / totalViews) * 100).toFixed(1) : '0.0';
+    const conversionDenominator = totalUniqueVisitors > 0 ? totalUniqueVisitors : totalViews;
+    const conversionRate =
+      conversionDenominator > 0 ? ((totalWhatsapp / conversionDenominator) * 100).toFixed(1) : '0.0';
 
     return NextResponse.json({
       success: true,
       tenant: membership.tenants,
       periodDays: 30,
       summary: {
+        totalUniqueVisitors,
         totalViews,
+        totalCategoryViews,
         totalWhatsapp,
         conversionRate: parseFloat(conversionRate),
         topPage,

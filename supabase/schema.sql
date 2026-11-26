@@ -137,6 +137,7 @@ create table public.tenant_page_metrics (
   path text default '/'::text not null,
   title text default 'Catálogo Principal'::text not null,
   views_count integer default 1 not null,
+  unique_visitors integer default 0 not null,
   whatsapp_clicks integer default 0 not null,
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null
@@ -507,7 +508,7 @@ revoke all on function public.handle_new_user() from public, anon, authenticated
 grant execute on function public.handle_new_user() to postgres;
 grant execute on function public.handle_new_user() to service_role;
 
-CREATE OR REPLACE FUNCTION public.increment_page_metric(p_tenant_id uuid, p_date date, p_path text, p_title text, p_views integer, p_whatsapp integer)
+CREATE OR REPLACE FUNCTION public.increment_page_metric(p_tenant_id uuid, p_date date, p_path text, p_title text, p_views integer, p_whatsapp integer, p_unique_visitors integer DEFAULT 0)
  RETURNS void
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -515,23 +516,24 @@ CREATE OR REPLACE FUNCTION public.increment_page_metric(p_tenant_id uuid, p_date
 AS $function$
 BEGIN
     INSERT INTO public.tenant_page_metrics (
-        tenant_id, date, path, title, views_count, whatsapp_clicks, updated_at
+        tenant_id, date, path, title, views_count, unique_visitors, whatsapp_clicks, updated_at
     )
     VALUES (
-        p_tenant_id, p_date, p_path, p_title, p_views, p_whatsapp, now()
+        p_tenant_id, p_date, p_path, p_title, GREATEST(COALESCE(p_views, 0), 0), GREATEST(COALESCE(p_unique_visitors, 0), 0), GREATEST(COALESCE(p_whatsapp, 0), 0), now()
     )
     ON CONFLICT (tenant_id, date, path)
     DO UPDATE SET
         views_count = tenant_page_metrics.views_count + EXCLUDED.views_count,
+        unique_visitors = tenant_page_metrics.unique_visitors + EXCLUDED.unique_visitors,
         whatsapp_clicks = tenant_page_metrics.whatsapp_clicks + EXCLUDED.whatsapp_clicks,
         title = CASE WHEN EXCLUDED.title <> 'Catálogo' AND EXCLUDED.title <> 'Catálogo Principal' THEN EXCLUDED.title ELSE tenant_page_metrics.title END,
         updated_at = now();
 END;
 $function$
 ;
-revoke all on function public.increment_page_metric(uuid, date, text, text, integer, integer) from public, anon, authenticated, service_role;
-grant execute on function public.increment_page_metric(uuid, date, text, text, integer, integer) to postgres;
-grant execute on function public.increment_page_metric(uuid, date, text, text, integer, integer) to service_role;
+revoke all on function public.increment_page_metric(uuid, date, text, text, integer, integer, integer) from public, anon, authenticated, service_role;
+grant execute on function public.increment_page_metric(uuid, date, text, text, integer, integer, integer) to postgres;
+grant execute on function public.increment_page_metric(uuid, date, text, text, integer, integer, integer) to service_role;
 
 CREATE OR REPLACE FUNCTION public.increment_page_metrics_batch(p_metrics jsonb)
  RETURNS void
@@ -545,20 +547,22 @@ BEGIN
     END IF;
 
     INSERT INTO public.tenant_page_metrics (
-        tenant_id, date, path, title, views_count, whatsapp_clicks, updated_at
+        tenant_id, date, path, title, views_count, unique_visitors, whatsapp_clicks, updated_at
     )
     SELECT
         (m->>'tenant_id')::UUID,
         (m->>'date')::DATE,
         m->>'path',
         m->>'title',
-        COALESCE((m->>'views')::INT, 0),
-        COALESCE((m->>'whatsapp')::INT, 0),
+        GREATEST(COALESCE((m->>'views')::INT, 0), 0),
+        GREATEST(COALESCE((m->>'unique_visitors')::INT, 0), 0),
+        GREATEST(COALESCE((m->>'whatsapp')::INT, 0), 0),
         now()
     FROM jsonb_array_elements(p_metrics) AS m
     ON CONFLICT (tenant_id, date, path)
     DO UPDATE SET
         views_count = tenant_page_metrics.views_count + EXCLUDED.views_count,
+        unique_visitors = tenant_page_metrics.unique_visitors + EXCLUDED.unique_visitors,
         whatsapp_clicks = tenant_page_metrics.whatsapp_clicks + EXCLUDED.whatsapp_clicks,
         title = CASE 
             WHEN EXCLUDED.title <> 'Catálogo' AND EXCLUDED.title <> 'Catálogo Principal' 
@@ -599,7 +603,9 @@ CREATE OR REPLACE FUNCTION public.get_tenant_analytics_summary(p_tenant_id uuid,
 AS $function$
 DECLARE
     v_result JSONB;
+    v_total_unique_visitors BIGINT := 0;
     v_total_views BIGINT := 0;
+    v_total_category_views BIGINT := 0;
     v_total_whatsapp BIGINT := 0;
     v_daily_trend JSONB;
     v_top_content JSONB;
@@ -613,12 +619,16 @@ BEGIN
         RAISE EXCEPTION 'not authorized for tenant %', p_tenant_id USING ERRCODE = '42501';
     END IF;
 
-    -- 1. Totales generales
+    -- 1. Totales generales separados: visitantes únicos diarios vs vistas de categorías/secciones
     SELECT 
+        COALESCE(SUM(unique_visitors), 0),
         COALESCE(SUM(views_count), 0),
+        COALESCE(SUM(views_count) FILTER (WHERE path <> '/'), 0),
         COALESCE(SUM(whatsapp_clicks), 0)
     INTO 
+        v_total_unique_visitors,
         v_total_views,
+        v_total_category_views,
         v_total_whatsapp
     FROM public.tenant_page_metrics
     WHERE tenant_id = p_tenant_id AND date >= p_start_date;
@@ -629,6 +639,7 @@ BEGIN
     FROM (
         SELECT jsonb_build_object(
             'date', date::text,
+            'unique_visitors', COALESCE(SUM(unique_visitors), 0),
             'views', COALESCE(SUM(views_count), 0),
             'whatsapp', COALESCE(SUM(whatsapp_clicks), 0)
         ) AS d
@@ -645,22 +656,36 @@ BEGIN
             'path', path,
             'title', MAX(title),
             'views', COALESCE(SUM(views_count), 0),
+            'unique_visitors', COALESCE(SUM(unique_visitors), 0),
             'whatsapp', COALESCE(SUM(whatsapp_clicks), 0)
         ) AS c
         FROM public.tenant_page_metrics
         WHERE tenant_id = p_tenant_id AND date >= p_start_date
         GROUP BY path
-        ORDER BY SUM(views_count) DESC
+        ORDER BY SUM(views_count) DESC, SUM(whatsapp_clicks) DESC
         LIMIT 15
     ) sub;
 
-    -- Extraer el título de la página más visitada
-    IF jsonb_array_length(v_top_content) > 0 THEN
+    -- Extraer la categoría más visitada (o portada si todavía no entraron a categorías)
+    SELECT COALESCE(MAX(sub.title), 'Ninguna aún')
+    INTO v_top_page
+    FROM (
+        SELECT MAX(title) AS title
+        FROM public.tenant_page_metrics
+        WHERE tenant_id = p_tenant_id AND date >= p_start_date AND path <> '/'
+        GROUP BY path
+        ORDER BY SUM(views_count) DESC, SUM(whatsapp_clicks) DESC
+        LIMIT 1
+    ) sub;
+
+    IF v_top_page = 'Ninguna aún' AND jsonb_array_length(v_top_content) > 0 THEN
         v_top_page := COALESCE(v_top_content->0->>'title', 'Ninguna aún');
     END IF;
 
     v_result := jsonb_build_object(
+        'total_unique_visitors', v_total_unique_visitors,
         'total_views', v_total_views,
+        'total_category_views', v_total_category_views,
         'total_whatsapp', v_total_whatsapp,
         'daily_trend', v_daily_trend,
         'top_content', v_top_content,

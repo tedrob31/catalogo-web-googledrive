@@ -115,7 +115,12 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
 
     // Enviar evento de métrica no bloqueante a la API
     const sendMetricPayload = useCallback(
-        (pathStr: string, title: string, eventType: 'view' | 'whatsapp') => {
+        (
+            pathStr: string,
+            title: string,
+            eventType: 'view' | 'whatsapp',
+            isUniqueDaily: boolean = false
+        ) => {
             if (!tenantId) return;
             try {
                 const payload = JSON.stringify({
@@ -123,6 +128,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
                     path: pathStr || '/',
                     title: title || 'Catálogo Principal',
                     event_type: eventType,
+                    ...(eventType !== 'whatsapp' && isUniqueDaily ? { is_unique_daily: true } : {}),
                 });
 
                 if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
@@ -143,32 +149,64 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
         [tenantId]
     );
 
-    // Registro de vistas deduplicado con ventana de cooldown (15 min por ruta/sesión)
-    // Previene métricas infladas por cambio de foco (Alt+Tab), lecturas prolongadas o refrescos en background
+    // Registro separado de:
+    // 1) Visitante único diario por dispositivo (localStorage YYYY-MM-DD, máximo +1 por día por tienda)
+    // 2) Vista por categoría/sección (ventana de cooldown de 15 min por ruta en la sesión)
     const inMemoryViewsRef = useRef<Map<string, number>>(new Map());
+    const inMemoryDailyUniqueRef = useRef<Set<string>>(new Set());
     const trackPageView = useCallback(
         (pathStr: string, title: string) => {
             if (!tenantId || typeof window === 'undefined') return;
 
             const now = Date.now();
-            const VIEW_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutos por ruta en la misma sesión
-            const key = `c4t_view_${tenantId}_${pathStr}`;
+            const VIEW_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutos por categoría en la misma sesión
+            const viewKey = `c4t_view_${tenantId}_${pathStr}`;
+            const dateStr = new Date().toISOString().split('T')[0];
+            const dailyPrefix = `c4t_day_visit_${tenantId}_`;
+            const dailyKey = `${dailyPrefix}${dateStr}`;
 
+            let isUniqueDaily = false;
             try {
-                const lastTracked = Number(sessionStorage.getItem(key) || 0);
-                if (lastTracked && now - lastTracked < VIEW_COOLDOWN_MS) {
-                    return;
+                if (window.localStorage.getItem(dailyKey) !== '1') {
+                    isUniqueDaily = true;
+                    window.localStorage.setItem(dailyKey, '1');
+                    for (let i = window.localStorage.length - 1; i >= 0; i--) {
+                        const existingKey = window.localStorage.key(i);
+                        if (existingKey && existingKey.startsWith(dailyPrefix) && existingKey !== dailyKey) {
+                            window.localStorage.removeItem(existingKey);
+                        }
+                    }
                 }
-                sessionStorage.setItem(key, String(now));
             } catch {
-                const lastTracked = inMemoryViewsRef.current.get(key) || 0;
-                if (lastTracked && now - lastTracked < VIEW_COOLDOWN_MS) {
-                    return;
+                if (!inMemoryDailyUniqueRef.current.has(dailyKey)) {
+                    isUniqueDaily = true;
+                    inMemoryDailyUniqueRef.current.add(dailyKey);
                 }
-                inMemoryViewsRef.current.set(key, now);
             }
 
-            sendMetricPayload(pathStr, title, 'view');
+            let isCooldownActive = false;
+            try {
+                const lastTracked = Number(sessionStorage.getItem(viewKey) || 0);
+                if (lastTracked && now - lastTracked < VIEW_COOLDOWN_MS) {
+                    isCooldownActive = true;
+                } else {
+                    sessionStorage.setItem(viewKey, String(now));
+                }
+            } catch {
+                const lastTracked = inMemoryViewsRef.current.get(viewKey) || 0;
+                if (lastTracked && now - lastTracked < VIEW_COOLDOWN_MS) {
+                    isCooldownActive = true;
+                } else {
+                    inMemoryViewsRef.current.set(viewKey, now);
+                }
+            }
+
+            // Si ya se registró esta ruta recientemente y tampoco es el primer ingreso único del día, omitir
+            if (isCooldownActive && !isUniqueDaily) {
+                return;
+            }
+
+            sendMetricPayload(pathStr, title, 'view', isUniqueDaily);
         },
         [tenantId, sendMetricPayload]
     );
