@@ -10,6 +10,7 @@ import { sanitizeInternalRedirect } from '@/lib/safe-redirect';
 export const dynamic = 'force-dynamic';
 
 export default function LoginPage() {
+  const [mode, setMode] = useState<'login' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,6 +35,29 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      if (mode === 'forgot') {
+        const cleanEmail = email.trim();
+        if (!cleanEmail) {
+          throw new Error('Ingresa tu correo electrónico registrado.');
+        }
+
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+          redirectTo: `${window.location.origin}/reset-password/`,
+        });
+
+        if (resetError) {
+          if (resetError.message.toLowerCase().includes('rate limit')) {
+            throw new Error('Has solicitado demasiados correos seguidos. Intenta de nuevo en unos minutos.');
+          }
+          throw resetError;
+        }
+
+        setMessage(
+          'Si el correo está registrado, enviamos un enlace a tu bandeja (revisa también Spam) para restablecer tu contraseña.'
+        );
+        return;
+      }
+
       const destination = getRedirectTarget();
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -50,7 +74,7 @@ export default function LoginPage() {
       router.push(destination);
       router.refresh();
     } catch (err: any) {
-      setError(err.message || 'Ocurrió un error al iniciar sesión');
+      setError(err.message || 'Ocurrió un error al procesar la solicitud');
     } finally {
       setLoading(false);
     }
@@ -103,22 +127,26 @@ export default function LoginPage() {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white text-gray-900 hover:bg-gray-100 font-semibold text-sm transition-all shadow-md active:scale-[0.98] mb-6 cursor-pointer"
-        >
-          <FaGoogle className="text-red-500 text-lg" />
-          <span>Continuar con Google</span>
-        </button>
+        {mode === 'login' && (
+          <>
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white text-gray-900 hover:bg-gray-100 font-semibold text-sm transition-all shadow-md active:scale-[0.98] mb-6 cursor-pointer"
+            >
+              <FaGoogle className="text-red-500 text-lg" />
+              <span>Continuar con Google</span>
+            </button>
 
-        <div className="relative flex items-center justify-center my-6">
-          <div className="border-t border-white/10 w-full" />
-          <span className="bg-transparent px-3 text-xs text-gray-500 uppercase tracking-widest font-mono">
-            o con tu email
-          </span>
-          <div className="border-t border-white/10 w-full" />
-        </div>
+            <div className="relative flex items-center justify-center my-6">
+              <div className="border-t border-white/10 w-full" />
+              <span className="bg-transparent px-3 text-xs text-gray-500 uppercase tracking-widest font-mono">
+                o con tu email
+              </span>
+              <div className="border-t border-white/10 w-full" />
+            </div>
+          </>
+        )}
 
         <form onSubmit={handleAuth} className="space-y-4">
           <div>
@@ -138,31 +166,68 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-300 mb-1.5">
-              Contraseña
-            </label>
-            <div className="relative">
-              <FaLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
-              />
+          {mode === 'login' && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-medium text-gray-300">
+                  Contraseña
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('forgot');
+                    setError(null);
+                    setMessage(null);
+                  }}
+                  className="text-xs text-amber-400 hover:text-amber-300 underline cursor-pointer transition"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
+              <div className="relative">
+                <FaLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           <button
             type="submit"
             disabled={loading}
             className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-semibold text-sm transition-all shadow-lg shadow-rose-500/25 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none mt-2 cursor-pointer"
           >
-            <span>{loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}</span>
+            <span>
+              {mode === 'forgot'
+                ? loading
+                  ? 'Enviando enlace…'
+                  : 'Enviar enlace de recuperación'
+                : loading
+                  ? 'Iniciando sesión...'
+                  : 'Iniciar Sesión'}
+            </span>
             <FaArrowRight className="text-xs" />
           </button>
+
+          {mode === 'forgot' && (
+            <button
+              type="button"
+              onClick={() => {
+                setMode('login');
+                setError(null);
+                setMessage(null);
+              }}
+              className="w-full py-2 text-xs text-gray-400 hover:text-white transition cursor-pointer"
+            >
+              Volver a iniciar sesión
+            </button>
+          )}
         </form>
 
         <div className="text-center mt-6">

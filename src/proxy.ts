@@ -37,6 +37,8 @@ export function proxy(request: NextRequest) {
     if (
       pathname === '/login' ||
       pathname.startsWith('/login/') ||
+      pathname === '/reset-password' ||
+      pathname.startsWith('/reset-password/') ||
       pathname === '/dashboard' ||
       pathname.startsWith('/dashboard/') ||
       pathname === '/privacy' ||
