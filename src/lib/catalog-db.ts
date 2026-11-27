@@ -37,10 +37,20 @@ interface CachedTenantBase {
   cachedAt: number;
 }
 
-// Caché en memoria RAM de alta velocidad (TTL de 5 minutos para minimizar lecturas a Supabase)
-// Si el inquilino sincroniza en Google Drive o edita diseño/portada, invalidateTenantCatalogCache lo purga al instante (0ms)
+export interface TenantSeoMeta {
+  id: string;
+  subdomain: string;
+  custom_domain: string | null;
+  custom_domain_enabled?: boolean;
+  redirectToCustomDomain?: boolean;
+}
+
+// Caché en memoria RAM de alta velocidad (TTL de 12 horas; invalidado al instante tras cada sync o edición)
+// Si el inquilino sincroniza en Google Drive o edita diseño/portada/dominio, invalidateTenantCatalogCache lo purga al instante (0ms)
 const memoryCatalogCache = new Map<string, CachedTenantBase>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos (300,000 ms)
+const seoMetaCache = new Map<string, { meta: TenantSeoMeta | null; cachedAt: number }>();
+const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 horas (43,200,000 ms)
+const NEGATIVE_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutos para misses/suspendidos
 
 /**
  * Invalida inmediatamente el catálogo en la memoria RAM del servidor.
@@ -49,8 +59,18 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos (300,000 ms)
 export function invalidateTenantCatalogCache(tenantIdOrSubdomain?: string) {
   if (!tenantIdOrSubdomain) {
     memoryCatalogCache.clear();
+    seoMetaCache.clear();
     console.log('[Catalog Cache] Memoria caché de todos los tenants invalidada.');
     return;
+  }
+  seoMetaCache.delete(tenantIdOrSubdomain);
+  for (const [k, entry] of seoMetaCache.entries()) {
+    if (
+      k === tenantIdOrSubdomain ||
+      (entry.meta && (entry.meta.id === tenantIdOrSubdomain || entry.meta.subdomain === tenantIdOrSubdomain || entry.meta.custom_domain === tenantIdOrSubdomain))
+    ) {
+      seoMetaCache.delete(k);
+    }
   }
   for (const [key, entry] of memoryCatalogCache.entries()) {
     if (
@@ -165,7 +185,7 @@ async function loadTenantCatalogBase(rawSubdomain: string): Promise<CachedTenant
   const cached = memoryCatalogCache.get(subdomain);
   if (cached) {
     const isNegative = cached.tenant === null;
-    const ttl = isNegative ? 2 * 60 * 1000 : CACHE_TTL_MS; // 2 min para no encontrados, 5 min para válidos
+    const ttl = isNegative ? NEGATIVE_CACHE_TTL_MS : CACHE_TTL_MS; // 2 min para misses, 12h para válidos
     if (Date.now() - cached.cachedAt < ttl) {
       if (isNegative) return null;
       return cached;
@@ -176,7 +196,7 @@ async function loadTenantCatalogBase(rawSubdomain: string): Promise<CachedTenant
   if (memoryCatalogCache.size > 300) {
     const now = Date.now();
     for (const [k, v] of memoryCatalogCache.entries()) {
-      const ttl = v.tenant === null ? 2 * 60 * 1000 : CACHE_TTL_MS;
+      const ttl = v.tenant === null ? NEGATIVE_CACHE_TTL_MS : CACHE_TTL_MS;
       if (now - v.cachedAt > ttl) {
         memoryCatalogCache.delete(k);
       }
@@ -451,4 +471,81 @@ export const loadTenantCatalog = cache(async (
     initialPath,
     storefront: base.storefront,
   };
+});
+
+/**
+ * Carga liviana para /robots.txt sin descargar álbumes ni miles de fotos en caché frío.
+ * Reutiliza memoryCatalogCache si la tienda ya está en RAM; de lo contrario consulta 1 fila mínima.
+ */
+export const loadTenantSeoMeta = cache(async (
+  subdomain: string
+): Promise<TenantSeoMeta | null> => {
+  if (!isValidTenantKey(subdomain)) {
+    return null;
+  }
+
+  const now = Date.now();
+  const fullCached = memoryCatalogCache.get(subdomain);
+  if (fullCached && now - fullCached.cachedAt < (fullCached.tenant === null ? NEGATIVE_CACHE_TTL_MS : CACHE_TTL_MS)) {
+    if (!fullCached.tenant) return null;
+    return {
+      id: fullCached.tenant.id,
+      subdomain: fullCached.tenant.subdomain,
+      custom_domain: fullCached.tenant.custom_domain,
+      custom_domain_enabled: fullCached.tenant.custom_domain_enabled,
+      redirectToCustomDomain: Boolean(fullCached.config?.redirectToCustomDomain),
+    };
+  }
+
+  const seoCached = seoMetaCache.get(subdomain);
+  if (seoCached && now - seoCached.cachedAt < (seoCached.meta === null ? NEGATIVE_CACHE_TTL_MS : CACHE_TTL_MS)) {
+    return seoCached.meta;
+  }
+
+  if (seoMetaCache.size > 300) {
+    seoMetaCache.clear();
+  }
+
+  const supabase = createAdminClient();
+  const { data: tenant, error } = await supabase
+    .from('tenants')
+    .select('id, subdomain, custom_domain, custom_domain_enabled, tenant_configs(settings)')
+    .or(`subdomain.eq.${subdomain},custom_domain.eq.${subdomain}`)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (error || !tenant) {
+    seoMetaCache.set(subdomain, { meta: null, cachedAt: now });
+    return null;
+  }
+
+  if (
+    tenant.custom_domain &&
+    tenant.custom_domain.toLowerCase() === subdomain.toLowerCase() &&
+    !tenant.custom_domain_enabled
+  ) {
+    seoMetaCache.set(subdomain, { meta: null, cachedAt: now });
+    return null;
+  }
+
+  const rawCfg = Array.isArray(tenant.tenant_configs)
+    ? tenant.tenant_configs[0]
+    : tenant.tenant_configs;
+  const rawSettings = (rawCfg?.settings as Record<string, any>) || {};
+
+  const meta: TenantSeoMeta = {
+    id: tenant.id,
+    subdomain: tenant.subdomain,
+    custom_domain: tenant.custom_domain,
+    custom_domain_enabled: Boolean(tenant.custom_domain_enabled),
+    redirectToCustomDomain: Boolean(rawSettings.redirect_to_custom_domain),
+  };
+
+  seoMetaCache.set(subdomain, { meta, cachedAt: now });
+  if (meta.subdomain) seoMetaCache.set(meta.subdomain, { meta, cachedAt: now });
+  if (meta.custom_domain && meta.custom_domain_enabled) {
+    seoMetaCache.set(meta.custom_domain, { meta, cachedAt: now });
+  }
+
+  return meta;
 });
