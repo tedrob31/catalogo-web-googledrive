@@ -38,6 +38,13 @@ test('multitenant-sync invalidates RAM cache before marking sync_logs completed'
   assert.ok(invalidatePos < completedPos);
 });
 
+test('multitenant-sync selects width and height in fetchAllTenantPhotos to prevent O(N) re-patching', () => {
+  assert.match(
+    MULTITENANT_SYNC,
+    /fetchAllTenantPhotos\(\s*supabase,\s*tenantId,\s*'[^']*\bwidth\b[^']*\bheight\b[^']*'/
+  );
+});
+
 test('tenant storefront metadata sets dynamic canonical URL and robots indexability', () => {
   assert.match(TENANT_PAGE, /getCanonicalStorefrontOrigin/);
   assert.match(TENANT_PAGE, /alternates:\s*\{\s*canonical:/);
