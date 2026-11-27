@@ -45,10 +45,18 @@ export interface TenantSeoMeta {
   redirectToCustomDomain?: boolean;
 }
 
-// Caché en memoria RAM de alta velocidad (TTL de 12 horas; invalidado al instante tras cada sync o edición)
-// Si el inquilino sincroniza en Google Drive o edita diseño/portada/dominio, invalidateTenantCatalogCache lo purga al instante (0ms)
-const memoryCatalogCache = new Map<string, CachedTenantBase>();
-const seoMetaCache = new Map<string, { meta: TenantSeoMeta | null; cachedAt: number }>();
+// Caché en memoria RAM compartida vía globalThis (evita instancias separadas entre chunks de Next.js App Router)
+// TTL de 12 horas; invalidado al instante tras cada sync o edición mediante invalidateTenantCatalogCache(tenantId)
+const globalForCatalogCache = globalThis as unknown as {
+  __c4talogoMemoryCache?: Map<string, CachedTenantBase>;
+  __c4talogoSeoMetaCache?: Map<string, { meta: TenantSeoMeta | null; cachedAt: number }>;
+};
+const memoryCatalogCache =
+  globalForCatalogCache.__c4talogoMemoryCache ??
+  (globalForCatalogCache.__c4talogoMemoryCache = new Map<string, CachedTenantBase>());
+const seoMetaCache =
+  globalForCatalogCache.__c4talogoSeoMetaCache ??
+  (globalForCatalogCache.__c4talogoSeoMetaCache = new Map<string, { meta: TenantSeoMeta | null; cachedAt: number }>());
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 horas (43,200,000 ms)
 const NEGATIVE_CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutos para misses/suspendidos
 

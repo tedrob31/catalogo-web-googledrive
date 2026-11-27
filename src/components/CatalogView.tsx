@@ -79,7 +79,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
     // Esto garantiza que cientos de usuarios simultáneos navegando carpetas o alternando pestañas
     // no saturen el ancho de banda ni el servidor, mientras se mantiene el catálogo siempre actualizado.
     const lastBackgroundRefreshRef = useRef<number>(0);
-    const triggerBackgroundRefresh = useCallback((minIntervalMs = 30000) => {
+    const triggerBackgroundRefresh = useCallback((minIntervalMs = 3000) => {
         const now = Date.now();
         if (now - lastBackgroundRefreshRef.current > minIntervalMs) {
             lastBackgroundRefreshRef.current = now;
@@ -91,7 +91,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
     useEffect(() => {
         const onVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
-                triggerBackgroundRefresh(30000);
+                triggerBackgroundRefresh(3000);
             }
         };
         document.addEventListener('visibilitychange', onVisibilityChange);
@@ -328,7 +328,7 @@ export default function CatalogView({ data, config, initialPath, storefront, ten
     // Handlers con navegación instantánea (0ms) y sincronización de URL
     const constructUrl = (path: Album[]) => {
         const segments = path.slice(1).map(a => slugify(a.name));
-        return segments.length > 0 ? '/' + segments.join('/') : '/';
+        return segments.length > 0 ? '/' + segments.join('/') + '/' : '/';
     };
 
     const handleNavigate = (album: Album) => {

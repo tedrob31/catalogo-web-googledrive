@@ -3,6 +3,7 @@
  */
 export interface CloudflarePurgeOptions {
   subdomain?: string;
+  customDomain?: string | null;
   urls?: string[]; // Lista de URLs o paths específicos (ej: ['/', '/album/verano'])
   purgeAll?: boolean; // Forzar purga total del subdominio o de la zona
   threshold?: number; // Umbral para decidir entre purga puntual o por host (por defecto: 5)
@@ -203,8 +204,9 @@ export async function purgeCloudflareCache(optionsOrSubdomain?: string | Cloudfl
     ? { subdomain: optionsOrSubdomain }
     : (optionsOrSubdomain || {});
 
-  const { subdomain, urls = [], purgeAll = false, threshold = 5 } = options;
+  const { subdomain, customDomain, urls = [], purgeAll = false, threshold = 5 } = options;
   const tenantHost = subdomain ? `${subdomain}.${baseDomain}` : null;
+  const cleanCustomHost = customDomain ? customDomain.toLowerCase().trim() : null;
 
   return new Promise<void>((resolve) => {
     // Timeout de seguridad: Si la cola se demora más de 8s (por backoff), resolvemos para no colgar el sync
@@ -249,9 +251,10 @@ export async function purgeCloudflareCache(optionsOrSubdomain?: string | Cloudfl
         }
       }
     }
-    // CASO 2: Purga por Hostname (subdominio del inquilino)
-    else if (tenantHost) {
-      pendingBatch.hosts.add(tenantHost);
+    // CASO 2: Purga por Hostname (subdominio y/o dominio propio del inquilino)
+    else if (tenantHost || cleanCustomHost) {
+      if (tenantHost) pendingBatch.hosts.add(tenantHost);
+      if (cleanCustomHost) pendingBatch.hosts.add(cleanCustomHost);
     }
     // CASO 3: Purga global de la zona completa
     else {

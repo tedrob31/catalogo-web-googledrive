@@ -312,6 +312,33 @@ export async function runTenantSync(
       }
     }
 
+    // Revalidación en memoria RAM ANTES de marcar completed para evitar race condition con el polling del dashboard
+    try {
+      invalidateTenantCatalogCache(tenantId);
+      if (tenant.subdomain) {
+        invalidateTenantCatalogCache(tenant.subdomain);
+      }
+      if (tenant.custom_domain) {
+        invalidateTenantCatalogCache(tenant.custom_domain);
+      }
+      revalidatePath('/', 'layout');
+    } catch {
+      // Ignorar si se ejecuta fuera de contexto de request
+    }
+
+    // Purga inteligente en Cloudflare para subdominio y dominio propio del tenant
+    if (tenant.subdomain || tenant.custom_domain) {
+      if (progress.newUploaded === 0 && deletedPhotosCount === 0 && deletedAlbumIds.length === 0) {
+        console.log('[Sync] Sin cambios en fotos ni álbumes; espejo idéntico, caché CDN conservado intacto.');
+      } else {
+        await purgeCloudflareCache({
+          subdomain: tenant.subdomain || undefined,
+          customDomain: tenant.custom_domain || undefined,
+          purgeAll: true,
+        });
+      }
+    }
+
     if (logId) {
       await supabase
         .from('sync_logs')
@@ -323,35 +350,6 @@ export async function runTenantSync(
           completed_at: new Date().toISOString(),
         })
         .eq('id', logId);
-    }
-
-    // Revalidación ISR en Next.js y memoria RAM
-    try {
-      invalidateTenantCatalogCache(tenantId);
-      if (tenant.subdomain) {
-        invalidateTenantCatalogCache(tenant.subdomain);
-      }
-      if (tenant.custom_domain) {
-        invalidateTenantCatalogCache(tenant.custom_domain);
-      }
-      revalidatePath('/', 'layout');
-    } catch (e) {
-      // Ignorar si se ejecuta fuera de contexto de request
-    }
-
-    // Purga inteligente en Cloudflare para el subdominio del tenant
-    if (tenant.subdomain) {
-      if (progress.newUploaded === 0 && deletedPhotosCount === 0 && deletedAlbumIds.length === 0) {
-        console.log('[Sync] Sin cambios en fotos ni álbumes; espejo idéntico, caché CDN conservado intacto.');
-      } else {
-        // Al haber cualquier cambio (foto subida, editada o eliminada), purgar el subdominio completo del inquilino por Hostname.
-        // La purga por Hostname limpia 100% de las rutas (/album, /album/, RSC, etc.) de forma aislada sin afectar a otras tiendas.
-        // Además, gracias a la cola con batching en cloudflare.ts, múltiples tiendas concurrentes se agrupan en 1 sola llamada API.
-        await purgeCloudflareCache({
-          subdomain: tenant.subdomain,
-          purgeAll: true,
-        });
-      }
     }
 
     return progress;
