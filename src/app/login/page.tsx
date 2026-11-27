@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -14,11 +14,20 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   // Detectar si estamos accediendo desde el subdominio de administración app.c4talogo.com
   const getRedirectTarget = () => {
@@ -30,6 +39,8 @@ export default function LoginPage() {
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === 'forgot' && resendCooldown > 0) return;
+
     setError(null);
     setMessage(null);
     setLoading(true);
@@ -47,11 +58,13 @@ export default function LoginPage() {
 
         if (resetError) {
           if (resetError.message.toLowerCase().includes('rate limit')) {
+            setResendCooldown(60);
             throw new Error('Has solicitado demasiados correos seguidos. Intenta de nuevo en unos minutos.');
           }
           throw resetError;
         }
 
+        setResendCooldown(60);
         setMessage(
           'Si el correo está registrado, enviamos un enlace a tu bandeja (revisa también Spam) para restablecer tu contraseña.'
         );
@@ -73,8 +86,9 @@ export default function LoginPage() {
 
       router.push(destination);
       router.refresh();
-    } catch (err: any) {
-      setError(err.message || 'Ocurrió un error al procesar la solicitud');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : null;
+      setError(msg || 'Ocurrió un error al procesar la solicitud');
     } finally {
       setLoading(false);
     }
@@ -91,8 +105,9 @@ export default function LoginPage() {
         },
       });
       if (error) throw error;
-    } catch (err: any) {
-      setError(err.message || 'Error al conectar con Google');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : null;
+      setError(msg || 'Error al conectar con Google');
     }
   };
 
@@ -200,14 +215,16 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (mode === 'forgot' && resendCooldown > 0)}
             className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-semibold text-sm transition-all shadow-lg shadow-rose-500/25 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none mt-2 cursor-pointer"
           >
             <span>
               {mode === 'forgot'
                 ? loading
                   ? 'Enviando enlace…'
-                  : 'Enviar enlace de recuperación'
+                  : resendCooldown > 0
+                    ? `Reenviar en ${resendCooldown}s`
+                    : 'Enviar enlace de recuperación'
                 : loading
                   ? 'Iniciando sesión...'
                   : 'Iniciar Sesión'}

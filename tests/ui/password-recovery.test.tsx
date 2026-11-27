@@ -17,7 +17,11 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('next/link', () => ({
-  default: ({ children, href, ...rest }: any) => (
+  default: ({
+    children,
+    href,
+    ...rest
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
     <a href={href} {...rest}>
       {children}
     </a>
@@ -71,6 +75,11 @@ describe('LoginPage password recovery request', () => {
     });
 
     expect(screen.getByText(/enviamos un enlace a tu bandeja/i)).toBeTruthy();
+
+    const cooldownBtn = screen.getByRole('button', { name: /Reenviar en 60s/i }) as HTMLButtonElement;
+    expect(cooldownBtn.disabled).toBe(true);
+    fireEvent.click(cooldownBtn);
+    expect(resetPasswordForEmailMock).toHaveBeenCalledTimes(1);
   });
 });
 
